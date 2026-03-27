@@ -5,12 +5,6 @@ import { FadeIn, GlassCard, AnimatedButton } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
 
-const ROLE_OPTIONS = [
-  { value: 'ADMIN', label: 'Administrador', description: 'Acceso total al sistema' },
-  { value: 'EMPLEADO', label: 'Empleado', description: 'Gestión de pedidos y ventas' },
-  { value: 'CLIENTE', label: 'Cliente', description: 'Acceso básico de cliente' },
-];
-
 export default function AdminNewUserPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -22,7 +16,6 @@ export default function AdminNewUserPage() {
     telefono: '',
     password: '',
     confirmPassword: '',
-    roles: [] as string[],
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -31,15 +24,6 @@ export default function AdminNewUserPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleRoleToggle = (role: string) => {
-    setForm(prev => ({
-      ...prev,
-      roles: prev.roles.includes(role)
-        ? prev.roles.filter(r => r !== role)
-        : [...prev.roles, role],
-    }));
   };
 
   const validateForm = (): boolean => {
@@ -72,10 +56,6 @@ export default function AdminNewUserPage() {
       showToast('Las contraseñas no coinciden', 'error');
       return false;
     }
-    if (form.roles.length === 0) {
-      showToast('Debes seleccionar al menos un rol', 'error');
-      return false;
-    }
     return true;
   };
 
@@ -90,7 +70,7 @@ export default function AdminNewUserPage() {
         correo: form.correo.trim().toLowerCase(),
         telefono: form.telefono.trim() || undefined,
         password: form.password,
-        roles: form.roles,
+        roles: ['EMPLEADO'],
       });
       showToast('Usuario creado exitosamente', 'success');
       navigate('/admin/usuarios');
@@ -282,44 +262,24 @@ export default function AdminNewUserPage() {
         <div className="space-y-6">
           <GlassCard className="p-8 border-none">
             <div className="flex items-center gap-3 mb-6">
-              <div className="size-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm">
+              <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
                 <Shield className="w-5 h-5" />
               </div>
-              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Roles</h2>
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Rol Asignado</h2>
             </div>
-            <div className="space-y-3">
-              {ROLE_OPTIONS.map(role => (
-                <button
-                  key={role.value}
-                  type="button"
-                  onClick={() => handleRoleToggle(role.value)}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                    form.roles.includes(role.value)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className={`text-sm font-black ${form.roles.includes(role.value) ? 'text-blue-700' : 'text-slate-800'}`}>
-                        {role.label}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">{role.description}</p>
-                    </div>
-                    <div className={`size-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      form.roles.includes(role.value)
-                        ? 'border-blue-500 bg-blue-500'
-                        : 'border-slate-300 bg-white'
-                    }`}>
-                      {form.roles.includes(role.value) && (
-                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))}
+            <div className="p-4 rounded-xl border-2 border-blue-200 bg-blue-50">
+              <div className="flex items-center gap-3">
+                <div className="size-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                  <Shield className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-blue-700">Empleado</p>
+                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Gestión de pedidos y ventas</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 font-medium mt-3 leading-relaxed">
+                Los nuevos usuarios creados desde este panel se registran automáticamente como <span className="font-black text-blue-600">Empleado</span>.
+              </p>
             </div>
           </GlassCard>
 

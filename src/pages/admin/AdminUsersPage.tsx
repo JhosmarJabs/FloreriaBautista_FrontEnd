@@ -4,6 +4,7 @@ import {
   UserPlus,
   Search,
   Shield,
+  ShoppingBag,
   Mail,
   Phone,
   Calendar,
@@ -46,10 +47,6 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [selfDeactivating, setSelfDeactivating] = useState(false);
-  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
-  const [deactivateReason, setDeactivateReason] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -73,28 +70,6 @@ export default function AdminUsersPage() {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
-
-  useEffect(() => {
-    AdminService.getCurrentUser().then(res => setCurrentUser(res.data)).catch(() => {});
-  }, []);
-
-  const handleSelfDeactivate = async () => {
-    if (!currentUser || !deactivateReason.trim()) return;
-    setSelfDeactivating(true);
-    try {
-      await AdminService.updateAdminUserStatus(currentUser.id, false, deactivateReason);
-      showToast('Tu cuenta ha sido desactivada. Serás desconectado.', 'success');
-      setTimeout(() => {
-        localStorage.removeItem('usuario');
-        window.location.href = '/login';
-      }, 2000);
-    } catch {
-      showToast('Error al desactivar tu cuenta', 'error');
-    } finally {
-      setSelfDeactivating(false);
-      setShowDeactivateConfirm(false);
-    }
-  };
 
   const stats = [
     { label: 'Total Usuarios', value: total, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -134,13 +109,13 @@ export default function AdminUsersPage() {
       {/* Stats */}
       <StaggerContainer className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {stats.map((stat, idx) => (
-          <GlassCard key={idx} className="p-6 border-none">
+          <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div className={`p-3 w-fit rounded-2xl ${stat.bg} ${stat.color} mb-4 shadow-sm`}>
               {stat.icon}
             </div>
             <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{stat.label}</p>
             <h3 className="text-3xl font-black mt-1 text-slate-900">{stat.value}</h3>
-          </GlassCard>
+          </div>
         ))}
       </StaggerContainer>
 
@@ -169,82 +144,6 @@ export default function AdminUsersPage() {
         </GlassCard>
       </FadeIn>
 
-      {/* Mi cuenta */}
-      {currentUser && (
-        <FadeIn delay={0.25}>
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-black text-slate-900">Mi cuenta</h2>
-                <p className="text-xs text-slate-400 mt-0.5"> </p>
-              </div>
-              <button
-                onClick={() => setShowDeactivateConfirm(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 hover:border-red-200 rounded-xl text-xs font-bold transition-all"
-              >
-                <XCircle className="w-3.5 h-3.5" />
-                Desactivar mi usuario
-              </button>
-            </div>
-            <div className="p-6 flex items-center gap-6 flex-wrap">
-              <div className="size-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-sm shrink-0">
-                {`${(currentUser.nombre ?? '').charAt(0)}${(currentUser.apellido ?? '').charAt(0)}`.toUpperCase() || '?'}
-              </div>
-              <div className="flex-1 min-w-0 grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Nombre completo', value: `${currentUser.nombre ?? ''} ${currentUser.apellido ?? ''}`.trim() },
-                  { label: 'Correo', value: currentUser.correo },
-                  { label: 'Roles', value: (currentUser.roles ?? []).join(', ') },
-                  { label: 'Estado', value: currentUser.estado },
-                ].map(item => (
-                  <div key={item.label}>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{item.label}</p>
-                    <p className={`text-sm font-bold truncate ${item.label === 'Estado' && currentUser.estado === 'ACTIVO' ? 'text-emerald-600' : 'text-slate-800'}`}>{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          {showDeactivateConfirm && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-              <div className="bg-white rounded-2xl shadow-2xl border border-red-100 max-w-md w-full p-6">
-                <div className="flex items-start gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-                    <XCircle className="w-5 h-5 text-red-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900 mb-1">¿Desactivar tu usuario?</h3>
-                    <p className="text-xs text-slate-500">No podrás volver a entrar hasta que un administrador te reactive.</p>
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <label className="block text-xs font-bold text-slate-500 mb-1.5">Motivo de desactivación</label>
-                  <textarea
-                    value={deactivateReason}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDeactivateReason(e.target.value)}
-                    placeholder="Ej: Me tomé vacaciones temporalmente"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-red-400/40 focus:border-red-400 outline-none resize-none h-20"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => { setShowDeactivateConfirm(false); setDeactivateReason(''); }}
-                    className="flex-1 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleSelfDeactivate}
-                    disabled={selfDeactivating || !deactivateReason.trim()}
-                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-sm shadow-red-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {selfDeactivating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                    Confirmar desactivación
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </FadeIn>
-      )}
 
       {/* Table */}
       <FadeIn delay={0.4}>
@@ -266,8 +165,12 @@ export default function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  <AnimatePresence mode="popLayout">
-                    {users.map((user) => {
+                  {(() => {
+                    const admins = users.filter(u => (u.roles ?? []).includes('ADMIN'));
+                    const empleados = users.filter(u => !(u.roles ?? []).includes('ADMIN') && (u.roles ?? []).includes('EMPLEADO'));
+                    const clientes = users.filter(u => !(u.roles ?? []).includes('ADMIN') && !(u.roles ?? []).includes('EMPLEADO'));
+
+                    const renderRow = (user: User) => {
                       const isActive = user.estado === 'ACTIVO';
                       const initials = `${(user.nombre ?? '').charAt(0)}${(user.apellido ?? '').charAt(0)}`.toUpperCase() || '?';
                       return (
@@ -337,15 +240,40 @@ export default function AdminUsersPage() {
                           </td>
                         </motion.tr>
                       );
-                    })}
-                  </AnimatePresence>
-                  {!loading && users.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="p-10 text-center text-slate-400 text-sm font-medium">
-                        No se encontraron usuarios
-                      </td>
-                    </tr>
-                  )}
+                    };
+
+                    const renderGroupHeader = (label: string, count: number, icon: React.ReactNode, color: string) => (
+                      <tr key={label} className="bg-slate-50/70">
+                        <td colSpan={5} className="px-5 py-2.5">
+                          <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${color}`}>
+                            {icon}
+                            {label} <span className="ml-1 opacity-60">({count})</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+
+                    if (users.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} className="p-10 text-center text-slate-400 text-sm font-medium">
+                            No se encontraron usuarios
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return (
+                      <AnimatePresence mode="popLayout">
+                        {admins.length > 0 && renderGroupHeader('Administradores', admins.length, <Shield className="w-3.5 h-3.5" />, 'text-purple-600')}
+                        {admins.map(renderRow)}
+                        {empleados.length > 0 && renderGroupHeader('Empleados', empleados.length, <ShoppingBag className="w-3.5 h-3.5" />, 'text-blue-600')}
+                        {empleados.map(renderRow)}
+                        {clientes.length > 0 && renderGroupHeader('Clientes', clientes.length, <Users className="w-3.5 h-3.5" />, 'text-amber-600')}
+                        {clientes.map(renderRow)}
+                      </AnimatePresence>
+                    );
+                  })()}
                 </tbody>
               </table>
             </div>
