@@ -3,6 +3,7 @@ import {
   CreditCard, DollarSign, Search, Download, Clock, XCircle,
   MoreVertical, Calendar, FileText, RefreshCw, X,
   TrendingUp, TrendingDown, ChevronRight, CheckCircle2, Receipt,
+  LayoutGrid, List, Landmark, ArrowRight, ShieldCheck, Filter, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
@@ -17,16 +18,20 @@ const statusLabel: Record<string, string> = {
   enviado:    'Enviado',    procesando: 'En Proceso',
 };
 const statusStyle: Record<string, string> = {
-  paid:       'text-emerald-600', entregado:  'text-emerald-600',
-  pending:    'text-amber-500',   pendiente:  'text-amber-500',   procesando: 'text-amber-500',
-  failed:     'text-rose-500',    cancelado:  'text-rose-500',
-  enviado:    'text-blue-500',
+  paid:       'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20',
+  entregado:  'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20',
+  pending:    'bg-amber-50 dark:bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-100 dark:border-amber-500/20',
+  pendiente:  'bg-amber-50 dark:bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-100 dark:border-amber-500/20',
+  procesando: 'bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 border-blue-100 dark:border-blue-500/20',
+  failed:     'bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-100 dark:border-rose-500/20',
+  cancelado:  'bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-100 dark:border-rose-500/20',
+  enviado:    'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border-indigo-100 dark:border-indigo-500/20',
 };
 const statusDot: Record<string, string> = {
   paid:       'bg-emerald-500', entregado:  'bg-emerald-500',
-  pending:    'bg-amber-400',   pendiente:  'bg-amber-400',   procesando: 'bg-amber-400',
+  pending:    'bg-amber-400',   pendiente:  'bg-amber-400',   procesando: 'bg-blue-400',
   failed:     'bg-rose-500',    cancelado:  'bg-rose-500',
-  enviado:    'bg-blue-500',
+  enviado:    'bg-indigo-500',
 };
 
 const INVOICE_FIELDS = [
@@ -40,6 +45,7 @@ export default function AdminPaymentsPage() {
   const [searchTerm,   setSearchTerm]   = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos los Estados');
   const [payments,     setPayments]     = useState<Order[]>([]);
+  const [viewMode,     setViewMode]     = useState<'table' | 'grid'>('table');
   const [stats,        setStats]        = useState({
     incomeToday: 0, pendingAmount: 0, failedCount: 0, totalTransactions: 0,
   });
@@ -50,41 +56,33 @@ export default function AdminPaymentsPage() {
 
   const [invoice, setInvoice] = useState({ client: '', amount: 0, concept: '', dueDate: '' });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await AdminService.getAdminOrders({ size: 50 });
-        const items = res.data.items;
-        setPayments(items);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await AdminService.getAdminOrders({ size: 50 });
+      const items = res.data.items;
+      setPayments(items);
 
-        const today = new Date().toISOString().slice(0, 10);
-        const incomeToday = items
-          .filter(o => o.fechaCreacion?.startsWith(today) &&
-            (o.estadoPedido === 'entregado' || o.estadoPedido === 'paid'))
-          .reduce((sum, o) => sum + o.total, 0);
-        const pendingAmount = items
-          .filter(o => o.estadoPedido === 'pendiente' || o.estadoPedido === 'pending')
-          .reduce((sum, o) => sum + o.total, 0);
-        const failedCount = items
-          .filter(o => o.estadoPedido === 'cancelado' || o.estadoPedido === 'failed').length;
+      const today = new Date().toISOString().slice(0, 10);
+      const incomeToday = items
+        .filter(o => o.fechaCreacion?.startsWith(today) &&
+          (o.estadoPedido === 'entregado' || o.estadoPedido === 'paid'))
+        .reduce((sum, o) => sum + o.total, 0);
+      const pendingAmount = items
+        .filter(o => o.estadoPedido === 'pendiente' || o.estadoPedido === 'pending')
+        .reduce((sum, o) => sum + o.total, 0);
+      const failedCount = items
+        .filter(o => o.estadoPedido === 'cancelado' || o.estadoPedido === 'failed').length;
 
-        setStats({ incomeToday, pendingAmount, failedCount, totalTransactions: res.data.total });
-      } catch {
-        showToast('Error al cargar órdenes', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+      setStats({ incomeToday, pendingAmount, failedCount, totalTransactions: res.data.total });
+    } catch {
+      showToast('Error al cargar órdenes', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (activeMenu && !(e.target as Element).closest('.menu-container')) setActiveMenu(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [activeMenu]);
+  useEffect(() => { loadData(); }, []);
 
   const handleCreate = () => {
     if (!invoice.client || !invoice.amount || !invoice.concept) {
@@ -110,42 +108,34 @@ export default function AdminPaymentsPage() {
     return matchSearch && matchStatus;
   });
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="flex flex-col items-center gap-3">
-        <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
-        <span className="text-xs font-semibold text-slate-400 tracking-widest uppercase">Cargando órdenes...</span>
-      </div>
-    </div>
-  );
-
-  const STAT_CARDS = [
-    { label: 'Ingresos Hoy',  value: `$${stats.incomeToday.toLocaleString()}`,  icon: DollarSign, color: 'text-emerald-500', trend: '+12%', trendUp: true  },
-    { label: 'Pendientes',    value: `$${stats.pendingAmount.toLocaleString()}`, icon: Clock,      color: 'text-amber-500',   trend: '-5%',  trendUp: false },
-    { label: 'Cancelados',    value: stats.failedCount.toString(),               icon: XCircle,    color: 'text-rose-500',    trend: '+2%',  trendUp: false },
-    { label: 'Transacciones', value: stats.totalTransactions.toString(),         icon: CreditCard, color: 'text-blue-500',    trend: '+8%',  trendUp: true  },
-  ];
-
-  const inputClass = "w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all";
-  const labelClass = "block text-xs font-semibold text-slate-500 mb-1.5";
-
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
 
-      {/* ── HEADER ── */}
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium tracking-tight">
+        <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">Administración</span>
+        <ChevronRight className="w-3 h-3" />
+        <span className="text-slate-700 dark:text-slate-300">Pagos y Facturación</span>
+      </nav>
+
+      {/* Header */}
       <FadeIn>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">Gestión de Pagos</h1>
-            <p className="text-slate-400 text-sm mt-1">Monitorea transacciones, reembolsos y estados de facturación</p>
-          </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
-              <Download className="w-4 h-4" />
-              Exportar
+             <div className="size-11 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center">
+                <Landmark className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+             </div>
+             <div>
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Control de Ingresos</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Gestión de cobros, recibos y conciliación bancaria.</p>
+             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={loadData} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-emerald-500 transition-all">
+               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <AnimatedButton onClick={() => setModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 shadow-md transition-all">
+              className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 transition-all">
               <FileText className="w-4 h-4" />
               Nueva Factura
             </AnimatedButton>
@@ -153,224 +143,223 @@ export default function AdminPaymentsPage() {
         </div>
       </FadeIn>
 
-      {/* ── KPI STATS ── */}
-      <FadeIn delay={0.1}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-slate-100 border border-slate-100 rounded-2xl bg-white overflow-hidden shadow-sm">
-          {STAT_CARDS.map((s, i) => (
-            <div key={i} className="px-7 py-6 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <s.icon className={`w-5 h-5 ${s.color}`} />
-                <span className={`text-xs font-bold ${s.trendUp ? 'text-emerald-500' : 'text-rose-400'}`}>
-                  {s.trend}
-                </span>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.label}</p>
-                <p className="text-3xl font-black text-slate-900 mt-1 tracking-tight">{s.value}</p>
-              </div>
+      {/* Metrics Banner */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Ingresos hoy', value: `$${stats.incomeToday.toLocaleString()}`, icon: <TrendingUp />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+          { label: 'Por cobrar', value: `$${stats.pendingAmount.toLocaleString()}`, icon: <Clock />, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+          { label: 'Cancelados', value: stats.failedCount, icon: <XCircle />, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10' },
+          { label: 'Operaciones', value: stats.totalTransactions, icon: <CreditCard />, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+        ].map((s, idx) => (
+          <motion.div key={idx} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 shadow-sm group">
+            <div className={`size-10 rounded-2xl ${s.bg} border border-slate-100 dark:border-slate-700 ${s.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+               {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
             </div>
-          ))}
-        </div>
-      </FadeIn>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{loading ? '...' : s.value}</h3>
+          </motion.div>
+        ))}
+      </div>
 
-      {/* ── FILTERS ── */}
-      <FadeIn delay={0.15}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[260px] relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <input type="text"
-              placeholder="Buscar por ID de orden o cliente..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all shadow-sm"
+      {/* Tools / Filters */}
+      <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-4 rounded-3xl shadow-sm">
+         <div className="flex-1 min-w-[300px] relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input type="text" placeholder="Buscar por cliente o folio de pago..."
+              className="w-full pl-12 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-emerald-500/10"
               value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-          </div>
-
-          <div className="relative">
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="appearance-none pl-4 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition-all shadow-sm cursor-pointer"
-            >
-              <option>Todos los Estados</option>
-              <option>Completado</option>
-              <option>Pendiente</option>
-              <option>Fallido</option>
-            </select>
-            <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 rotate-90 pointer-events-none" />
-          </div>
-
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
-            <Calendar className="w-4 h-4 text-slate-400" />
-            Este Mes
-          </button>
-        </div>
-      </FadeIn>
-
-      {/* ── TABLE ── */}
-      <FadeIn delay={0.2}>
-        <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  {['ID Orden', 'Cliente', 'Monto', 'Fecha Entrega', 'Creado', 'Estado', 'Acciones'].map((h, i) => (
-                    <th key={i} className={`px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest ${i === 6 ? 'text-right' : ''}`}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <AnimatePresence mode="popLayout">
-                  {filtered.map((trx, idx) => (
-                    <motion.tr key={trx.id} layout
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      transition={{ delay: idx * 0.02 }}
-                      className="border-b border-slate-100 hover:bg-slate-50/40 transition-colors group">
-
-                      {/* ID */}
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-xs font-bold text-slate-400 group-hover:text-slate-700 transition-colors">
-                          {trx.id.slice(0, 8).toUpperCase()}
-                        </span>
-                      </td>
-
-                      {/* Cliente */}
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-bold text-slate-900">{trx.nombreCliente}</p>
-                      </td>
-
-                      {/* Monto */}
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-black text-slate-900">
-                          ${(trx.total || 0).toLocaleString()}
-                        </span>
-                      </td>
-
-                      {/* Fecha Entrega */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5 text-slate-500">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span className="text-sm font-medium">
-                            {trx.fechaEntrega
-                              ? new Date(trx.fechaEntrega).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
-                              : '—'}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Creado */}
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-slate-500">
-                          {new Date(trx.fechaCreacion).toLocaleString('es-MX', {
-                            day: '2-digit', month: 'numeric', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit',
-                          })}
-                        </span>
-                      </td>
-
-                      {/* Estado */}
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-sm font-bold ${statusStyle[trx.estadoPedido] || 'text-slate-500'}`}>
-                          <span className={`size-1.5 rounded-full ${statusDot[trx.estadoPedido] || 'bg-slate-400'} ${trx.estadoPedido === 'cancelado' || trx.estadoPedido === 'failed' ? 'animate-pulse' : ''}`} />
-                          {(statusLabel[trx.estadoPedido] || trx.estadoPedido).toUpperCase()}
-                        </span>
-                      </td>
-
-                      {/* Acciones */}
-                      <td className="px-6 py-4 text-right relative menu-container">
-                        <button onClick={() => setActiveMenu(activeMenu === trx.id ? null : trx.id)}
-                          className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                        <AnimatePresence>
-                          {activeMenu === trx.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: 6 }}
-                              animate={{ opacity: 1, scale: 1,    y: 0 }}
-                              exit={{   opacity: 0, scale: 0.95, y: 6 }}
-                              transition={{ duration: 0.13 }}
-                              className="absolute right-6 top-12 w-44 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-20">
-                              <div className="p-1.5 flex flex-col gap-0.5">
-                                <button className="text-left px-3 py-2 text-sm font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                                  Ver detalle
-                                </button>
-                                <button className="text-left px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
-                                  Descargar recibo
-                                </button>
-                                <div className="h-px bg-slate-100 my-0.5" />
-                                <button className="text-left px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
-                                  Reembolsar
-                                </button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="py-14 text-center">
-              <CheckCircle2 className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-              <p className="text-sm text-slate-400">No hay órdenes que mostrar.</p>
+         </div>
+         <div className="flex items-center gap-2">
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                className="pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl text-xs font-black uppercase outline-none cursor-pointer tracking-wider">
+                <option>Todos los Estados</option>
+                <option>Completado</option>
+                <option>Pendiente</option>
+                <option>Fallido</option>
+              </select>
             </div>
-          )}
+            <div className="flex p-1 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700">
+               <button onClick={() => setViewMode('table')} className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-sm' : 'text-slate-400'}`}><List className="w-4 h-4"/></button>
+               <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-sm' : 'text-slate-400'}`}><LayoutGrid className="w-4 h-4"/></button>
+            </div>
+         </div>
+      </div>
 
-          <div className="px-6 py-3.5 border-t border-slate-100 flex justify-between items-center">
-            <span className="text-xs text-slate-400">{filtered.length} de {payments.length} órdenes</span>
-            <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors">
-              Ver conciliación bancaria completa
-              <ChevronRight className="w-3.5 h-3.5" />
+      {/* Main Content */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[32px] overflow-hidden shadow-sm flex flex-col min-h-[500px]">
+         {loading ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4">
+               <RefreshCw className="size-10 text-emerald-500 animate-spin" />
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Escaneando libro contable...</p>
+            </div>
+         ) : filtered.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-20 gap-6">
+               <Receipt className="size-16 text-slate-200 dark:text-slate-700" />
+               <div className="text-center">
+                  <p className="text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Sin transacciones registradas</p>
+                  <p className="text-xs text-slate-400">Intenta cambiar los filtros de búsqueda</p>
+               </div>
+            </div>
+         ) : viewMode === 'table' ? (
+            <div className="overflow-x-auto flex-1">
+               <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+                      {['Operación', 'Pagador / Cliente', 'Importe', 'Vencimiento', 'Estado', ''].map(h => (
+                        <th key={h} className="px-8 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                     <AnimatePresence mode="popLayout">
+                        {filtered.map((trx, idx) => {
+                          const stSet = statusStyle[trx.estadoPedido];
+                          const dotSet = statusDot[trx.estadoPedido];
+                          return (
+                            <motion.tr key={trx.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.01 }}
+                              className="hover:bg-slate-50/50 dark:hover:bg-slate-700/10 transition-colors group">
+                              <td className="px-8 py-5">
+                                 <div className="flex items-center gap-3">
+                                    <div className="size-9 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400">
+                                       <Receipt className="w-4 h-4" />
+                                    </div>
+                                    <span className="font-mono text-xs font-black text-emerald-600 dark:text-emerald-400 tracking-tighter">#{trx.id.slice(0, 8).toUpperCase()}</span>
+                                 </div>
+                              </td>
+                              <td className="px-8 py-5">
+                                 <p className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">{trx.nombreCliente}</p>
+                              </td>
+                              <td className="px-8 py-5">
+                                 <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight">${(trx.total || 0).toLocaleString()}</span>
+                              </td>
+                              <td className="px-8 py-5 text-xs font-bold text-slate-500">
+                                 {trx.fechaEntrega ? new Date(trx.fechaEntrega).toLocaleDateString() : 'N/A'}
+                              </td>
+                              <td className="px-8 py-5">
+                                 <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${stSet}`}>
+                                    <span className={`size-1.5 rounded-full ${dotSet}`} />
+                                    {statusLabel[trx.estadoPedido] || trx.estadoPedido}
+                                 </span>
+                              </td>
+                              <td className="px-8 py-5 text-right">
+                                 <button className="size-9 bg-slate-50 dark:bg-slate-700 text-slate-400 hover:text-emerald-600 rounded-xl flex items-center justify-center transition-all group-hover:scale-105 active:scale-90">
+                                    <Eye className="w-4 h-4" />
+                                 </button>
+                              </td>
+                            </motion.tr>
+                          );
+                        })}
+                     </AnimatePresence>
+                  </tbody>
+               </table>
+            </div>
+         ) : (
+            <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-slate-50/10 dark:bg-slate-900/10 flex-1">
+               {filtered.map((trx, idx) => {
+                 const stSet = statusStyle[trx.estadoPedido];
+                 return (
+                   <motion.div key={trx.id} initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: idx * 0.05 }}
+                      className="bg-white dark:bg-slate-800 p-6 rounded-[32px] border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all relative group flex flex-col">
+                      
+                      <div className="flex items-start justify-between mb-6">
+                         <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Folio Contable</p>
+                            <h4 className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">#{trx.id.slice(0, 8).toUpperCase()}</h4>
+                         </div>
+                         <div className="size-10 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-300 group-hover:text-emerald-500 transition-colors">
+                            <ランドマーク className="w-5 h-5" />
+                         </div>
+                      </div>
+
+                      <div className="space-y-4 mb-6">
+                         <div>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Pagador</p>
+                            <p className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight flex items-center gap-2">
+                               <Landmark className="w-3.5 h-3.5 text-slate-300" />
+                               {trx.nombreCliente}
+                            </p>
+                         </div>
+                         <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                            <span className="text-[10px] font-black text-slate-400 uppercase">Total Cobrado</span>
+                            <span className="text-lg font-black text-slate-900 dark:text-white">${trx.total.toLocaleString()}</span>
+                         </div>
+                      </div>
+
+                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-700">
+                         <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${stSet}`}>
+                            {statusLabel[trx.estadoPedido] || trx.estadoPedido}
+                         </span>
+                         <div className="flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                         </div>
+                      </div>
+
+                      <button className="absolute inset-0 z-10 opacity-0 bg-emerald-600/5 backdrop-blur-[2px] rounded-[32px] flex items-center justify-center group-hover:opacity-100 transition-all">
+                         <div className="size-12 bg-white dark:bg-slate-800 rounded-full shadow-2xl flex items-center justify-center text-emerald-600 scale-75 group-hover:scale-100 transition-transform">
+                            <FileText className="w-6 h-6" />
+                         </div>
+                      </button>
+                   </motion.div>
+                 );
+               })}
+            </div>
+         )}
+         
+         {/* Footer Pagination */}
+         <div className="px-8 py-5 border-t border-slate-50 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filtered.length} de {payments.length} transacciones</span>
+            <button className="text-[10px] font-black text-blue-500 hover:text-blue-700 uppercase tracking-widest flex items-center gap-2 transition-colors">
+               Auditar reporte completo <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
-        </div>
-      </FadeIn>
+         </div>
+      </div>
 
-      {/* ── MODAL NUEVA FACTURA ── */}
+      {/* Invoice Modal */}
       <AnimatePresence>
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
               onClick={() => setModalOpen(false)} />
 
-            <ScaleIn className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-              <div className="px-7 py-5 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-900">Nueva Factura</h3>
-                <button onClick={() => setModalOpen(false)}
-                  className="size-8 flex items-center justify-center bg-slate-100 rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-all">
-                  <X className="w-4 h-4" />
-                </button>
+            <ScaleIn className="relative bg-white dark:bg-slate-800 rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-slate-700">
+              <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
+                 <div>
+                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Nueva Factura</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Emisión de comprobante fiscal</p>
+                 </div>
+                 <button onClick={() => setModalOpen(false)} className="size-10 flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl text-slate-400 hover:text-rose-500 transition-all border border-slate-100 dark:border-slate-700">
+                    <X className="w-5 h-5" />
+                 </button>
               </div>
 
-              <div className="px-7 py-6 space-y-4">
+              <div className="px-8 py-8 space-y-5">
                 {INVOICE_FIELDS.map(({ label, key, type, placeholder }) => (
                   <div key={key}>
-                    <label className={labelClass}>{label}</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">{label}</label>
                     <input type={type} placeholder={placeholder}
                       value={(invoice as any)[key]}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInvoice({
+                      onChange={(e) => setInvoice({
                         ...invoice,
                         [key]: type === 'number' ? Number(e.target.value) : e.target.value,
                       })}
-                      className={inputClass} />
+                      className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all dark:text-white" />
                   </div>
                 ))}
               </div>
 
-              <div className="px-7 py-5 border-t border-slate-100 flex justify-end gap-3">
+              <div className="px-8 py-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-50 dark:border-slate-700 flex justify-end gap-3">
                 <button onClick={() => setModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-colors">
+                  className="px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">
                   Cancelar
                 </button>
                 <AnimatedButton onClick={handleCreate}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 shadow-md transition-all">
+                  className="flex items-center gap-2 px-8 py-3.5 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 transition-all">
                   <FileText className="w-4 h-4" />
-                  Generar Factura
+                  Generar CFDI
                 </AnimatedButton>
               </div>
             </ScaleIn>
@@ -380,3 +369,5 @@ export default function AdminPaymentsPage() {
     </div>
   );
 }
+
+const ランドマーク = Landmark;

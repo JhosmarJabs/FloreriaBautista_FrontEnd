@@ -1,12 +1,347 @@
 import React, { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag, UserPlus, Package,
-  Download, FileText, Filter, ChevronDown, Minus, RefreshCw, BarChart2
+  Download, FileText, Filter, ChevronDown, Minus, RefreshCw, BarChart2,
+  FlaskConical, Flower2, Activity, Layers, ChevronRight, PieChart,
+  Calendar, MapPin, Search
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { DataService } from '../../services/dataService';
 import { FadeIn, StaggerContainer, GlassCard, AnimatedButton } from '../../components/Animations';
 
+// ─── Mock data para las gráficas estadísticas ─────────────────────────────────
+const FLOWER_STATS = [
+  { nombre: 'Rosa Roja',    x0: 42, k: 0.08,  promedio: 42, media: 40, moda: 38, color: '#e11d48', light: '#ffe4e6' },
+  { nombre: 'Tulipán',      x0: 30, k: -0.05, promedio: 30, media: 28, moda: 25, color: '#7c3aed', light: '#ede9fe' },
+  { nombre: 'Girasol',      x0: 25, k: 0.12,  promedio: 25, media: 24, moda: 20, color: '#d97706', light: '#fef3c7' },
+  { nombre: 'Orquídea',     x0: 18, k: -0.03, promedio: 18, media: 17, moda: 15, color: '#db2777', light: '#fce7f3' },
+  { nombre: 'Lirio',        x0: 22, k: 0.04,  promedio: 22, media: 21, moda: 20, color: '#2563eb', light: '#dbeafe' },
+  { nombre: 'Margarita',    x0: 35, k: 0.06,  promedio: 35, media: 34, moda: 30, color: '#059669', light: '#d1fae5' },
+];
+
+const ARREGLOS = [
+  { nombre: 'Bouquet Clásico',   flores: [{ nombre: 'Rosa Roja', requerido: 12, disponible: 85 }, { nombre: 'Margarita', requerido: 6, disponible: 120 }], demanda: 8 },
+  { nombre: 'Arreglo Primavera', flores: [{ nombre: 'Tulipán', requerido: 8, disponible: 45 }, { nombre: 'Lirio', requerido: 4, disponible: 60 }], demanda: 5 },
+  { nombre: 'Girasoles Felices', flores: [{ nombre: 'Girasol', requerido: 10, disponible: 32 }, { nombre: 'Margarita', requerido: 5, disponible: 120 }], demanda: 3 },
+  { nombre: 'Orquídea Exótica',  flores: [{ nombre: 'Orquídea', requerido: 3, disponible: 18 }, { nombre: 'Lirio', requerido: 2, disponible: 60 }], demanda: 4 },
+];
+
+const WEEKS = 12;
+
+function calcExponential(x0: number, k: number, t: number) {
+  return x0 * Math.exp(k * t);
+}
+
+// ─── Gráfica 5.1 — Promedio / Media / Moda ───────────────────────────────────
+function Chart51() {
+  const maxVal = Math.max(...FLOWER_STATS.flatMap(f => [f.promedio, f.media, f.moda]));
+  const [hovered, setHovered] = useState<string | null>(null);
+
+  return (
+    <FadeIn>
+        <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-[32px] shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-700/50 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="size-10 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+               <FlaskConical className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Estadística Descriptiva</span>
+                <span className="size-1 rounded-full bg-slate-300" />
+                <span className="text-[10px] font-black text-slate-400">SECCIÓN 5.1</span>
+              </div>
+              <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Análisis de Tendencia Central</h3>
+            </div>
+          </div>
+          <div className="flex items-center gap-5 shrink-0 bg-slate-50 dark:bg-slate-900/50 px-4 py-2.5 rounded-[20px] border border-slate-100 dark:border-slate-700/50">
+            {[
+              { color: 'bg-blue-600', label: 'Promedio' },
+              { color: 'bg-violet-500', label: 'Media' },
+              { color: 'bg-amber-400', label: 'Moda' },
+            ].map(l => (
+              <div key={l.label} className="flex items-center gap-1.5">
+                <span className={`size-2.5 rounded-full ${l.color} shadow-sm`} />
+                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{l.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Chart body */}
+        <div className="p-8">
+          <div className="flex items-end gap-5 h-72 lg:px-6">
+            {FLOWER_STATS.map((f, i) => (
+              <motion.div
+                key={f.nombre}
+                className="flex-1 flex flex-col gap-2 cursor-pointer group relative"
+                onHoverStart={() => setHovered(f.nombre)}
+                onHoverEnd={() => setHovered(null)}
+              >
+                {/* Tooltip */}
+                <AnimatePresence>
+                  {hovered === f.nombre && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                      className="absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black px-4 py-2 rounded-2xl whitespace-nowrap shadow-2xl pointer-events-none"
+                    >
+                      PROM: {f.promedio} · MED: {f.media} · MOD: {f.moda}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="relative flex items-end justify-center gap-1 h-full">
+                  {/* Promedio */}
+                  <motion.div
+                    className="flex-1 rounded-t-xl bg-blue-600 origin-bottom shadow-lg shadow-blue-500/10 group-hover:brightness-110 transition-all"
+                    initial={{ scaleY: 0 }} animate={{ scaleY: 1 }}
+                    transition={{ delay: i * 0.07 + 0.2, duration: 0.8, ease: [0.33, 1, 0.68, 1] }}
+                    style={{ height: `${(f.promedio / maxVal) * 100}%` }}
+                  />
+                  {/* Media */}
+                  <motion.div
+                    className="flex-1 rounded-t-xl bg-violet-500 origin-bottom shadow-lg shadow-violet-500/10 group-hover:brightness-110 transition-all"
+                    initial={{ scaleY: 0 }} animate={{ scaleY: 1 }}
+                    transition={{ delay: i * 0.07 + 0.3, duration: 0.8, ease: [0.33, 1, 0.68, 1] }}
+                    style={{ height: `${(f.media / maxVal) * 100}%` }}
+                  />
+                  {/* Moda */}
+                  <motion.div
+                    className="flex-1 rounded-t-xl bg-amber-400 origin-bottom shadow-lg shadow-amber-500/10 group-hover:brightness-110 transition-all"
+                    initial={{ scaleY: 0 }} animate={{ scaleY: 1 }}
+                    transition={{ delay: i * 0.07 + 0.4, duration: 0.8, ease: [0.33, 1, 0.68, 1] }}
+                    style={{ height: `${(f.moda / maxVal) * 100}%` }}
+                  />
+                </div>
+
+                <div className="text-center">
+                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tracking-tighter uppercase line-clamp-1">
+                    {f.nombre}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Key Indicators Table */}
+          <div className="mt-10 bg-slate-50/50 dark:bg-slate-900/30 rounded-[28px] border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-700/50">
+                  {['Unidad Floral', 'x₀ Inicial', 'Promedio', 'Media', 'Moda', 'Trend'].map(h => (
+                    <th key={h} className="px-8 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100/50 dark:divide-slate-700/30">
+                {FLOWER_STATS.map((f, i) => (
+                  <motion.tr key={f.nombre} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 + i * 0.03 }}
+                    className="hover:bg-white dark:hover:bg-slate-800 transition-colors">
+                    <td className="px-8 py-4 font-black text-xs text-slate-800 dark:text-slate-200 uppercase tracking-tight">{f.nombre}</td>
+                    <td className="px-8 py-4 font-mono text-xs font-black text-slate-400">{f.x0}</td>
+                    <td className="px-8 py-4 font-black text-xs text-blue-600 dark:text-blue-400">{f.promedio}</td>
+                    <td className="px-8 py-4 font-black text-xs text-violet-500 dark:text-violet-400">{f.media}</td>
+                    <td className="px-8 py-4 font-black text-xs text-amber-500">{f.moda}</td>
+                    <td className="px-8 py-4">
+                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${f.k > 0 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600'}`}>
+                          {f.k > 0 ? 'GROWTH +' : 'DECLINE -'}
+                       </span>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </FadeIn>
+  );
+}
+
+// ─── Gráfica 5.2 — Curvas Exponenciales x(t) = x₀·eᵏᵗ ───────────────────────
+function Chart52() {
+  const [activeFlowers, setActiveFlowers] = useState<string[]>(FLOWER_STATS.map(f => f.nombre));
+
+  const toggle = (nombre: string) =>
+    setActiveFlowers(prev => prev.includes(nombre) ? prev.filter(n => n !== nombre) : [...prev, nombre]);
+
+  const points = FLOWER_STATS.map(f => {
+    const vals = Array.from({ length: WEEKS }, (_, t) => calcExponential(f.x0, f.k, t));
+    return { ...f, vals };
+  });
+
+  const allVals = points.flatMap(p => p.vals);
+  const maxY = Math.max(...allVals) * 1.05;
+  const minY = Math.min(...allVals) * 0.95;
+
+  const W = 800; const H = 340;
+  const padX = 60; const padY = 40;
+  const chartW = W - padX - 40; const chartH = H - padY * 2;
+
+  const toSvgX = (t: number) => padX + (t / (WEEKS - 1)) * chartW;
+  const toSvgY = (v: number) => padY + chartH - ((v - minY) / (maxY - minY)) * chartH;
+
+  const toPath = (vals: number[]) =>
+    vals.map((v, t) => `${t === 0 ? 'M' : 'L'}${toSvgX(t).toFixed(1)},${toSvgY(v).toFixed(1)}`).join(' ');
+
+  return (
+    <FadeIn delay={0.1}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-[32px] shadow-sm overflow-hidden">
+        <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-700/50 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+             <div className="size-10 rounded-2xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-violet-500" />
+             </div>
+             <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-black text-violet-500 uppercase tracking-widest">Modelado Dinámico</span>
+                  <span className="size-1 rounded-full bg-slate-300" />
+                  <span className="text-[10px] font-black text-slate-400">SECCIÓN 5.2</span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Ecuación de Diferencial de Demanda</h3>
+             </div>
+          </div>
+        </div>
+
+        <div className="p-8">
+          <div className="flex flex-wrap gap-2 mb-8">
+            {FLOWER_STATS.map(f => (
+              <button key={f.nombre} onClick={() => toggle(f.nombre)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${activeFlowers.includes(f.nombre) ? 'text-white shadow-xl shadow-current/20 scale-105' : 'bg-slate-50 dark:bg-slate-900 text-slate-400 border-slate-100 dark:border-slate-700'}`}
+                style={activeFlowers.includes(f.nombre) ? { background: f.color, borderColor: f.color } : {}}>
+                <span className="size-1.5 rounded-full" style={{ background: activeFlowers.includes(f.nombre) ? 'white' : f.color }} />
+                {f.nombre}
+                <span className="opacity-50 ml-1">{f.k > 0 ? '↑' : '↓'}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="overflow-hidden bg-slate-50/50 dark:bg-slate-950/20 rounded-[32px] border border-slate-100 dark:border-slate-800 p-4">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto drop-shadow-2xl">
+              {/* Y-axis grid */}
+              {[0, 0.25, 0.5, 0.75, 1].map(p => {
+                const y = padY + chartH * p;
+                const val = maxY - (maxY - minY) * p;
+                return (
+                  <g key={p}>
+                    <line x1={padX} y1={y} x2={W-padX} y2={y} className="stroke-slate-100 dark:stroke-slate-800" strokeWidth="1" />
+                    <text x={padX - 12} y={y + 4} textAnchor="end" fontSize="10" fontWeight="900" className="fill-slate-400 font-mono tracking-tighter uppercase">{val.toFixed(0)}</text>
+                  </g>
+                );
+              })}
+
+              {/* Curves */}
+              <AnimatePresence>
+                {points.map(f => activeFlowers.includes(f.nombre) && (
+                  <motion.path
+                    key={f.nombre}
+                    d={toPath(f.vals)}
+                    fill="none"
+                    stroke={f.color}
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1.5, ease: [0.65, 0, 0.35, 1] }}
+                  />
+                ))}
+              </AnimatePresence>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </FadeIn>
+  );
+}
+
+// ─── Gráfica 3 — Composición de Arreglos vs Inventario ───────────────────────
+function Chart3() {
+  return (
+    <FadeIn delay={0.2}>
+      <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-[32px] shadow-sm overflow-hidden">
+        <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-700/50 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+             <div className="size-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                <Layers className="w-5 h-5 text-emerald-500" />
+             </div>
+             <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Soporte a Decisiones</span>
+                  <span className="size-1 rounded-full bg-slate-300" />
+                  <span className="text-[10px] font-black text-slate-400">SECCIÓN 5.3</span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Capacidad vs Demanda Receptada</h3>
+             </div>
+          </div>
+        </div>
+
+        <div className="p-8 space-y-8">
+          {ARREGLOS.map((arreglo, ai) => {
+            const maxProducible = Math.min(
+              ...arreglo.flores.map(f => Math.floor(f.disponible / f.requerido))
+            );
+            const pctDemanda = Math.min((arreglo.demanda / Math.max(1, maxProducible)) * 100, 100);
+            const sinStock = maxProducible === 0;
+
+            return (
+              <motion.div key={arreglo.nombre} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: ai * 0.1 }}
+                className="bg-slate-50/50 dark:bg-slate-900/10 rounded-[32px] p-8 border border-slate-100 dark:border-slate-700/50 group">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">{arreglo.nombre}</h4>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-tight">
+                       Demanda: <span className="text-slate-900 dark:text-white">{arreglo.demanda} u/semana</span> &nbsp;·&nbsp; Potencial: <span className="text-emerald-600 font-black">{maxProducible} u</span>
+                    </p>
+                  </div>
+                  <div className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${sinStock ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-xl shadow-emerald-500/10'}`}>
+                    {sinStock ? 'Out of Production' : 'Operational Readiness'}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {arreglo.flores.map((f, fi) => {
+                         const critico = f.disponible < (f.requerido * arreglo.demanda);
+                         return (
+                           <div key={fi} className="p-5 bg-white dark:bg-slate-800 rounded-[28px] border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-4 group/item">
+                              <div className="flex items-center justify-between">
+                                 <div className="flex items-center gap-3">
+                                    <div className={`size-8 rounded-xl ${critico ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'} flex items-center justify-center transition-colors`}>
+                                       <Flower2 className="w-4 h-4" />
+                                    </div>
+                                    <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">{f.nombre}</span>
+                                 </div>
+                                 <span className={`text-[10px] font-black ${critico ? 'text-rose-500' : 'text-emerald-500'}`}>{critico ? 'CRITICAL' : 'OPTIMAL'}</span>
+                              </div>
+                              <div className="w-full bg-slate-100 dark:bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                                 <motion.div
+                                    className={`h-full rounded-full ${critico ? 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.4)]' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]'}`}
+                                    initial={{ width: 0 }} animate={{ width: `${Math.min(100, (f.disponible / (f.requerido * arreglo.demanda * 2)) * 100)}%` }}
+                                    transition={{ duration: 1, delay: 0.5 }}
+                                 />
+                              </div>
+                              <div className="flex items-center justify-between px-1">
+                                 <span className="text-[10px] font-bold text-slate-400">STOCK: {f.disponible}</span>
+                                 <span className="text-[10px] font-bold text-slate-400">REQ: {f.requerido}/u</span>
+                              </div>
+                           </div>
+                         )
+                      })}
+                   </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </FadeIn>
+  );
+}
+
+// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const [stats, setStats]                     = useState<any>(null);
   const [weeklySales, setWeeklySales]         = useState<any[]>([]);
@@ -15,6 +350,7 @@ export default function ReportsPage() {
   const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([]);
   const [inventoryStats, setInventoryStats]   = useState<any>(null);
   const [loading, setLoading]                 = useState(true);
+  const [activeTab, setActiveTab]             = useState<'general' | 'demanda'>('general');
 
   useEffect(() => {
     setStats(DataService.getDashboardStats());
@@ -27,341 +363,210 @@ export default function ReportsPage() {
   }, []);
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="flex flex-col items-center gap-3">
-        <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
-        <span className="text-xs font-semibold text-slate-400 tracking-widest uppercase">Cargando reportes...</span>
-      </div>
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+      <RefreshCw className="size-10 text-blue-500 animate-spin" />
+      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Sincronizando Metadatabase...</span>
     </div>
   );
 
-  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
   return (
-    <div className="w-full space-y-7">
+    <div className="w-full space-y-8 pb-16">
 
-      {/* ── HEADER ── */}
+      {/* Header Area */}
       <FadeIn>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart2 className="w-4 h-4 text-blue-500" />
-              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Análisis de negocio</span>
+            <div className="flex items-center gap-2 mb-2">
+               <div className="size-8 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+                  <BarChart2 className="w-4 h-4 text-blue-600" />
+               </div>
+               <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Business Intelligence</span>
             </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">Reportes Analíticos</h1>
-            <p className="text-slate-400 text-sm mt-0.5">Última actualización: Hoy, {time}</p>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Reportes Analíticos</h1>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Visión integral de métricas operativas y proyecciones de stock.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 hover:shadow-sm transition-all">
-              <FileText className="w-4 h-4 text-rose-400" />
-              Exportar PDF
-            </button>
-            <AnimatedButton className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all">
-              <Download className="w-4 h-4" />
-              Exportar Excel
-            </AnimatedButton>
+          <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-2 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+             <button onClick={() => setActiveTab('general')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'general' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-400 hover:text-slate-600'}`}>GENERAL</button>
+             <button onClick={() => setActiveTab('demanda')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'demanda' ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-400 hover:text-slate-600'}`}>DEMANDA (MATH)</button>
           </div>
         </div>
       </FadeIn>
 
-      {/* ── FILTERS ── */}
-      <FadeIn delay={0.1}>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { prefix: 'Periodo:', value: 'Este Mes' },
-            { prefix: 'Sucursal:', value: 'Todas' },
-          ].map((f, i) => (
-            <button key={i} className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-slate-300 transition-all shadow-sm">
-              <span className="text-slate-400">{f.prefix}</span>
-              <span className="text-blue-600 font-semibold">{f.value}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-          ))}
-          <button className="flex items-center gap-1.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-500 hover:border-slate-300 transition-all shadow-sm">
-            <Filter className="w-3.5 h-3.5" />
-            Más Filtros
-          </button>
-        </div>
-      </FadeIn>
-
-      {/* ── KPI CARDS ── */}
-      <StaggerContainer className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Ventas Totales',     value: `$${(stats?.totalSales || 0).toLocaleString()}`,        icon: DollarSign,  trend: '+12.5%', up: true,  color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100' },
-          { label: 'Pedidos',            value: (stats?.orderCount || 0).toString(),                    icon: ShoppingBag, trend: '+5.2%',  up: true,  color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-100' },
-          { label: 'Nuevos Clientes',    value: (stats?.newCustomers || 0).toString(),                  icon: UserPlus,    trend: '0.0%',   up: null,  color: 'text-purple-600',  bg: 'bg-purple-50',  border: 'border-purple-100' },
-          { label: 'Valor Inventario',   value: `$${(inventoryStats?.totalValue || 0).toLocaleString()}`, icon: Package,   trend: '-2.1%',  up: false, color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100' },
-        ].map((s, i) => (
-          <motion.div key={i}
-            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-            className={`bg-white border ${s.border} rounded-2xl p-5 hover:shadow-md transition-shadow`}>
-            <div className="flex items-start justify-between mb-4">
-              <div className={`size-9 rounded-xl ${s.bg} ${s.color} flex items-center justify-center`}>
-                <s.icon className="w-[18px] h-[18px]" />
-              </div>
-              <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg ${
-                s.up === true  ? 'bg-emerald-50 text-emerald-600' :
-                s.up === false ? 'bg-rose-50 text-rose-500' :
-                                 'bg-slate-100 text-slate-400'
-              }`}>
-                {s.up === true ? <TrendingUp className="w-3 h-3" /> : s.up === false ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
-                {s.trend}
-              </span>
-            </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.label}</p>
-            <p className={`text-2xl font-black mt-1 ${s.color}`}>{s.value}</p>
-          </motion.div>
-        ))}
-      </StaggerContainer>
-
-      {/* ── SALES TREND + CHANNELS ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Sales Trend Chart */}
-        <FadeIn delay={0.3} className="lg:col-span-2">
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm h-full">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h4 className="text-base font-black text-slate-900">Tendencias de Venta</h4>
-                <p className="text-xs text-slate-400 mt-0.5">Últimos 7 días</p>
-              </div>
-              <div className="flex items-center gap-4">
-                {[{ color: 'bg-blue-600', label: 'Ventas' }, { color: 'bg-amber-400', label: 'Gastos' }].map(l => (
-                  <div key={l.label} className="flex items-center gap-1.5">
-                    <span className={`size-2 rounded-full ${l.color}`} />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{l.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="relative h-[240px] w-full">
-              {/* Y-axis grid lines */}
-              {[0, 1, 2, 3, 4].map(i => (
-                <div key={i} className="absolute left-0 right-0 border-t border-slate-50"
-                  style={{ bottom: `${i * 25}%` }} />
-              ))}
-              <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 40">
-                {/* Gradient fill */}
-                <defs>
-                  <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.12" />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <motion.path
-                  d="M0 35 Q 10 32, 20 25 T 40 15 T 60 10 T 80 20 T 100 5"
-                  fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round"
-                  initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 1.8, ease: "easeInOut" }}
-                />
-                <motion.path
-                  d="M0 35 Q 10 32, 20 25 T 40 15 T 60 10 T 80 20 T 100 5 L 100 40 L 0 40 Z"
-                  fill="url(#blueGrad)"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  transition={{ delay: 0.8, duration: 1 }}
-                />
-                <motion.path
-                  d="M0 38 Q 20 35, 40 30 T 70 25 T 100 28"
-                  fill="none" stroke="#fbbf24" strokeDasharray="3 3" strokeWidth="2" strokeLinecap="round"
-                  initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 1.8, ease: "easeInOut", delay: 0.4 }}
-                />
-              </svg>
-
-              {/* X-axis labels */}
-              <div className="absolute -bottom-6 w-full flex justify-between px-1">
-                {weeklySales.map(d => (
-                  <span key={d.day} className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{d.day}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </FadeIn>
-
-        {/* Channel Distribution */}
-        <FadeIn delay={0.4}>
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col h-full">
-            <h4 className="text-base font-black text-slate-900 mb-6">Canales de Venta</h4>
-
-            {/* Donut */}
-            <div className="flex flex-col items-center flex-1 justify-center gap-6">
-              <div className="relative size-44 flex items-center justify-center">
-                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  {/* track */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" strokeWidth="14" />
-                  {/* whatsapp 10% */}
-                  <motion.circle cx="50" cy="50" r="38" fill="none" stroke="#e2e8f0" strokeWidth="14"
-                    strokeDasharray="23.9 214.9" strokeDashoffset="0"
-                    initial={{ strokeDasharray: "0 238.8" }}
-                    animate={{ strokeDasharray: "23.9 214.9" }}
-                    transition={{ delay: 0.6, duration: 1, ease: "easeOut" }} />
-                  {/* ecommerce 25% */}
-                  <motion.circle cx="50" cy="50" r="38" fill="none" stroke="#fbbf24" strokeWidth="14"
-                    strokeDasharray="59.7 179.1" strokeDashoffset="-23.9"
-                    initial={{ strokeDasharray: "0 238.8" }}
-                    animate={{ strokeDasharray: "59.7 179.1" }}
-                    transition={{ delay: 0.3, duration: 1, ease: "easeOut" }} />
-                  {/* física 65% */}
-                  <motion.circle cx="50" cy="50" r="38" fill="none" stroke="#2563eb" strokeWidth="14"
-                    strokeDasharray="155.2 83.6" strokeDashoffset="-83.6"
-                    initial={{ strokeDasharray: "0 238.8" }}
-                    animate={{ strokeDasharray: "155.2 83.6" }}
-                    transition={{ delay: 0, duration: 1, ease: "easeOut" }} />
-                </svg>
-                <div className="text-center z-10">
-                  <motion.p className="text-3xl font-black text-slate-900"
-                    initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 1 }}>
-                    {(stats?.orderCount || 0)}
-                  </motion.p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">pedidos</p>
-                </div>
-              </div>
-
-              <div className="w-full space-y-3">
-                {[
-                  { label: 'Tienda Física', pct: '65%', color: 'bg-blue-600' },
-                  { label: 'E-commerce',    pct: '25%', color: 'bg-amber-400' },
-                  { label: 'WhatsApp',      pct: '10%', color: 'bg-slate-200' },
-                ].map((c, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`size-2.5 rounded-md ${c.color}`} />
-                      <span className="text-xs font-semibold text-slate-600">{c.label}</span>
+      <AnimatePresence mode="wait">
+        {activeTab === 'general' ? (
+          <motion.div key="general" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="space-y-8">
+            
+            {/* KPI Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+               {[
+                 { label: 'Ingresos Totales', val: `$${stats?.totalSales.toLocaleString()}`, icon: <TrendingUp />, trend: '+12.5%', color: 'text-blue-600' },
+                 { label: 'Pedidos Generados', val: stats?.orderCount, icon: <ShoppingBag />, trend: '+8.2%', color: 'text-emerald-500' },
+                 { label: 'Ticket Promedio', val: `$${stats?.averageTicket.toFixed(2)}`, icon: <PieChart />, trend: '-2.1%', color: 'text-amber-500' },
+                 { label: 'Nuevos Clientes', val: stats?.newCustomers, icon: <UserPlus />, trend: '+15%', color: 'text-indigo-500' },
+               ].map((kpi, idx) => (
+                 <motion.div key={idx} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.05 }}
+                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-[32px] shadow-sm group">
+                    <div className="flex items-start justify-between mb-8">
+                       <div className="size-10 rounded-2xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:scale-110 transition-transform">
+                          {React.cloneElement(kpi.icon as React.ReactElement, { className: 'w-5 h-5' })}
+                       </div>
+                       <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg ${kpi.trend.includes('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>{kpi.trend}</span>
                     </div>
-                    <span className="text-xs font-black text-slate-800">{c.pct}</span>
-                  </div>
-                ))}
-              </div>
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">{kpi.label}</p>
+                    <h4 className={`text-xl font-black text-slate-900 dark:text-white tracking-tight`}>{kpi.val || '—'}</h4>
+                 </motion.div>
+               ))}
             </div>
-          </div>
-        </FadeIn>
-      </div>
 
-      {/* ── TOP PRODUCTS ── */}
-      <FadeIn delay={0.5}>
-        <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
-          <h4 className="text-base font-black text-slate-900 mb-6">Productos Más Vendidos</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-            {topProducts.map((item, idx) => {
-              const maxSales = Math.max(...topProducts.map(p => p.sales));
-              const pct = `${(item.sales / maxSales) * 100}%`;
-              const isBlue = idx % 2 === 0;
-              return (
-                <div key={item.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-700 truncate">{item.name}</span>
-                    <span className={`text-xs font-black ml-3 shrink-0 ${isBlue ? 'text-blue-600' : 'text-amber-500'}`}>
-                      {item.sales} ventas
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <motion.div
-                      className={`${isBlue ? 'bg-blue-600' : 'bg-amber-400'} h-full rounded-full`}
-                      initial={{ width: 0 }} animate={{ width: pct }}
-                      transition={{ duration: 1.2, ease: "easeOut", delay: 0.4 + idx * 0.1 }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </FadeIn>
-
-      {/* ── TABLES ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Top Clients */}
-        <FadeIn delay={0.6}>
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h4 className="text-base font-black text-slate-900">Top Clientes</h4>
-              <button className="text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors">Ver todos</button>
-            </div>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  {['Cliente', 'Última Compra', 'Total', 'Status'].map(h => (
-                    <th key={h} className="px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {topCustomers.map((client) => (
-                  <tr key={client.id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {client.avatar
-                          ? <img src={client.avatar} alt={client.name} className="size-8 rounded-xl object-cover" />
-                          : <div className="size-8 rounded-xl bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500">{client.name.charAt(0)}</div>
-                        }
-                        <div>
-                          <p className="text-sm font-bold text-slate-800">{client.name}</p>
-                          <p className="text-[10px] text-slate-400 truncate max-w-[100px]">{client.email}</p>
-                        </div>
+            {/* Sales Chart Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[32px] p-8 shadow-sm">
+                   <div className="flex items-center justify-between mb-10">
+                      <div>
+                         <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Relleno de Ventas Semanales</h3>
+                         <p className="text-xs font-medium text-slate-500 tracking-tight">Análisis comparativo de los últimos 7 días operativos</p>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-500">
-                      {new Date(client.lastOrder).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-black text-slate-800">${(client.total || 0).toLocaleString()}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${
-                        client.status === 'VIP'  ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                        client.status === 'Fiel' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                   'bg-slate-50 text-slate-400 border-slate-100'
-                      }`}>{client.status}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </FadeIn>
+                      <div className="flex items-center gap-4">
+                         <div className="flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-blue-600 shadow-lg shadow-blue-500/50" />
+                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Ingresos</span>
+                         </div>
+                      </div>
+                   </div>
+                   <div className="flex items-end justify-between h-56 gap-4 px-4 bg-slate-50/50 dark:bg-slate-900/30 rounded-[32px] border border-slate-50 dark:border-slate-800 py-6 mb-2">
+                       {weeklySales.map((d, i) => {
+                          const max = Math.max(...weeklySales.map(s => s.total));
+                          const h = (d.total / max) * 100;
+                          return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-4 group cursor-pointer">
+                               <div className="relative w-full flex flex-col items-center justify-end h-full">
+                                  <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.1, duration: 1 }}
+                                     className="w-full max-w-[40px] bg-blue-600 rounded-t-xl shadow-xl shadow-blue-600/10 group-hover:brightness-125 transition-all relative overflow-hidden">
+                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                                  </motion.div>
+                               </div>
+                               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{d.day}</span>
+                            </div>
+                          )
+                       })}
+                   </div>
+                </div>
 
-        {/* Critical Inventory */}
-        <FadeIn delay={0.7}>
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h4 className="text-base font-black text-slate-900">Inventario Crítico</h4>
-              <p className="text-xs text-slate-400 mt-0.5">Artículos que requieren reabastecimiento</p>
+                <div className="lg:col-span-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[32px] p-8 shadow-sm flex flex-col">
+                   <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-8">Top Productos</h3>
+                   <div className="space-y-6 flex-1">
+                      {topProducts.map((p, idx) => (
+                        <div key={idx} className="group">
+                           <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[140px]">{p.name}</span>
+                              <span className="text-[10px] font-black text-blue-600">{p.sales} u</span>
+                           </div>
+                           <div className="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${(p.sales / topProducts[0].sales) * 100}%` }} transition={{ duration: 1.2, delay: idx * 0.1 }}
+                                 className="h-full bg-blue-600 group-hover:bg-blue-500 transition-colors shadow-[0_0_10px_rgba(37,99,235,0.3)]" />
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                   <div className="pt-8 mt-8 border-t border-slate-50 dark:border-slate-700">
+                      <button className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:scale-105 transition-transform flex items-center justify-center gap-2">
+                         <MapPin className="w-3.5 h-3.5" /> Ver regiones
+                      </button>
+                   </div>
+                </div>
             </div>
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  {['Insumo / Flor', 'Actual', 'Mínimo', 'Status', ''].map((h, i) => (
-                    <th key={i} className={`px-6 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest ${i === 4 ? 'text-right' : ''}`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {inventoryAlerts.map((item) => {
-                  const isEmpty = item.stock === 0;
-                  return (
-                    <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors">
-                      <td className="px-6 py-4 text-sm font-bold text-slate-800">{item.name}</td>
-                      <td className="px-6 py-4 text-sm font-bold text-slate-700">{item.stock}</td>
-                      <td className="px-6 py-4 text-sm text-slate-400">{item.stock_minimo}</td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${isEmpty ? 'text-rose-600' : 'text-rose-500'}`}>
-                          <span className={`size-1.5 rounded-full ${isEmpty ? 'bg-rose-500 animate-pulse' : 'bg-rose-400'}`} />
-                          {isEmpty ? 'Sin Stock' : 'Crítico'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition-all">
-                          Reabastecer
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </FadeIn>
-      </div>
+
+            {/* Tables Area */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Clientes */}
+                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[32px] overflow-hidden shadow-sm flex flex-col">
+                   <div className="p-8 border-b border-slate-50 dark:border-slate-700 flex items-center justify-between">
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Ranking de Compradores</h3>
+                      <button className="text-[10px] font-black text-blue-500 uppercase tracking-widest hover:underline transition-all">Exportar Tabla</button>
+                   </div>
+                   <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                         <thead>
+                            <tr className="bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+                               {['Cliente', 'Total Gastado', 'Rating'].map(h => (
+                                 <th key={h} className="px-8 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{h}</th>
+                               ))}
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {topCustomers.map((c, i) => (
+                              <tr key={i} className="hover:bg-slate-50/30 dark:hover:bg-slate-700/10 transition-colors">
+                                 <td className="px-8 py-5">
+                                    <div className="flex items-center gap-3">
+                                       <div className="size-8 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-[10px] font-black text-blue-600 dark:text-blue-400">{c.name.charAt(0)}</div>
+                                       <p className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">{c.name}</p>
+                                    </div>
+                                 </td>
+                                 <td className="px-8 py-5 text-sm font-black text-slate-900 dark:text-white">${c.total.toLocaleString()}</td>
+                                 <td className="px-8 py-5">
+                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-100 dark:border-blue-900/40 text-blue-600`}>{c.status}</span>
+                                 </td>
+                              </tr>
+                            ))}
+                         </tbody>
+                      </table>
+                   </div>
+                </div>
+
+                {/* Stock Alarms */}
+                <div className="bg-white dark:bg-slate-800 border border-rose-100 dark:border-rose-900/30 rounded-[32px] overflow-hidden shadow-sm flex flex-col">
+                   <div className="p-8 border-b border-rose-50 dark:border-rose-900/10 bg-rose-50/30 dark:bg-rose-900/5">
+                      <div className="flex items-center gap-3">
+                         <div className="size-8 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm">
+                            <Package className="w-4 h-4 text-rose-500" />
+                         </div>
+                         <h3 className="text-sm font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">Alertas de Reposición</h3>
+                      </div>
+                   </div>
+                   {inventoryAlerts.map((item, i) => (
+                     <div key={i} className="p-6 border-b border-rose-50 dark:border-rose-900/10 flex items-center justify-between group hover:bg-rose-50/10 transition-colors">
+                        <div className="flex items-center gap-4">
+                           <div className="size-1 rounded-full bg-rose-500 animate-pulse" />
+                           <div>
+                              <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">{item.name}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Existencia: <span className="text-rose-600">{item.stock}</span> / {item.stock_minimo}</p>
+                           </div>
+                        </div>
+                        <button className="px-4 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-500 hover:text-white transition-all">Ordenar</button>
+                     </div>
+                   ))}
+                   <div className="p-6 text-center">
+                      <button className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-slate-900 transition-colors">Auditoría completa de almacén</button>
+                   </div>
+                </div>
+            </div>
+
+          </motion.div>
+        ) : (
+          <motion.div key="demanda" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="space-y-8">
+            
+            {/* Info Banner */}
+            <FadeIn>
+              <div className="p-8 bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 rounded-[32px] flex flex-col lg:flex-row lg:items-center gap-6">
+                <div className="size-14 rounded-3xl bg-white dark:bg-slate-900 shadow-xl shadow-violet-500/10 flex items-center justify-center shrink-0">
+                  <FlaskConical className="size-7 text-violet-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Motor de Predicción Algorítmica</h3>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-3xl">
+                    Utilizamos modelos exponenciales basados en la solución analítica de la ecuación diferencial <strong className="text-violet-600">dx/dt = kx</strong> para proyectar la demanda floral futura basándonos en históricos de x₀ y k.
+                  </p>
+                </div>
+              </div>
+            </FadeIn>
+
+            <Chart51 />
+            <Chart52 />
+            <Chart3 />
+
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

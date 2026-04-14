@@ -20,15 +20,15 @@ const statusLabel: Record<string, string> = {
   cancelled:  'Cancelado', cancelado:  'Cancelado',
 };
 const statusStyle: Record<string, string> = {
-  pending:    'bg-amber-50   text-amber-600   border border-amber-100',
-  pendiente:  'bg-amber-50   text-amber-600   border border-amber-100',
-  shipped:    'bg-blue-50    text-blue-600    border border-blue-100',
-  enviado:    'bg-blue-50    text-blue-600    border border-blue-100',
-  procesando: 'bg-blue-50    text-blue-600    border border-blue-100',
-  delivered:  'bg-emerald-50 text-emerald-600 border border-emerald-100',
-  entregado:  'bg-emerald-50 text-emerald-600 border border-emerald-100',
-  cancelled:  'bg-slate-100  text-slate-400   border border-slate-200',
-  cancelado:  'bg-slate-100  text-slate-400   border border-slate-200',
+  pending:    'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
+  pendiente:  'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
+  shipped:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
+  enviado:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
+  procesando: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
+  delivered:  'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
+  entregado:  'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
+  cancelled:  'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600',
+  cancelado:  'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600',
 };
 const statusDot: Record<string, string> = {
   pending:    'bg-amber-400', pendiente:  'bg-amber-400',
@@ -39,10 +39,11 @@ const statusDot: Record<string, string> = {
 
 export default function DashboardPage() {
   const [user, setUser]               = useState<any>(null);
-  const [stats]                       = useState(DataService.getDashboardStats());
-  const [alerts]                      = useState(DataService.getInventoryAlerts());
-  const [weeklySales]                 = useState(DataService.getWeeklySalesData());
+  const [stats, setStats]             = useState<any>(null);
+  const [alerts, setAlerts]           = useState<any[]>([]);
+  const [weeklySales, setWeeklySales] = useState<any[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [ordersError, setOrdersError]   = useState(false);
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'shipped'>('all');
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -66,13 +67,45 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const loadOrders = async () => {
+    const loadDashboardData = async () => {
       try {
-        const res = await AdminService.getAdminOrders({ size: 5 });
-        setRecentOrders(res.data.items);
-      } catch { /* mantiene lista vacía */ }
+        const [statsRes, ordersRes] = await Promise.all([
+          AdminService.getDashboardStats(),
+          AdminService.getAdminOrders({ size: 5 })
+        ]);
+        
+        if (statsRes.success) {
+          setStats(statsRes.data);
+          setAlerts(statsRes.data.criticalInventory || []);
+          
+          // Mapear ventas semanales para la gráfica
+          const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+          const todayStr = new Date().toLocaleDateString();
+          
+          const mappedWeekly = statsRes.data.weeklySales.map((d: any) => {
+            const date = new Date(d.fecha);
+            const isToday = date.toLocaleDateString() === todayStr;
+            return {
+              day: isToday ? 'HOY' : days[date.getDay()],
+              total: d.total,
+              orders: d.pedidos
+            };
+          });
+          setWeeklySales(mappedWeekly);
+        }
+        
+        if (ordersRes.success) {
+          setRecentOrders(ordersRes.data.items);
+          setOrdersError(false);
+        } else {
+          setOrdersError(true);
+        }
+      } catch (err) {
+        console.error("Error cargando dashboard:", err);
+        setOrdersError(true);
+      }
     };
-    loadOrders();
+    loadDashboardData();
   }, []);
 
   const handleExportReport = () => {
@@ -106,30 +139,30 @@ export default function DashboardPage() {
 
   if (isAdmin) {
     return (
-      <div className={fullscreen ? "fixed inset-0 z-50 bg-white overflow-auto p-8 space-y-8" : "w-full space-y-8"}>
+      <div className={fullscreen ? "fixed inset-0 z-50 bg-white dark:bg-slate-900 overflow-auto p-4 md:p-8 space-y-8" : "w-full h-full space-y-8"}>
 
         {/* Header */}
         <FadeIn>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <BarChart2 className="w-4 h-4 text-blue-500" />
-                <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Resumen general</span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex size-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest">Resumen general</span>
               </div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-900">Panel de Control</h1>
-              <p className="text-slate-400 text-sm mt-0.5">Rendimiento de tu florería</p>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Panel de Control</h1>
+              <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">Rendimiento de tu florería</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setFullscreen((f: boolean) => !f)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 hover:shadow-sm transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all"
                 title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
               >
                 {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 {fullscreen ? 'Salir' : 'Pantalla completa'}
               </button>
               <button onClick={handleExportReport}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:border-slate-300 hover:shadow-sm transition-all">
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all">
                 <Download className="w-4 h-4" />
                 Reporte Mensual
               </button>
@@ -146,22 +179,38 @@ export default function DashboardPage() {
         {/* KPIs */}
         <StaggerContainer className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Ventas Totales',  value: `$${(stats?.totalSales || 0).toLocaleString()}`, icon: TrendingUp,  color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100',    trend: '+15.4%',    trendUp: true },
-            { label: 'Pedidos Totales', value: (stats?.orderCount || 0).toString(),             icon: ShoppingCart, color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-100',   trend: 'Activos',   trendUp: null },
-            { label: 'Ticket Promedio', value: `$${(stats?.averageTicket || 0).toFixed(2)}`,    icon: CreditCard,  color: 'text-indigo-600',  bg: 'bg-indigo-50',  border: 'border-indigo-100',  trend: 'Optimizado', trendUp: null },
-            { label: 'Nuevos Clientes', value: (stats?.newCustomers || 0).toString(),           icon: UserPlus,    color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', trend: '+8.2%',     trendUp: true },
+            { 
+              label: 'Ventas Totales',  
+              value: stats ? `$${stats.totalSales.toLocaleString()}` : ' -- ', 
+              icon: TrendingUp,  color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20',    trend: stats ? '+15.4%' : '...',    trendUp: true 
+            },
+            { 
+              label: 'Pedidos Totales', 
+              value: stats ? stats.orderCount.toString() : ' -- ',             
+              icon: ShoppingCart, color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10',   border: 'border-amber-100 dark:border-amber-500/20',   trend: stats ? 'Activos' : '...',   trendUp: null 
+            },
+            { 
+              label: 'Ticket Promedio', 
+              value: stats ? `$${stats.averageTicket.toFixed(2)}` : ' -- ',    
+              icon: CreditCard,  color: 'text-indigo-600 dark:text-indigo-400',  bg: 'bg-indigo-50 dark:bg-indigo-500/10',  border: 'border-indigo-100 dark:border-indigo-500/20',  trend: stats ? 'Optimizado' : '...', trendUp: null 
+            },
+            { 
+              label: 'Nuevos Clientes', 
+              value: stats ? stats.newCustomers.toString() : ' -- ',           
+              icon: UserPlus,    color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: stats ? '+8.2%' : '...',     trendUp: true 
+            },
           ].map((s, i) => (
             <motion.div key={i}
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className={`bg-white border ${s.border} rounded-2xl p-5 hover:shadow-md transition-shadow`}>
+              className={`bg-white dark:bg-slate-800 border ${s.border} rounded-2xl p-5 hover:shadow-md transition-shadow`}>
               <div className="flex items-start justify-between mb-4">
                 <div className={`size-9 rounded-xl ${s.bg} ${s.color} flex items-center justify-center`}>
                   <s.icon className="w-[18px] h-[18px]" />
                 </div>
                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${s.bg} ${s.color}`}>{s.trend}</span>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.label}</p>
-              <p className={`text-2xl font-black mt-1 ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{s.label}</p>
+              <p className={`text-2xl font-black mt-1 text-slate-900 dark:text-white`}>{s.value}</p>
             </motion.div>
           ))}
         </StaggerContainer>
@@ -172,12 +221,12 @@ export default function DashboardPage() {
           {/* Stock Alerts */}
           <FadeIn delay={0.2} className="lg:col-span-1 flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 Alertas de Stock
               </h2>
               {alerts.length > 0 && (
-                <span className="px-2.5 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg border border-rose-100">
+                <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-lg border border-rose-100 dark:border-rose-500/20">
                   {alerts.length} críticos
                 </span>
               )}
@@ -190,16 +239,16 @@ export default function DashboardPage() {
                     {displayedAlerts.map((p) => (
                       <motion.div key={p.id} layout
                         initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }}
-                        className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all group">
+                        className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-all group">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-800 truncate group-hover:text-rose-600 transition-colors">{p.name}</p>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-rose-600 transition-colors">{p.nombre}</p>
                             <div className="flex items-center gap-2 mt-2">
-                              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                                 <div className="h-full bg-rose-400 rounded-full"
-                                  style={{ width: `${Math.min((p.stock / p.stock_minimo) * 100, 100)}%` }} />
+                                  style={{ width: `${Math.min((p.stockActual / p.stockMinimo) * 100, 100)}%` }} />
                               </div>
-                              <span className="text-[10px] font-bold text-rose-500 shrink-0">{p.stock}/{p.stock_minimo}</span>
+                              <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 shrink-0">{p.stockActual}/{p.stockMinimo}</span>
                             </div>
                           </div>
                           <button className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold rounded-lg shadow-sm shadow-rose-600/20 transition-all shrink-0">
@@ -213,21 +262,21 @@ export default function DashboardPage() {
                   {totalPages > 1 && (
                     <div className="flex justify-center items-center gap-4 pt-1">
                       <button onClick={() => setCurrentPage(p => (p - 1 + totalPages) % totalPages)}
-                        className="size-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-slate-700 transition-all">
+                        className="size-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all">
                         <ChevronRight className="w-4 h-4 rotate-180" />
                       </button>
-                      <span className="text-xs font-bold text-slate-400">{currentPage + 1} / {totalPages}</span>
+                      <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{currentPage + 1} / {totalPages}</span>
                       <button onClick={() => setCurrentPage(p => (p + 1) % totalPages)}
-                        className="size-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-slate-700 transition-all">
+                        className="size-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all">
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="p-8 text-center bg-white border border-dashed border-slate-200 rounded-2xl">
+                <div className="p-8 text-center bg-white dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
                   <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-400 font-medium">Todo bajo control.</p>
+                  <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">Todo bajo control.</p>
                 </div>
               )}
             </div>
@@ -235,13 +284,13 @@ export default function DashboardPage() {
 
           {/* Weekly Sales */}
           <FadeIn delay={0.3} className="lg:col-span-2">
-            <div className="bg-white border border-slate-100 rounded-2xl p-6 h-full shadow-sm">
+            <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-2xl p-6 h-full shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-base font-black text-slate-900">Ventas Semanales</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Últimos 7 días</p>
+                  <h2 className="text-base font-black text-slate-900 dark:text-white">Ventas Semanales</h2>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimos 7 días</p>
                 </div>
-                <button className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 transition-all">
+                <button className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
                   <Download className="w-3.5 h-3.5" />
                   Exportar
                 </button>
@@ -267,8 +316,8 @@ export default function DashboardPage() {
                           transition={{ delay: idx * 0.05 + 0.2, duration: 0.5, ease: 'easeOut' }}
                           className={`w-full max-w-[36px] rounded-t-xl ${
                             isToday
-                              ? 'bg-blue-600 shadow-lg shadow-blue-600/20'
-                              : 'bg-slate-100 group-hover:bg-slate-200'
+                            ? 'bg-blue-600 shadow-lg shadow-blue-600/20'
+                              : 'bg-slate-100 dark:bg-slate-700/50 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'
                           } transition-colors`}
                         />
                       </div>
@@ -285,18 +334,18 @@ export default function DashboardPage() {
 
         {/* Recent Orders */}
         <FadeIn delay={0.4}>
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-2xl shadow-sm overflow-hidden">
             {/* Table header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-black text-slate-900">Pedidos Recientes</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Últimas transacciones procesadas</p>
+                <h2 className="text-base font-black text-slate-900 dark:text-white">Pedidos Recientes</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimas transacciones procesadas</p>
               </div>
-              <div className="flex p-1 bg-slate-50 border border-slate-100 rounded-xl gap-0.5">
+              <div className="flex p-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl gap-0.5">
                 {([['all','Todos'], ['pending','Pendientes'], ['shipped','Enviados']] as const).map(([key, label]) => (
                   <button key={key} onClick={() => setOrderFilter(key as any)}
                     className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
-                      orderFilter === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-700'
+                      orderFilter === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                     }`}>
                     {label}
                   </button>
@@ -307,20 +356,43 @@ export default function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-slate-100">
+                  <tr className="border-b border-slate-100 dark:border-slate-700/50">
                     {['ID Pedido', 'Monto', 'Estado', 'Cliente', 'Fecha', ''].map((h, i) => (
-                      <th key={i} className={`px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
+                      <th key={i} className={`px-6 py-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredOrders.map((order, idx) => (
-                    <tr key={idx} className="border-b border-slate-50 hover:bg-slate-50/60 transition-colors group">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                  {ordersError && (
+                    <tr className="bg-rose-50/20 dark:bg-rose-900/10">
                       <td className="px-6 py-4">
-                        <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">#{order.id}</span>
+                        <span className="text-xs font-mono text-slate-400 dark:text-slate-600">********-****-****-****-************</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm font-black text-slate-900">${order.total}</span>
+                        <span className="text-sm font-black text-slate-300 dark:text-slate-600">N/A</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                          N/A
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-medium text-slate-300">N/A</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs text-slate-300">****-**-**</span>
+                      </td>
+                      <td className="px-6 py-4 text-right" />
+                    </tr>
+                  )}
+
+                  {!ordersError && filteredOrders.map((order, idx) => (
+                    <tr key={idx} className="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors group">
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">#{order.id}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-black text-slate-900 dark:text-white">${order.total}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusStyle[order.estadoPedido] || ''}`}>
@@ -342,14 +414,14 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-6 py-4 text-right relative">
                         <button onClick={() => setOpenActionMenu(openActionMenu === order.id ? null : order.id)}
-                          className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
+                          className="p-2 text-slate-300 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 rounded-lg transition-all">
                           <MoreVertical className="w-4 h-4" />
                         </button>
                         <AnimatePresence>
                           {openActionMenu === order.id && (
                             <motion.div initial={{ opacity: 0, scale: 0.95, y: 6 }} animate={{ opacity: 1, scale: 1, y: 0 }}
                               exit={{ opacity: 0, scale: 0.95, y: 6 }} transition={{ duration: 0.13 }}
-                              className="absolute right-6 top-12 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-20">
+                              className="absolute right-6 top-12 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-20">
                               <div className="p-1.5 flex flex-col gap-0.5">
                                 <button onClick={() => handleUpdateOrderStatus(order.id, 'shipped')}
                                   className="text-left px-3 py-2 text-sm font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
@@ -361,7 +433,7 @@ export default function DashboardPage() {
                                 </button>
                                 <div className="h-px bg-slate-100 my-0.5" />
                                 <button onClick={() => handleUpdateOrderStatus(order.id, 'cancelled')}
-                                  className="text-left px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                                  className="text-left px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/40 rounded-lg transition-colors">
                                   Cancelar Pedido
                                 </button>
                               </div>
@@ -377,12 +449,12 @@ export default function DashboardPage() {
 
             {filteredOrders.length === 0 && (
               <div className="py-12 text-center">
-                <p className="text-sm text-slate-400">No hay pedidos que mostrar.</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">No hay pedidos que mostrar.</p>
               </div>
             )}
 
-            <div className="px-6 py-3.5 border-t border-slate-50 bg-slate-50/50 flex justify-between items-center">
-              <span className="text-xs text-slate-400">{filteredOrders.length} pedidos</span>
+            <div className="px-6 py-3.5 border-t border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
+              <span className="text-xs text-slate-400 dark:text-slate-500">{filteredOrders.length} pedidos</span>
               <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors">
                 Ver historial completo <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -480,9 +552,9 @@ export default function DashboardPage() {
               { title: "Rayo de Sol",        price: "$38.00", desc: "Girasoles brillantes acompañados de margaritas blancas.", tag: null,
                 img: "https://lh3.googleusercontent.com/aida-public/AB6AXuA-AYO9Mm4EgzL_xvSOa9Z5ktrYsFSKBLTMYzVM97F-zFTOnOsy2NbHlMryIkcuQFzekrk78Fss50kA-vD19WIcltw38Byxhvs-HyfqHgD9Fs2MuEUuV8RqYEhcNwb4vLWSwww397EY0WrNmn90wnYMTY94qTZKha__G0Sp7EyWGZYIt3IUK94CKxpRY55RD6gxojI1VLJQm8OyvUYakTZYMx5KbKeypDFkUAj5FRMfxXEyxiCVVkqbMADIwAGfbHy1WWQTR0TTRxsa" },
             ].map((item, idx) => (
-              <GlassCard key={idx} className="overflow-hidden group flex flex-col border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+              <GlassCard key={idx} className="overflow-hidden group flex flex-col border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
                 <div className="relative h-64 overflow-hidden">
-                  <button className="absolute top-3 right-3 z-10 bg-white/90 p-2.5 rounded-xl text-slate-400 hover:text-rose-500 transition-all shadow-sm hover:scale-110 active:scale-95">
+                  <button className="absolute top-3 right-3 z-10 bg-white/90 dark:bg-slate-800/90 p-2.5 rounded-xl text-slate-400 dark:text-slate-500 hover:text-rose-500 transition-all shadow-sm hover:scale-110 active:scale-95">
                     <Heart className="w-4 h-4" />
                   </button>
                   <img className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
@@ -495,12 +567,12 @@ export default function DashboardPage() {
                 </div>
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-black text-lg text-slate-900">{item.title}</h4>
-                    <span className="text-[#1a3b5b] font-black text-base">{item.price}</span>
+                    <h4 className="font-black text-lg text-slate-900 dark:text-white">{item.title}</h4>
+                    <span className="text-[#1a3b5b] dark:text-amber-500 font-black text-base">{item.price}</span>
                   </div>
-                  <p className="text-slate-400 text-sm mb-5 line-clamp-2">{item.desc}</p>
+                  <p className="text-slate-400 dark:text-slate-500 text-sm mb-5 line-clamp-2">{item.desc}</p>
                   <div className="mt-auto">
-                    <AnimatedButton className="w-full flex items-center justify-center gap-2 py-3 bg-slate-50 text-[#1a3b5b] font-bold rounded-xl group-hover:bg-[#1a3b5b] group-hover:text-white transition-all text-sm">
+                    <AnimatedButton className="w-full flex items-center justify-center gap-2 py-3 bg-slate-50 dark:bg-slate-900/50 text-[#1a3b5b] dark:text-slate-300 font-bold rounded-xl group-hover:bg-[#1a3b5b] group-hover:text-white dark:group-hover:bg-blue-600 transition-all text-sm">
                       <ShoppingCart className="w-4 h-4" /> Añadir al carrito
                     </AnimatedButton>
                   </div>
@@ -524,20 +596,20 @@ export default function DashboardPage() {
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }}
-        className={`max-w-xl w-full ${cfg.color} border ${cfg.border} rounded-2xl p-10 text-center shadow-lg`}>
+        className={`max-w-xl w-full ${cfg.color} dark:bg-slate-800 border ${cfg.border} dark:border-slate-700 rounded-2xl p-10 text-center shadow-lg`}>
         <motion.div className="flex justify-center mb-5" initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, type: 'spring' }}>
           {cfg.icon}
         </motion.div>
         <motion.h1 initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
-          className="text-3xl font-black text-slate-900 mb-3">{cfg.title}</motion.h1>
+          className="text-3xl font-black text-slate-900 dark:text-white mb-3">{cfg.title}</motion.h1>
         <motion.p initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
-          className="text-slate-500 mb-8">{cfg.desc}</motion.p>
+          className="text-slate-500 dark:text-slate-400 mb-8">{cfg.desc}</motion.p>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
           className="flex flex-wrap justify-center gap-3">
           {[['Usuario', user.name], ['Correo', user.email], ['Rol', user.role]].map(([label, val]) => (
-            <div key={label} className="bg-white px-5 py-3 rounded-xl shadow-sm border border-slate-100">
-              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-0.5">{label}</p>
-              <p className="font-bold text-slate-800 text-sm capitalize">{val}</p>
+            <div key={label} className="bg-white dark:bg-slate-900 px-5 py-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-0.5">{label}</p>
+              <p className="font-bold text-slate-800 dark:text-slate-200 text-sm capitalize">{val}</p>
             </div>
           ))}
         </motion.div>

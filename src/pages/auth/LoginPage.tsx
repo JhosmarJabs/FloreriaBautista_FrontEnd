@@ -84,7 +84,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           <div className="mb-8">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/')}
               className="inline-flex items-center gap-2 text-brand-coral hover:text-brand-coral/80 font-semibold transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -168,12 +168,12 @@ export default function LoginPage() {
                 </button>
               </div>
               <div className="flex justify-end">
-                <a
+                <Link
                   className="text-xs font-semibold text-brand-coral hover:underline"
-                  href="#"
+                  to="/recuperar-contrasena"
                 >
                   ¿Olvidaste tu contraseña?
-                </a>
+                </Link>
               </div>
             </div>
 

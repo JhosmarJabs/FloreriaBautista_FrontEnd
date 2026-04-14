@@ -1,0 +1,2 @@
+Todo los cambios que hagas lo debes de agregar a la bitacora del backend y del frontend segun corresponda
+Antes de hacer una modificacion, guarda el condigo anterior en vercionanterior.md y luego haz la modificacion para poder regresar al estado anterior si es necesario, en dado caso de que el archivo vercionanterior.md ya exista, sobrescribelo eliminando el codigo anterior y poniendo el nuevo para no crear cosas de mas

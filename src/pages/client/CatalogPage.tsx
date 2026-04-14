@@ -51,18 +51,31 @@ export default function CatalogPage() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [priceRange, setPriceRange] = useState(5000);
   const [selectedType, setSelectedType] = useState("Todos los tipos");
+  const [showInStockOnly, setShowInStockOnly] = useState("Todas");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   useEffect(() => {
-    const storedUser =
-      localStorage.getItem("usuario") || localStorage.getItem("user");
-    if (storedUser) setUser(JSON.parse(storedUser));
+    let currentUserRole = null;
+    const storedUser = localStorage.getItem("usuario") || localStorage.getItem("user");
+    
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      currentUserRole = parsedUser.role;
+    }
 
     const loadData = async () => {
       setLoading(true);
       try {
-        const res = await AdminService.getAdminProducts({ size: 100 });
+        let res;
+        // Si es admin o empleado, consume la ruta del inventario administrativo.
+        // Si es visitante web o cliente verificado, consume la ruta pública oficial.
+        if (currentUserRole === "administrador" || currentUserRole === "admin" || currentUserRole === "empleado") {
+          res = await AdminService.getAdminProducts({ size: 100 });
+        } else {
+          res = await AdminService.getProducts({ size: 100 });
+        }
         setProducts(res.data.items);
       } catch {
         showToast("Error al cargar el catálogo", "error");
@@ -70,6 +83,7 @@ export default function CatalogPage() {
         setLoading(false);
       }
     };
+    
     loadData();
   }, []);
 
@@ -118,9 +132,10 @@ export default function CatalogPage() {
       const matchesPrice = product.precioBase <= priceRange;
       const matchesType =
         selectedType === "Todos los tipos" || product.tipo === selectedType;
-      return matchesSearch && matchesCategory && matchesPrice && matchesType;
+      const matchesStock = showInStockOnly === "Todas" || (product.stock ?? 0) > 0;
+      return matchesSearch && matchesCategory && matchesPrice && matchesType && matchesStock;
     });
-  }, [products, searchTerm, selectedCategory, priceRange, selectedType]);
+  }, [products, searchTerm, selectedCategory, priceRange, selectedType, showInStockOnly]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const paginatedProducts = filteredProducts.slice(
@@ -401,148 +416,179 @@ export default function CatalogPage() {
 
   // Customer View
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-32 min-h-screen" style={{ zoom: 0.75 }}>
+    <main className="w-full px-4 sm:px-6 lg:px-8 py-12 pt-32 min-h-screen font-sans overflow-hidden" style={{ zoom: 0.75 }}>
       <FadeIn className="mb-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-          <div className="max-w-2xl">
-            <h2 className="text-4xl md:text-6xl font-black text-[#1A3B5B] mb-4 tracking-tight leading-tight">
-              Nuestro <span className="text-[#FBBF24]">Catálogo</span> Floral
-            </h2>
-            <p className="text-lg text-slate-500 font-medium">
-              Diseños exclusivos creados con flores frescas de la mejor calidad para cautivar tus sentidos.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-4">
-            <div className="relative w-full md:w-80 group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#FBBF24] transition-colors" />
-              <input
-                type="text"
-                placeholder="Buscar flores..."
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-[#FBBF24]/10 focus:border-[#FBBF24] transition-all shadow-sm"
-              />
+        <div className="relative w-full bg-gradient-to-br from-[#1A3B5B] via-[#2A527A] to-[#1A3B5B] rounded-[3rem] p-10 md:p-16 mb-12 overflow-hidden shadow-2xl shadow-blue-900/20">
+          {/* Background Decorations */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#FBBF24] rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-400 rounded-full blur-[120px] opacity-20 translate-y-1/2 -translate-x-1/2"></div>
+          
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 max-w-7xl mx-auto">
+            <div className="max-w-2xl">
+              <span className="inline-block py-1.5 px-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white/90 text-sm font-black tracking-widest uppercase mb-6">
+                Descubre la magia
+              </span>
+              <h2 className="text-4xl md:text-6xl font-black text-white mb-6 tracking-tight leading-tight">
+                Nuestro <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FBBF24] to-yellow-200 drop-shadow-sm">Catálogo</span> Floral
+              </h2>
+              <p className="text-lg text-blue-100 font-medium leading-relaxed max-w-xl">
+                Sorprende y cautiva con nuestros diseños exclusivos. Flores frescas y de la más alta calidad, preparadas con pasión.
+              </p>
             </div>
-            <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest bg-white px-4 py-2 rounded-full border border-slate-100">
-              <Filter className="w-3 h-3" />
-              <span>{filteredProducts.length} productos encontrados</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-3 overflow-x-auto pb-6 no-scrollbar">
-          {categories.map((cat) => (
-            <motion.button
-              key={cat}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
-              className={`flex-none px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-wider transition-all ${
-                selectedCategory === cat
-                  ? "bg-[#1A3B5B] text-white shadow-xl shadow-blue-900/20"
-                  : "bg-white text-slate-500 border border-slate-200 hover:border-[#FBBF24] hover:text-[#FBBF24]"
-              }`}
-            >
-              {cat}
-            </motion.button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-8 bg-white/50 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-2xl shadow-blue-900/5">
-          <div className="flex flex-col gap-4">
-            <label className="text-sm font-black text-[#1A3B5B] uppercase tracking-widest">
-              Rango de precio: <span className="text-[#FBBF24] ml-2">${priceRange.toLocaleString()} MXN</span>
-            </label>
-            <div className="px-2">
-              <input
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#FBBF24]"
-                max="5000" min="0" step="100" type="range"
-                value={priceRange}
-                onChange={(e) => { setPriceRange(Number(e.target.value)); setCurrentPage(1); }}
-              />
-              <div className="flex justify-between text-[10px] text-slate-400 font-black uppercase tracking-tighter mt-3">
-                <span>$0 MXN</span>
-                <span>$5,000+ MXN</span>
+            <div className="flex flex-col items-end gap-6 w-full md:w-auto">
+              <div className="relative w-full md:w-96 group">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-[#FBBF24] transition-colors z-10" />
+                <input
+                  type="text"
+                  placeholder="Buscar tu arreglo ideal..."
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  className="w-full pl-14 pr-6 py-4 bg-white border-0 rounded-full text-base font-medium text-[#1A3B5B] focus:ring-4 focus:ring-[#FBBF24]/30 focus:outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-xs font-black text-[#1A3B5B] uppercase tracking-widest bg-[#FBBF24] px-5 py-2.5 rounded-full shadow-lg shadow-yellow-500/20 transform hover:scale-105 transition-transform">
+                <Filter className="w-4 h-4" />
+                <span>{filteredProducts.length} productos</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <CustomDropdown
-            label="Tipo de producto"
-            options={productTypes}
-            value={selectedType}
-            onChange={(val) => { setSelectedType(val); setCurrentPage(1); }}
-          />
+        {/* Horizontal Filters Bar (Yandex/Ebay style) */}
+        <div className="max-w-7xl mx-auto px-4 md:px-0 mb-8 border-b border-slate-100 pb-2">
+          {/* Quick Category Links */}
+          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x">
+             {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
+                  className={`flex-none px-6 py-2.5 rounded-full font-black text-sm transition-all snap-start whitespace-nowrap ${
+                    selectedCategory === cat
+                      ? "bg-slate-100 text-[#1A3B5B] shadow-inner"
+                      : "bg-transparent text-slate-500 hover:text-[#1A3B5B] hover:bg-slate-50"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+          </div>
+          
+          {/* Pill Dropdowns */}
+          <div className="flex flex-wrap items-center gap-3 py-4 border-t border-slate-50">
+            <div className="flex items-center gap-2 text-slate-400 text-xs font-bold mr-2 uppercase tracking-widest hidden md:flex">
+              <Filter className="w-4 h-4 text-[#FBBF24]" />
+              Filtros
+            </div>
+            
+            <div className="w-full sm:w-56">
+              <CustomDropdown
+                options={productTypes.map(pt => ({ label: pt === "Todos los tipos" ? "Ocasión: Todos" : pt, value: pt }))}
+                value={selectedType}
+                onChange={(val) => { setSelectedType(val); setCurrentPage(1); }}
+              />
+            </div>
+            <div className="w-full sm:w-56">
+              <CustomDropdown
+                options={[
+                  { label: "Precio: Cualquiera", value: "5000" },
+                  { label: "Hasta $500", value: "500" },
+                  { label: "Hasta $1,000", value: "1000" },
+                  { label: "Hasta $2,000", value: "2000" },
+                  { label: "Hasta $3,000", value: "3000" }
+                ]}
+                value={String(priceRange)}
+                onChange={(val) => { setPriceRange(Number(val)); setCurrentPage(1); }}
+              />
+            </div>
+            <div className="w-full sm:w-56">
+              <CustomDropdown
+                options={[
+                  { label: "Disponibilidad: Todas", value: "Todas" },
+                  { label: "Solo en stock", value: "En stock" }
+                ]}
+                value={showInStockOnly}
+                onChange={(val) => { setShowInStockOnly(val); setCurrentPage(1); }}
+              />
+            </div>
+          </div>
         </div>
       </FadeIn>
 
-      <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
         <AnimatePresence mode="popLayout">
           {paginatedProducts.length > 0 ? (
             paginatedProducts.map((product) => (
               <motion.div
                 key={product.id}
-                variants={itemVariants}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.4 }}
                 layout
-                className="group bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-slate-100 flex flex-col relative"
+                whileHover={{ y: -10 }}
+                className="group bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 border border-slate-100 flex flex-col relative"
               >
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  {product.imagenUrl ? (
+                <div className="relative aspect-[4/5] overflow-hidden rounded-t-[2.5rem] m-2.5">
+                   {product.imagenUrl ? (
                     <motion.div
-                      className="absolute inset-0 bg-center bg-cover"
+                      className="absolute inset-0 bg-center bg-cover rounded-[2rem]"
                       style={{ backgroundImage: `url('${product.imagenUrl}')` }}
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.6 }}
+                      whileHover={{ scale: 1.15 }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-slate-100 flex items-center justify-center">
-                      <Package className="w-16 h-16 text-slate-300" />
+                    <div className="absolute inset-0 bg-slate-50 flex items-center justify-center rounded-[2rem]">
+                      <Package className="w-16 h-16 text-slate-200" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A3B5B]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[2rem]" />
 
                   {(product.stock ?? 0) <= 5 && (product.stock ?? 0) > 0 && (
-                    <div className="absolute top-6 right-6 bg-red-500 px-4 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-xl backdrop-blur-md">
-                      Pocas unidades
+                    <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-xl flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Pocos
                     </div>
                   )}
 
-                  <div className="absolute inset-0 flex items-center justify-center gap-3 translate-y-10 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500">
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black text-[#1A3B5B] uppercase tracking-widest shadow-lg">
+                    {product.tipo}
+                  </div>
+
+                  <div className="absolute inset-0 flex items-center justify-center gap-4 translate-y-8 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10">
                     <Link
                       to={`/producto/${product.id}`}
-                      className="p-4 bg-white rounded-full text-[#1A3B5B] hover:bg-[#FBBF24] hover:text-white transition-colors shadow-xl"
+                      className="p-4 bg-white rounded-full text-[#1A3B5B] hover:bg-[#FBBF24] hover:text-white hover:scale-110 transition-all shadow-2xl"
                     >
-                      <Eye className="w-5 h-5" />
+                      <Eye className="w-6 h-6" />
                     </Link>
                   </div>
                 </div>
 
-                <div className="p-8 flex flex-col flex-1">
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-xl font-black text-[#1A3B5B] group-hover:text-[#FBBF24] transition-colors leading-tight">
+                <div className="p-8 pt-6 flex flex-col flex-1">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-black text-[#1A3B5B] group-hover:text-[#FBBF24] transition-colors leading-tight mb-2 line-clamp-1">
                       {product.nombre}
                     </h3>
-                    <span className="text-[10px] font-black text-[#FBBF24] uppercase tracking-[0.2em] bg-[#FBBF24]/10 px-2 py-1 rounded-md">
-                      {product.tipo}
-                    </span>
+                    <p className="text-slate-500 text-sm font-medium line-clamp-2 leading-relaxed">
+                      Diseño floral exclusivo que robará corazones al instante.
+                    </p>
                   </div>
-                  <p className="text-slate-500 text-sm font-medium line-clamp-2 mb-6 leading-relaxed">
-                    Diseño floral exclusivo con las mejores flores de temporada.
-                  </p>
 
-                  <div className="mt-auto">
-                    <div className="flex items-baseline gap-1 mb-6">
-                      <span className="text-xs font-black text-slate-400 uppercase">Desde</span>
-                      <span className="text-2xl font-black text-[#1A3B5B]">${product.precioBase.toLocaleString()}</span>
-                      <span className="text-xs font-bold text-slate-400">MXN</span>
+                  <div className="mt-auto pt-4 border-t border-slate-50">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-black text-[#1A3B5B]">${product.precioBase.toLocaleString()}</span>
+                        </div>
+                      </div>
                     </div>
 
                     <AnimatedButton
-                      className="w-full bg-[#1A3B5B] text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
+                      className="w-full bg-[#1A3B5B] group-hover:bg-[#FBBF24] text-white group-hover:text-[#1A3B5B] py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-colors duration-300 shadow-xl shadow-blue-900/10"
                       onClick={() => handleAddToCart(product)}
                     >
-                      <ShoppingCart className="w-5 h-5" />
-                      Añadir al carrito
+                      <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-rotate-12" />
+                      Lo Quiero
                     </AnimatedButton>
                   </div>
                 </div>
@@ -572,7 +618,7 @@ export default function CatalogPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </StaggerContainer>
+      </div>
 
       {totalPages > 1 && (
         <FadeIn className="mt-20 flex justify-center">

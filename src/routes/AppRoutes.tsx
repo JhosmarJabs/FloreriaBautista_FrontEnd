@@ -9,6 +9,9 @@ import ProductPage from '../pages/client/ProductPage';
 import TestimonialsPage from '../pages/client/TestimonialsPage';
 import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
+import ContactPage from '../pages/client/ContactPage';
 import DashboardPage from '../pages/admin/DashboardPage';
 import ReportsPage from '../pages/admin/ReportsPage';
 import ProductManagementPage from '../pages/employee/ProductManagementPage';
@@ -18,8 +21,12 @@ import PhysicalOrderPage from '../pages/employee/PhysicalOrderPage';
 import DailyDeliveriesPage from '../pages/employee/DailyDeliveriesPage';
 import QuickInventoryPage from '../pages/employee/QuickInventoryPage';
 import QuickSalePage from '../pages/employee/QuickSalePage';
+import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
+import SeasonTemplatesPage from '../pages/employee/SeasonTemplatesPage';
+import SessionOrderPage from '../pages/employee/SessionOrderPage';
 import BackupsPage from '../pages/admin/BackupsPage';
 import AdminInventoryPage from '../pages/admin/AdminInventoryPage';
+import AdminNewInsumoPage from '../pages/admin/AdminNewInsumoPage';
 import AdminPaymentsPage from '../pages/admin/AdminPaymentsPage';
 import AdminUsersPage from '../pages/admin/AdminUsersPage';
 import AdminNewUserPage from '../pages/admin/AdminNewUserPage';
@@ -28,6 +35,16 @@ import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
 import AdminDataManagementPage from '../pages/admin/AdminDataManagementPage';
 import AdminSystemMonitoringPage from '../pages/admin/AdminSystemMonitoringPage';
 import AdminAuditPage from '../pages/admin/AdminAuditPage';
+import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
+import AdminProductsListPage from '../pages/admin/AdminProductsListPage';
+import AdminRecipeManagementPage from '../pages/admin/AdminRecipeManagementPage';
+import AdminCmsPage from '../pages/admin/AdminCmsPage';
+import AdminOrdersListPage from '../pages/admin/AdminOrdersListPage';
+import AdminOrderDetailPage from '../pages/admin/AdminOrderDetailPage';
+import AdminCatalogsPage from '../pages/admin/AdminCatalogsPage';
+import AdminNewCatalogPage from '../pages/admin/AdminNewCatalogPage';
+import AdminPromotionsPage from '../pages/admin/AdminPromotionsPage';
+import AdminNewPromotionPage from '../pages/admin/AdminNewPromotionPage';
 import CustomerOrdersPage from '../pages/client/CustomerOrdersPage';
 import SettingsPage from '../pages/client/SettingsPage';
 import CartPage from '../pages/client/CartPage';
@@ -50,11 +67,23 @@ export default function AnimatedRoutes() {
         <Route path="/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
         <Route path="/admin/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
         <Route path="/admin/reportes" element={<PageTransition><ReportsPage /></PageTransition>} />
+        <Route path="/admin/catalogo" element={<PageTransition><AdminProductsListPage /></PageTransition>} />
+        <Route path="/admin/catalogos" element={<PageTransition><AdminCatalogsPage /></PageTransition>} />
+        <Route path="/admin/catalogos/nuevo" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
+        <Route path="/admin/catalogos/editar/:id" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
+        <Route path="/admin/promociones" element={<PageTransition><AdminPromotionsPage /></PageTransition>} />
+        <Route path="/admin/promociones/nuevo" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
+        <Route path="/admin/promociones/editar/:id" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
+        <Route path="/admin/catalogo/recetas" element={<PageTransition><AdminRecipeManagementPage /></PageTransition>} />
+        <Route path="/admin/cms" element={<PageTransition><AdminCmsPage /></PageTransition>} />
         <Route path="/admin/productos/nuevo" element={<PageTransition><ProductManagementPage /></PageTransition>} />
         <Route path="/admin/productos/editar/:id" element={<PageTransition><ProductManagementPage /></PageTransition>} />
-        <Route path="/admin/pedidos" element={<PageTransition><OrdersPage /></PageTransition>} />
-        <Route path="/admin/pedidos/:id" element={<PageTransition><OrderDetailPage /></PageTransition>} />
+        <Route path="/admin/productos/:id" element={<PageTransition><AdminProductDetailPage /></PageTransition>} />
+        <Route path="/admin/pedidos" element={<PageTransition><AdminOrdersListPage /></PageTransition>} />
+        <Route path="/admin/pedidos/:id" element={<PageTransition><AdminOrderDetailPage /></PageTransition>} />
         <Route path="/admin/inventario" element={<PageTransition><AdminInventoryPage /></PageTransition>} />
+        <Route path="/admin/inventario/nuevo" element={<PageTransition><AdminNewInsumoPage /></PageTransition>} />
+        <Route path="/admin/inventario/editar/:id" element={<PageTransition><AdminNewInsumoPage /></PageTransition>} />
         <Route path="/admin/pagos" element={<PageTransition><AdminPaymentsPage /></PageTransition>} />
         <Route path="/admin/usuarios" element={<PageTransition><AdminUsersPage /></PageTransition>} />
         <Route path="/admin/usuarios/nuevo" element={<PageTransition><AdminNewUserPage /></PageTransition>} />
@@ -66,12 +95,15 @@ export default function AnimatedRoutes() {
         <Route path="/admin/configuracion" element={<PageTransition><AdminSettingsPage /></PageTransition>} />
         
         {/* Employee Routes */}
+        <Route path="/empleado/dashboard" element={<PageTransition><EmployeeDashboardPage /></PageTransition>} />
         <Route path="/empleado/pedidos" element={<PageTransition><OrdersPage /></PageTransition>} />
         <Route path="/empleado/pedidos/:id" element={<PageTransition><OrderDetailPage /></PageTransition>} />
         <Route path="/empleado/registrar-pedido" element={<PageTransition><PhysicalOrderPage /></PageTransition>} />
+        <Route path="/empleado/registrar-pedido-sesion" element={<PageTransition><SessionOrderPage /></PageTransition>} />
         <Route path="/empleado/entregas" element={<PageTransition><DailyDeliveriesPage /></PageTransition>} />
         <Route path="/empleado/inventario" element={<PageTransition><QuickInventoryPage /></PageTransition>} />
         <Route path="/empleado/venta-rapida" element={<PageTransition><QuickSalePage /></PageTransition>} />
+        <Route path="/empleado/plantillas" element={<PageTransition><SeasonTemplatesPage /></PageTransition>} />
 
         <Route path="/mis-pedidos" element={<PageTransition><CustomerOrdersPage /></PageTransition>} />
         <Route path="/configuracion" element={<PageTransition><SettingsPage /></PageTransition>} />
@@ -86,8 +118,11 @@ export default function AnimatedRoutes() {
         <Route path="/producto/:id" element={<PageTransition><ProductPage /></PageTransition>} />
         <Route path="/testimonios" element={<PageTransition><TestimonialsPage /></PageTransition>} />
         <Route path="/nosotros" element={<PageTransition><AboutPage /></PageTransition>} />
+        <Route path="/contacto" element={<PageTransition><ContactPage /></PageTransition>} />
         <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
         <Route path="/registro" element={<PageTransition><RegisterPage /></PageTransition>} />
+        <Route path="/recuperar-contrasena" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
+        <Route path="/restablecer-contrasena" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
       </Routes>
     </AnimatePresence>
   );

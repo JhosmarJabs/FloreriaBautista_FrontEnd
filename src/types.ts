@@ -11,6 +11,7 @@ export interface Product {
 export interface ProductDetail extends Product {
   descripcion?: string;
   esPersonalizable?: boolean;
+  visibilidad?: string;
   categorias?: string[];
   colecciones?: string[];
   receta?: RecipeItem[];
@@ -23,11 +24,13 @@ export interface ProductBody {
   tipo: string;
   esPersonalizable: boolean;
   estado: string;
+  visibilidad: string;
   imagenUrl: string;
   imagenes: string[];
   categorias: string[];
   colecciones: string[];
   receta?: RecipeItem[];
+  activo?: boolean;
 }
 
 export interface Order {
@@ -200,7 +203,7 @@ export interface Flower {
 }
 
 export interface RecipeItem {
-  flowerId: string;
+  inventoryItemId: string;
   flowerNombre: string;
   flowerPrecioCosto: number;
   esFlorPrimaria: boolean;
@@ -270,4 +273,36 @@ export interface UserBody {
   telefono?: string;
   password: string;
   roles: string[];
+}
+
+export interface InventoryItem {
+  id: string;
+  nombre: string;
+  stockActual: number;
+  stockMinimo: number;
+  sucursal: string;
+  sumaAlCosto: boolean;
+  unidadMedida: string;
+  precioCosto: number;
+  esFlorPrimaria: boolean;
+  imagenUrl?: string | null;
+  bajoMinimo: boolean;
+}
+
+export interface OrderItem {
+  productoId: string;
+  productoNombre: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
+export interface OrderDetail extends Order {
+  metodoPago?: string;
+  notas?: string;
+  tipoEntrega?: string;
+  direccionEntrega?: string;
+  correoCliente?: string;
+  telefonoCliente?: string;
+  items?: OrderItem[];
 }

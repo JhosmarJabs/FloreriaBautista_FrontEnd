@@ -88,23 +88,23 @@ export default function AdminNewUserPage() {
       <FadeIn>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <nav className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">
+            <nav className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-2">
               <button
                 onClick={() => navigate('/admin/usuarios')}
-                className="hover:text-blue-600 cursor-pointer transition-colors"
+                className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors"
               >
                 Usuarios
               </button>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-slate-700">Nuevo Usuario</span>
+              <span className="text-slate-700 dark:text-slate-300">Nuevo Usuario</span>
             </nav>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900">Crear Usuario</h1>
-            <p className="text-sm text-slate-500 font-medium">Completa la información para registrar un nuevo miembro</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Crear Usuario</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Completa la información para registrar un nuevo miembro</p>
           </div>
           <div className="flex items-center gap-3">
             <AnimatedButton
               onClick={() => navigate('/admin/usuarios')}
-              className="px-6 py-3 bg-white border border-slate-100 rounded-2xl text-sm font-black text-slate-600 hover:bg-slate-50 shadow-sm transition-all"
+              className="px-6 py-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-black text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all"
             >
               Cancelar
             </AnimatedButton>
@@ -128,17 +128,17 @@ export default function AdminNewUserPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main fields */}
         <div className="lg:col-span-2 space-y-6">
-          <GlassCard className="p-8 border-none">
+          <GlassCard className="p-8 border-none dark:bg-slate-800/80">
             <div className="flex items-center gap-3 mb-6">
-              <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+              <div className="size-10 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-sm">
                 <User className="w-5 h-5" />
               </div>
-              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Información Personal</h2>
+              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">Información Personal</h2>
             </div>
             <div className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 block">
                     Nombre <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -147,11 +147,11 @@ export default function AdminNewUserPage() {
                     value={form.nombre}
                     onChange={handleChange}
                     placeholder="Ej. Juan"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 block">
                     Apellido <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -160,39 +160,39 @@ export default function AdminNewUserPage() {
                     value={form.apellido}
                     onChange={handleChange}
                     placeholder="Ej. Pérez"
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 block">
                   Correo Electrónico <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <input
                     type="email"
                     name="correo"
                     value={form.correo}
                     onChange={handleChange}
                     placeholder="juan@ejemplo.com"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 block">
                   Teléfono
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <input
                     type="tel"
                     name="telefono"
                     value={form.telefono}
                     onChange={handleChange}
                     placeholder="+52 55 0000 0000"
-                    className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
               </div>
@@ -200,55 +200,55 @@ export default function AdminNewUserPage() {
           </GlassCard>
 
           {/* Password section */}
-          <GlassCard className="p-8 border-none">
+          <GlassCard className="p-8 border-none dark:bg-slate-800/80">
             <div className="flex items-center gap-3 mb-6">
-              <div className="size-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm">
+              <div className="size-10 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
                 <Lock className="w-5 h-5" />
               </div>
-              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Contraseña</h2>
+              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">Contraseña</h2>
             </div>
             <div className="space-y-5">
               <div>
-                <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 block">
                   Contraseña <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={form.password}
                     onChange={handleChange}
                     placeholder="Mínimo 6 caracteres"
-                    className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    className="w-full pl-11 pr-12 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 block">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 block">
                   Confirmar Contraseña <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={form.confirmPassword}
                     onChange={handleChange}
                     placeholder="Repite la contraseña"
-                    className="w-full pl-11 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    className="w-full pl-11 pr-12 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -260,37 +260,37 @@ export default function AdminNewUserPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          <GlassCard className="p-8 border-none">
+          <GlassCard className="p-8 border-none dark:bg-slate-800/80">
             <div className="flex items-center gap-3 mb-6">
-              <div className="size-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+              <div className="size-10 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-sm">
                 <Shield className="w-5 h-5" />
               </div>
-              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Rol Asignado</h2>
+              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">Rol Asignado</h2>
             </div>
-            <div className="p-4 rounded-xl border-2 border-blue-200 bg-blue-50">
+            <div className="p-4 rounded-xl border-2 border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/30">
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <div className="size-9 rounded-xl bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                   <Shield className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-blue-700">Empleado</p>
-                  <p className="text-[10px] text-slate-500 font-medium mt-0.5">Gestión de pedidos y ventas</p>
+                  <p className="text-sm font-black text-blue-700 dark:text-blue-400">Empleado</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">Gestión de pedidos y ventas</p>
                 </div>
               </div>
-              <p className="text-[10px] text-slate-400 font-medium mt-3 leading-relaxed">
-                Los nuevos usuarios creados desde este panel se registran automáticamente como <span className="font-black text-blue-600">Empleado</span>.
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium mt-3 leading-relaxed">
+                Los nuevos usuarios creados desde este panel se registran automáticamente como <span className="font-black text-blue-600 dark:text-blue-400">Empleado</span>.
               </p>
             </div>
           </GlassCard>
 
-          <GlassCard className="p-6 border-none bg-blue-50/40">
+          <GlassCard className="p-6 border-none bg-blue-50/40 dark:bg-blue-900/10">
             <div className="flex items-start gap-3">
-              <div className="size-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="size-8 rounded-xl bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                 <UserPlus className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[11px] font-black text-blue-700 uppercase tracking-widest mb-1">Información</p>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                <p className="text-[11px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest mb-1">Información</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                   El usuario podrá iniciar sesión con el correo y contraseña que definas aquí. Es responsabilidad del administrador comunicar estas credenciales de forma segura.
                 </p>
               </div>

@@ -82,7 +82,7 @@ export default function AdminOperationPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64 dark:bg-slate-900">
         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
       </div>
     );
@@ -95,10 +95,10 @@ export default function AdminOperationPage() {
       {/* Header */}
       <FadeIn className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">Operación Técnica</h1>
-          <p className="text-sm text-slate-500 font-medium">Herramientas de mantenimiento y diagnóstico del sistema</p>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Operación Técnica</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Herramientas de mantenimiento y diagnóstico del sistema</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-slate-100/50 text-slate-600 rounded-2xl text-[10px] font-black border border-slate-200 uppercase tracking-widest shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black border border-slate-200 dark:border-slate-700 uppercase tracking-widest shadow-sm">
           <Wrench className="w-3.5 h-3.5" />
           MODO MANTENIMIENTO: DESACTIVADO
         </div>
@@ -106,31 +106,31 @@ export default function AdminOperationPage() {
 
       {/* Stats Summary */}
       <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <GlassCard className="p-6 flex items-center gap-4 border-none">
-          <div className="size-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+        <GlassCard className="p-6 flex items-center gap-4 border-none dark:bg-slate-800/80">
+          <div className="size-12 rounded-2xl bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-sm">
             <Cloud className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Último Respaldo</p>
-            <p className="text-xl font-black text-slate-900">Hace 2 horas</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Último Respaldo</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white">Hace 2 horas</p>
           </div>
         </GlassCard>
-        <GlassCard className="p-6 flex items-center gap-4 border-none">
-          <div className="size-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm">
+        <GlassCard className="p-6 flex items-center gap-4 border-none dark:bg-slate-800/80">
+          <div className="size-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
             <Activity className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado General</p>
-            <p className="text-xl font-black text-emerald-600">{stats.uptime} Online</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Estado General</p>
+            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{stats.uptime} Online</p>
           </div>
         </GlassCard>
-        <GlassCard className="p-6 flex items-center gap-4 border-none">
-          <div className="size-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-sm">
+        <GlassCard className="p-6 flex items-center gap-4 border-none dark:bg-slate-800/80">
+          <div className="size-12 rounded-2xl bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-sm">
             <HardDrive className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Espacio en Disco</p>
-            <p className="text-xl font-black text-slate-900">{stats.diskSpace} Usado</p>
+            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Espacio en Disco</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white">{stats.diskSpace} Usado</p>
           </div>
         </GlassCard>
       </StaggerContainer>
@@ -143,15 +143,15 @@ export default function AdminOperationPage() {
             to={op.path}
             className="group"
           >
-            <GlassCard className={`p-8 border-none h-full transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1`}>
-              <div className={`size-14 rounded-2xl ${op.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm`}>
+            <GlassCard className={`p-8 border-none h-full transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1 dark:bg-slate-800/80`}>
+              <div className={`size-14 rounded-2xl ${op.color} dark:bg-slate-900/40 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm`}>
                 {op.icon}
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2 flex items-center justify-between">
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 flex items-center justify-between">
                 {op.title}
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-slate-900 group-hover:translate-x-1 transition-all" />
+                <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600 group-hover:text-slate-900 dark:group-hover:text-white group-hover:translate-x-1 transition-all" />
               </h3>
-              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                 {op.desc}
               </p>
             </GlassCard>
@@ -161,8 +161,8 @@ export default function AdminOperationPage() {
 
       {/* Footer Info */}
       <FadeIn delay={0.5}>
-        <GlassCard className="bg-slate-50/50 border-none p-8 text-center">
-          <p className="text-xs text-slate-500 font-black uppercase tracking-widest leading-relaxed">
+        <GlassCard className="bg-slate-50/50 dark:bg-slate-900/40 border-none p-8 text-center">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest leading-relaxed">
             Estas herramientas están reservadas para personal técnico autorizado. Cualquier cambio estructural queda registrado en el log de auditoría.
           </p>
         </GlassCard>

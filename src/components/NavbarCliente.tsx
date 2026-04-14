@@ -9,6 +9,7 @@ const menuItems = [
   { name: "Catálogo", href: "/catalogo" },
   { name: "Ofertas", href: "/ofertas" },
   { name: "Eventos", href: "/eventos" },
+  { name: "Contacto", href: "/contacto" },
 ];
 
 export function NavbarCliente() {

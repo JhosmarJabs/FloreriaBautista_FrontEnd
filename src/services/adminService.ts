@@ -7,6 +7,8 @@ import {
   ProductDetail,
   ProductBody,
   Order,
+  OrderDetail,
+  InventoryItem,
   ApiResponse,
   SingleResponse,
   MeResponse,
@@ -26,11 +28,30 @@ const TOKEN_URL = '/api/dev/token';
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
+
+// ── Helpers de JWT ─────────────────────────────────────────────────────────
+const isJwtExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // exp es en segundos, Date.now() en ms
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true; // si no se puede parsear, tratar como expirado
+  }
+};
+
 const getToken = async (): Promise<string> => {
-  // Usar el JWT real del usuario logueado si está disponible
+  // Usar el JWT real del usuario logueado si está disponible y no expirado
   const stored = localStorage.getItem('accessToken');
-  if (stored && !stored.startsWith('local-token-')) {
+  if (stored && !stored.startsWith('local-token-') && !isJwtExpired(stored)) {
     return stored;
+  }
+
+  // Si el token expiró, limpiarlo del storage para forzar re-login
+  if (stored && !stored.startsWith('local-token-') && isJwtExpired(stored)) {
+    console.warn('[AdminService] Token JWT expirado. Se requiere re-autenticación.');
+    // Opcionalmente redirigir a login:
+    // window.location.href = '/login';
   }
 
   const now = Date.now();
@@ -45,6 +66,7 @@ const getToken = async (): Promise<string> => {
   tokenExpiry = now + 5 * 60 * 1000; // 5 minutos
   return token;
 };
+
 
 const authHeaders = async () => ({
   'Content-Type': 'application/json',
@@ -187,6 +209,74 @@ export const AdminService = {
     return res.json();
   },
 
+  // ─── Inventario admin ────────────────────────────────────────
+  getAdminInventory: async (params: {
+    busqueda?: string;
+    sucursal?: string;
+    bajoMinimo?: boolean;
+    page?: number;
+    size?: number;
+  } = {}): Promise<ApiResponse<InventoryItem>> => {
+    const query = new URLSearchParams();
+    if (params.busqueda  !== undefined) query.set('busqueda',   params.busqueda);
+    if (params.sucursal  !== undefined) query.set('sucursal',   params.sucursal);
+    if (params.bajoMinimo !== undefined) query.set('bajoMinimo', String(params.bajoMinimo));
+    if (params.page      !== undefined) query.set('page',       String(params.page));
+    if (params.size      !== undefined) query.set('size',       String(params.size));
+    const qs = query.toString();
+    const res = await fetch(`${API_BASE}/inventory${qs ? `?${qs}` : ''}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener inventario');
+    return res.json();
+  },
+
+  getAdminInventoryItemById: async (id: string): Promise<SingleResponse<InventoryItem>> => {
+    const res = await fetch(`${API_BASE}/inventory/${id}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  createInventoryItem: async (body: any): Promise<SingleResponse<InventoryItem>> => {
+    const res = await fetch(`${API_BASE}/inventory`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  updateInventoryItem: async (id: string, body: any): Promise<SingleResponse<InventoryItem>> => {
+    const res = await fetch(`${API_BASE}/inventory/${id}`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  deleteInventoryItem: async (id: string): Promise<ApiResponse<any>> => {
+    const res = await fetch(`${API_BASE}/inventory/${id}/delete`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  getDashboardStats: async (): Promise<SingleResponse<any>> => {
+    const res = await fetch(`${API_BASE}/reports/dashboard`, {
+      method: 'GET',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
   // ─── Productos admin ──────────────────────────────────────────
   getAdminProducts: async (params: {
     busqueda?: string;
@@ -227,7 +317,7 @@ export const AdminService = {
 
   updateAdminProduct: async (productId: string, body: ProductBody): Promise<ApiResponse<Product>> => {
     const res = await fetch(`${API_BASE}/products/${productId}`, {
-      method: 'PUT',
+      method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
     });
@@ -364,6 +454,24 @@ export const AdminService = {
     return res.json();
   },
 
+  getAdminOrderById: async (orderId: string): Promise<SingleResponse<OrderDetail>> => {
+    const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  updateAdminOrderStatus: async (orderId: string, nuevoEstado: string): Promise<SingleResponse<OrderDetail>> => {
+    const res = await fetch(`${API_BASE}/orders/${orderId}/estado`, {
+      method: 'PUT',
+      headers: await authHeaders(),
+      body: JSON.stringify({ nuevoEstado }),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
   // ─── Flores / Insumos ─────────────────────────────────────────
   getFlowers: async (params: {
     busqueda?: string;
@@ -458,6 +566,14 @@ export const AdminService = {
       body: JSON.stringify({ roles }),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+  },
+
+  getAuditByEntity: async (entidad: string, entidadId: string): Promise<{ success: boolean; data: AuditLog[] }> => {
+    const res = await fetch(`${API_BASE}/audit/${encodeURIComponent(entidad)}/${encodeURIComponent(entidadId)}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
   },
 
   getAuditLogs: async (params: {

@@ -41,8 +41,7 @@ export default function Layout() {
       </div>
     );
   }
-
-  const hideNavAndFooter = ['/login', '/registro'].includes(location.pathname);
+  const hideNavAndFooter = ['/login', '/registro', '/recuperar-contrasena', '/restablecer-contrasena'].includes(location.pathname);
   const userRoles: string[] = (user?.roles ?? (user?.role ? [user.role] : []))
     .map((r: string) => r.toLowerCase());
   const isAdmin = userRoles.some(r => ['administrador', 'admin'].includes(r));

@@ -38,6 +38,7 @@ export default function Navigation() {
           <Link className="nav-link" to="/catalogo">Catálogo</Link>
           <Link className="nav-link" to="/testimonios">Testimonios</Link>
           <Link className="nav-link" to="/nosotros">Nosotros</Link>
+          <Link className="nav-link" to="/contacto">Contacto</Link>
         </div>
         {/* CTA */}
         <div className="flex items-center gap-4">

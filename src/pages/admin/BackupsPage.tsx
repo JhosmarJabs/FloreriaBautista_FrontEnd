@@ -1,29 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ChevronRight,
-  Database,
-  CloudUpload,
-  AlertTriangle,
-  RefreshCw,
-  Plus,
-  Table,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  HardDrive,
-  Zap,
-  Calendar,
-  Filter,
-  X,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
-  ToggleLeft,
-  ToggleRight,
-  RotateCcw,
+  ChevronRight, Database, CloudUpload, AlertTriangle, RefreshCw, 
+  Plus, Table, CheckCircle2, XCircle, Clock, HardDrive, Zap, 
+  Calendar, Filter, X, ArrowUp, ArrowDown, ArrowUpDown, 
+  ToggleLeft, ToggleRight, RotateCcw, Search, ShieldAlert
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { Backup } from '../../types';
+import { FadeIn, ScaleIn, AnimatedButton } from '../../components/Animations';
 
 export default function BackupsPage() {
   const [backups, setBackups] = useState<Backup[]>([]);
@@ -51,9 +36,8 @@ export default function BackupsPage() {
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
   const [filterFechaHasta, setFilterFechaHasta] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
-  const [filterEstado, setFilterEstado] = useState('');
   const [sortBy, setSortBy] = useState<'fecha' | 'tamano'>('fecha');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortDir, setSortDir] = useState<'desc' | 'desc'>('desc');
 
   // Restore modal
   const [restoreBackup, setRestoreBackup] = useState<Backup | null>(null);
@@ -116,7 +100,7 @@ export default function BackupsPage() {
         hora: isNaN(horaNum) ? 2 : horaNum,
         mantenimientoActivo,
       });
-      setResultConfig({ ok: res.success, msg: res.message || 'Configuración guardada exitosamente.' });
+      setResultConfig({ ok: res.success, msg: res.message || 'Configuración guardada.' });
       if (res.success && res.data) {
         const d = res.data;
         setFrecuencia(d.frecuencia);
@@ -166,17 +150,12 @@ export default function BackupsPage() {
 
   const getBackupType = (nombre: string) => {
     const n = nombre.toLowerCase();
-    if (n.includes('completo') || n.includes('full')) return { label: 'Solo BD', color: 'bg-blue-50 text-blue-700 border-blue-100' };
-    if (n.includes('estatico') || n.includes('archivo') || n.includes('static')) return { label: 'BD + Archivos', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
-    return { label: 'Respaldo', color: 'bg-slate-50 text-slate-600 border-slate-200' };
+    if (n.includes('completo') || n.includes('full')) return { label: 'Base de Datos', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' };
+    if (n.includes('estatico') || n.includes('archivo')) return { label: 'BD + Estáticos', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' };
+    return { label: 'Parcial', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-700/50', border: 'border-slate-100 dark:border-slate-700' };
   };
 
-  const getBackupStatus = (_backup: Backup) => {
-    // Since API only returns completed backups in Drive, we treat all as Completado
-    return { label: 'Completado', color: 'bg-emerald-50 text-emerald-700' };
-  };
-
-  const activeFilters = [filterFechaDesde, filterFechaHasta, filterTipo, filterEstado].filter(Boolean).length;
+  const activeFilters = [filterFechaDesde, filterFechaHasta, filterTipo].filter(Boolean).length;
 
   const filteredBackups = backups
     .filter(b => {
@@ -195,457 +174,253 @@ export default function BackupsPage() {
       return mul * (a.tamanoBytes - b.tamanoBytes);
     });
 
-  const inputClass =
-    'w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-amber-400/60 focus:border-amber-400 bg-white text-slate-800 placeholder-slate-400 transition-all';
-
-  const selectClass =
-    'w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-amber-400/60 focus:border-amber-400 bg-white text-slate-800 transition-all appearance-none cursor-pointer';
-
   return (
-    <div className="w-full space-y-6 ">
+    <div className="w-full space-y-6">
 
-      {/* ── Breadcrumb ─────────────────────────────── */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-        <span className="hover:text-slate-600 transition-colors cursor-pointer">Operación técnica</span>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-slate-700">Respaldos Manuales</span>
-      </nav>
-
-      {/* ── Header ─────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center">
-              <Database className="w-5 h-5 text-amber-600" />
+      {/* Header */}
+      <FadeIn>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Database className="w-4 h-4 text-amber-500" />
+              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Infraestructura Técnica</span>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Respaldos</h1>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Respaldos y Seguridad</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Administración de copias de seguridad sincronizadas con la nube</p>
           </div>
-          <p className="text-sm text-slate-500 ml-12">
-            Gestión de copias de seguridad en Google Drive
-          </p>
+          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-2xl">
+            <CloudUpload className="w-4 h-4 text-blue-500" />
+            <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Google Drive Conectado</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 ml-12 sm:ml-0">
-          <CloudUpload className="w-4 h-4 text-blue-500" />
-          <span className="text-xs font-semibold text-blue-700">Google Drive</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1" />
-        </div>
-      </div>
+      </FadeIn>
 
-      {/* ── Stat chips ─────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: HardDrive,  label: 'Respaldos',  value: loading ? '—' : String(backups.length), color: 'text-amber-600',  bg: 'bg-amber-50',  border: 'border-amber-100' },
-          { icon: Clock,      label: 'Último',     value: !loading && backups.length ? new Date(backups[0]?.creadoEn).toLocaleDateString('es-MX') : '—', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-          { icon: Zap,        label: 'Automático', value: 'Diario',    color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-        ].map(({ icon: Icon, label, value, color, bg, border }) => (
-          <div key={label} className={`rounded-xl border ${border} ${bg} px-4 py-3 flex items-center gap-3`}>
-            <Icon className={`w-4 h-4 ${color} shrink-0`} />
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</p>
-              <p className={`text-sm font-bold ${color} truncate`}>{value}</p>
+          { label: 'Respaldos totales', value: loading ? '—' : backups.length, icon: <HardDrive />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' },
+          { label: 'Última copia', value: backups.length ? new Date(backups[0].creadoEn).toLocaleDateString() : 'N/A', icon: <Clock />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
+          { label: 'Próxima tarea', value: schedulerInfo ? schedulerInfo.proximoBackup.split(' ')[0] : 'N/A', icon: <Zap />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
+          { label: 'Espacio usado', value: formatSize(backups.reduce((a, b) => a + b.tamanoBytes, 0)), icon: <Database />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20' },
+        ].map((s, i) => (
+          <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            className={`bg-white dark:bg-slate-800 border ${s.border} rounded-2xl p-4 flex gap-4`}>
+            <div className={`size-10 rounded-xl ${s.bg} border ${s.border} ${s.color} flex items-center justify-center shrink-0`}>
+              {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
             </div>
-          </div>
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{s.label}</p>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white leading-none">{s.value}</h3>
+            </div>
+          </motion.div>
         ))}
       </div>
 
-      {/* ── Main grid ──────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-
-        {/* ── Left column: forms ─── (2/5) */}
-        <div className="xl:col-span-2 flex flex-col gap-4">
-
-          {/* Backup Completo */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-white">
-              <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Plus className="w-3.5 h-3.5 text-amber-700" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-800">Respaldo Completo</h3>
-            </div>
-            <form onSubmit={handleFullBackup} className="p-5 space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Descripción</label>
-                <input
-                  type="text"
-                  value={descFull}
-                  onChange={(e) => setDescFull(e.target.value)}
-                  placeholder="Ej: Antes de actualización v2"
-                  className={inputClass}
-                  required
-                />
-              </div>
-              {resultFull && (
-                <div className={`flex items-start gap-2 p-3 rounded-xl text-xs font-medium ${resultFull.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                  {resultFull.ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                  {resultFull.msg}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Forms Sidebar */}
+        <div className="lg:col-span-4 space-y-6">
+          
+          {/* Create Backup */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
+             <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                <div className="size-8 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center"><Plus className="w-4 h-4"/></div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Nuevo Respaldo</h3>
+             </div>
+             <form onSubmit={handleFullBackup} className="p-5 space-y-4">
+                <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Descripción corta</label>
+                   <input type="text" value={descFull} onChange={e => setDescFull(e.target.value)} required
+                    placeholder="Ej: Backup antes de migrar"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-all dark:text-white" />
                 </div>
-              )}
-              <button
-                type="submit"
-                disabled={loadingFull}
-                className="w-full bg-amber-600 hover:bg-amber-700 active:scale-[.98] disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-amber-200"
-              >
-                {loadingFull ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
-                {loadingFull ? 'Creando...' : 'Crear respaldo completo'}
-              </button>
-            </form>
-          </div>
-
-          {/* Backup por Tabla */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-white">
-              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Table className="w-3.5 h-3.5 text-blue-700" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-800">Respaldo por Tabla</h3>
-            </div>
-            <form onSubmit={handleTableBackup} className="p-5 space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tabla</label>
-                <div className="relative">
-                  <select value={tabla} onChange={(e) => setTabla(e.target.value)} className={selectClass} required>
-                    <option value="" disabled>Seleccione una tabla</option>
-                    <option value="usuarios">Usuarios</option>
-                    <option value="productos">Productos</option>
-                    <option value="pedidos">Pedidos</option>
-                    <option value="inventario">Inventario</option>
-                    <option value="configuracion">Configuración</option>
-                  </select>
-                  <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 rotate-90 pointer-events-none" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Descripción</label>
-                <input
-                  type="text"
-                  value={descTabla}
-                  onChange={(e) => setDescTabla(e.target.value)}
-                  placeholder="Ej: Respaldo de usuarios activos"
-                  className={inputClass}
-                  required
-                />
-              </div>
-              {resultTabla && (
-                <div className={`flex items-start gap-2 p-3 rounded-xl text-xs font-medium ${resultTabla.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                  {resultTabla.ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                  {resultTabla.msg}
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={loadingTabla}
-                className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[.98] disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-blue-200"
-              >
-                {loadingTabla ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Table className="w-3.5 h-3.5" />}
-                {loadingTabla ? 'Creando...' : 'Crear respaldo de tabla'}
-              </button>
-            </form>
-          </div>
-
-          {/* Automatización */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-white">
-              <div className="w-7 h-7 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <Calendar className="w-3.5 h-3.5 text-emerald-700" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-800">Automatización</h3>
-            </div>
-            <form onSubmit={handleSaveConfig} className="p-5 space-y-3.5">
-              {/* Toggle backup activo */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-600">Backup automático activo</span>
-                <button type="button" onClick={() => setBackupActivo(v => !v)} className="shrink-0">
-                  {backupActivo
-                    ? <ToggleRight className="w-8 h-8 text-emerald-600" />
-                    : <ToggleLeft className="w-8 h-8 text-slate-300" />}
+                <button type="submit" disabled={loadingFull}
+                   className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 disabled:opacity-50 transition-all active:scale-95">
+                   {loadingFull ? <RefreshCw className="w-4 h-4 animate-spin"/> : <CloudUpload className="w-4 h-4"/>}
+                   Crear respaldo full
                 </button>
-              </div>
-              {/* Toggle mantenimiento activo */}
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-600">Mantenimiento automático activo</span>
-                <button type="button" onClick={() => setMantenimientoActivo(v => !v)} className="shrink-0">
-                  {mantenimientoActivo
-                    ? <ToggleRight className="w-8 h-8 text-emerald-600" />
-                    : <ToggleLeft className="w-8 h-8 text-slate-300" />}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Frecuencia</label>
-                  <div className="relative">
-                    <select value={frecuencia} onChange={(e) => setFrecuencia(e.target.value)} className={`${selectClass} focus:ring-emerald-400/60 focus:border-emerald-400`}>
-                      <option value="DIARIO">Diario</option>
-                      <option value="SEMANAL">Semanal</option>
-                    </select>
-                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 rotate-90 pointer-events-none" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Hora</label>
-                  <input
-                    type="time"
-                    value={hora}
-                    onChange={(e) => setHora(e.target.value)}
-                    className={`${inputClass} focus:ring-emerald-400/60 focus:border-emerald-400`}
-                  />
-                </div>
-              </div>
-              {/* Día de semana — solo para SEMANAL */}
-              {frecuencia === 'SEMANAL' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">Día de la semana</label>
-                  <div className="relative">
-                    <select value={diaSemana} onChange={(e) => setDiaSemana(Number(e.target.value))} className={`${selectClass} focus:ring-emerald-400/60 focus:border-emerald-400`}>
-                      <option value={0}>Domingo</option>
-                      <option value={1}>Lunes</option>
-                      <option value={2}>Martes</option>
-                      <option value={3}>Miércoles</option>
-                      <option value={4}>Jueves</option>
-                      <option value={5}>Viernes</option>
-                      <option value={6}>Sábado</option>
-                    </select>
-                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 rotate-90 pointer-events-none" />
-                  </div>
-                </div>
-              )}
-              {schedulerInfo && (
-                <div className="grid grid-cols-1 gap-1.5 p-3 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-mono text-slate-500">
-                  <span><span className="font-bold text-slate-600">Próximo backup:</span> {schedulerInfo.proximoBackup}</span>
-                  <span><span className="font-bold text-slate-600">Próximo mant.:</span> {schedulerInfo.proximoMantenimiento}</span>
-                </div>
-              )}
-              {resultConfig && (
-                <div className={`flex items-start gap-2 p-3 rounded-xl text-xs font-medium ${resultConfig.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                  {resultConfig.ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                  {resultConfig.msg}
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={loadingConfig}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[.98] disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-emerald-200"
-              >
-                {loadingConfig ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                {loadingConfig ? 'Guardando...' : 'Guardar configuración'}
-              </button>
-            </form>
+                {resultFull && (
+                   <div className={`p-3 rounded-xl text-[10px] font-bold uppercase tracking-tight ${resultFull.ok ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                      {resultFull.msg}
+                   </div>
+                )}
+             </form>
           </div>
 
+          {/* Scheduler Config */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
+             <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                <div className="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center"><Calendar className="w-4 h-4"/></div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Automatización</h3>
+             </div>
+             <form onSubmit={handleSaveConfig} className="p-5 space-y-5">
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700">
+                   <div className="flex items-center gap-2">
+                      <Zap className={`w-4 h-4 ${backupActivo ? 'text-amber-500 fill-amber-500' : 'text-slate-300'}`} />
+                      <span className="text-[10px] font-black text-slate-500 uppercase">Respaldo Automático</span>
+                   </div>
+                   <button type="button" onClick={() => setBackupActivo(v => !v)} className="transition-all active:scale-90">
+                      {backupActivo ? <ToggleRight className="w-10 h-10 text-emerald-500" /> : <ToggleLeft className="w-10 h-10 text-slate-300" />}
+                   </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Frecuencia</label>
+                      <select value={frecuencia} onChange={e => setFrecuencia(e.target.value)}
+                         className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none dark:text-white">
+                         <option value="DIARIO">Diario</option>
+                         <option value="SEMANAL">Semanal</option>
+                      </select>
+                   </div>
+                   <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Hora ejec.</label>
+                      <input type="time" value={hora} onChange={e => setHora(e.target.value)}
+                         className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none dark:text-white" />
+                   </div>
+                </div>
+
+                <button type="submit" disabled={loadingConfig}
+                   className="w-full py-3 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 transition-all active:scale-95">
+                   {loadingConfig ? <RefreshCw className="w-4 h-4 animate-spin"/> : <CheckCircle2 className="w-4 h-4"/>}
+                   Guardar Configuración
+                </button>
+                {resultConfig && (
+                   <div className={`p-3 rounded-xl text-[10px] font-bold uppercase tracking-tight ${resultConfig.ok ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                      {resultConfig.msg}
+                   </div>
+                )}
+             </form>
+          </div>
         </div>
 
-        {/* ── Right column: table ─── (3/5) */}
-        <div className="xl:col-span-3">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
+        {/* List Content */}
+        <div className="lg:col-span-8">
+           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm flex flex-col h-full">
+              
+              {/* Filter Bar */}
+              <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+                 <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input type="date" value={filterFechaDesde} onChange={e => setFilterFechaDesde(e.target.value)}
+                       className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none" />
+                 </div>
+                 <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)}
+                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none">
+                    <option value="">Todos los tipos</option>
+                    <option value="Base de Datos">Base de Datos</option>
+                    <option value="BD + Estáticos">BD + Estáticos</option>
+                 </select>
+                 <button onClick={loadBackups} className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-blue-500 transition-all">
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                 </button>
+              </div>
 
-            {/* Table header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  Historial de respaldos
-                  {activeFilters > 0 && (
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full border border-blue-100">
-                      {activeFilters} filtro{activeFilters > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Almacenados en Google Drive</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {activeFilters > 0 && (
-                  <button
-                    onClick={() => { setFilterFechaDesde(''); setFilterFechaHasta(''); setFilterTipo(''); setFilterEstado(''); }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-100 px-3 py-1.5 rounded-lg transition-all"
-                  >
-                    <X className="w-3.5 h-3.5" />Limpiar filtros
-                  </button>
-                )}
-                <button
-                  onClick={loadBackups}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 px-3 py-1.5 rounded-lg transition-all"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  Actualizar
-                </button>
-              </div>
-            </div>
-
-            {/* Filter bar */}
-            <div className="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-slate-100 bg-slate-50/40">
-              <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Desde</label>
-                <input type="date" value={filterFechaDesde} onChange={e => setFilterFechaDesde(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 outline-none" />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hasta</label>
-                <input type="date" value={filterFechaHasta} onChange={e => setFilterFechaHasta(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 outline-none" />
-              </div>
-              <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)}
-                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 outline-none cursor-pointer">
-                <option value="">Todos los tipos</option>
-                <option value="Solo BD">Solo BD</option>
-                <option value="BD + Archivos">BD + Archivos</option>
-                <option value="Respaldo">Otros</option>
-              </select>
-              <div className="ml-auto flex items-center gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ordenar</label>
-                <button onClick={() => setSortBy('fecha')} className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${sortBy === 'fecha' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700'}`}>
-                  Fecha
-                  {sortBy === 'fecha' ? (sortDir === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
-                </button>
-                <button onClick={() => setSortBy('tamano')} className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1 ${sortBy === 'tamano' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-slate-200 text-slate-500 hover:text-slate-700'}`}>
-                  Tamaño
-                  {sortBy === 'tamano' ? (sortDir === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3" />}
-                </button>
-                <button onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-slate-700 transition-all">
-                  {sortDir === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Table content */}
-            <div className="flex-1 overflow-auto">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
-                  <RefreshCw className="w-7 h-7 animate-spin" />
-                  <p className="text-sm">Cargando respaldos...</p>
-                </div>
-              ) : error ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3 text-red-400">
-                  <AlertTriangle className="w-7 h-7" />
-                  <p className="text-sm font-medium">{error}</p>
-                </div>
-              ) : filteredBackups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-300">
-                  <Database className="w-10 h-10" />
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-slate-400">{backups.length === 0 ? 'Sin respaldos' : 'Sin resultados'}</p>
-                    <p className="text-xs text-slate-300 mt-1">{backups.length === 0 ? 'Crea tu primer respaldo usando los formularios' : 'Intenta cambiar los filtros activos'}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-slate-100">
-                        <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nombre</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tipo</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tamaño</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Creado</th>
-                        <th className="px-6 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {filteredBackups.map((backup, i) => {
-                        const tipo = getBackupType(backup.nombre);
-                        const status = getBackupStatus(backup);
-                        return (
-                          <tr key={backup.id} className="group hover:bg-slate-50/70 transition-colors" style={{ animationDelay: `${i * 40}ms` }}>
-                            <td className="px-6 py-3.5">
-                              <div className="flex items-center gap-2.5">
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${tipo.color}`}>
-                                  <Database className="w-3.5 h-3.5" />
-                                </div>
-                                <span className="text-sm font-semibold text-slate-800 truncate max-w-[160px]" title={backup.nombre}>{backup.nombre}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-3.5">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${tipo.color}`}>{tipo.label}</span>
-                            </td>
-                            <td className="px-6 py-3.5">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${status.color}`}>
-                                <CheckCircle2 className="w-3 h-3" />{status.label}
-                              </span>
-                            </td>
-                            <td className="px-6 py-3.5">
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
-                                <HardDrive className="w-3 h-3" />{formatSize(backup.tamanoBytes)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-3.5">
-                              <span className="text-sm text-slate-500">{new Date(backup.creadoEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                            </td>
-                            <td className="px-6 py-3.5 text-right">
-                              <button
-                                onClick={() => { setRestoreBackup(backup); setResultRestore(null); }}
-                                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-100 hover:border-amber-200 px-3 py-1.5 rounded-lg transition-all"
-                              >
-                                <RotateCcw className="w-3 h-3" />
-                                Restaurar BD
-                              </button>
-                            </td>
+              <div className="overflow-x-auto flex-1">
+                 {loading ? (
+                    <div className="h-64 flex flex-col items-center justify-center gap-3">
+                       <RefreshCw className="w-8 h-8 animate-spin text-amber-500" />
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Leyendo metadatos de Drive...</p>
+                    </div>
+                 ) : (
+                    <table className="w-full text-left">
+                       <thead>
+                          <tr className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
+                             {['Nombre y tipo', 'Información', 'Estado', 'Creado', 'Acciones'].map(h => (
+                                <th key={h} className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{h}</th>
+                             ))}
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Table footer */}
-            {!loading && !error && backups.length > 0 && (
-              <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-slate-400">
-                  {filteredBackups.length} de {backups.length} respaldo{backups.length !== 1 ? 's' : ''}
-                  {activeFilters > 0 && ' (filtrados)'}
-                </span>
-                <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <CloudUpload className="w-3 h-3" />Sincronizado con Drive
-                </span>
+                       </thead>
+                       <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                          <AnimatePresence mode="popLayout">
+                             {filteredBackups.map((backup, idx) => {
+                                const tipo = getBackupType(backup.nombre);
+                                return (
+                                   <motion.tr key={backup.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.02 }}
+                                      className="hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors group">
+                                      <td className="px-6 py-4">
+                                         <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-xl border ${tipo.border} ${tipo.bg} ${tipo.color}`}>
+                                               <Database className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{backup.nombre}</p>
+                                               <p className={`text-[9px] font-black uppercase tracking-widest ${tipo.color}`}>{tipo.label}</p>
+                                            </div>
+                                         </div>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+                                            <HardDrive className="w-3.5 h-3.5 text-slate-300" />
+                                            {formatSize(backup.tamanoBytes)}
+                                         </div>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                         <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
+                                            <CheckCircle2 className="w-3 h-3" /> Drive OK
+                                         </span>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                         <div className="flex flex-col">
+                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{new Date(backup.creadoEn).toLocaleDateString()}</span>
+                                            <span className="text-[10px] text-slate-400">{new Date(backup.creadoEn).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                                         </div>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                         <button onClick={() => setRestoreBackup(backup)} title="Restaurar base de datos"
+                                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-xl transition-all">
+                                            <RotateCcw className="w-4 h-4" />
+                                         </button>
+                                      </td>
+                                   </motion.tr>
+                                );
+                             })}
+                          </AnimatePresence>
+                       </tbody>
+                    </table>
+                 )}
               </div>
-            )}
-          </div>
+           </div>
         </div>
       </div>
 
-      {/* ── Restore confirmation modal ── */}
-      {restoreBackup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-amber-100 max-w-md w-full p-6">
-            <div className="flex items-start gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-900 mb-1">¿Restaurar base de datos?</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Esta acción restaurará la base de datos al estado del respaldo <strong className="text-slate-700">"{restoreBackup.nombre}"</strong>.
-                  Esto puede sobrescribir información reciente. ¿Deseas continuar?
+      {/* Restore Modal */}
+      <AnimatePresence>
+        {restoreBackup && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setRestoreBackup(null)} />
+             <ScaleIn className="relative bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 text-center">
+                <div className="size-20 bg-rose-50 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6 border-8 border-white dark:border-slate-800 shadow-xl">
+                   <ShieldAlert className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">¿Confirmar Restauración?</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 leading-relaxed">
+                   Estás por restaurar la base de datos al estado de <br/><span className="text-slate-900 dark:text-white font-black underline decoration-amber-400">"{restoreBackup.nombre}"</span>.
+                   <br/><strong>Los datos actuales se perderán permanentemente.</strong>
                 </p>
-              </div>
-            </div>
-            {resultRestore && (
-              <div className={`mb-4 flex items-start gap-2 p-3 rounded-xl text-xs font-medium ${resultRestore.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                {resultRestore.ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                {resultRestore.msg}
-              </div>
-            )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setRestoreBackup(null); setResultRestore(null); }}
-                disabled={loadingRestore}
-                className="flex-1 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleRestore}
-                disabled={loadingRestore || resultRestore?.ok === true}
-                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold shadow-sm shadow-amber-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loadingRestore
-                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" />Restaurando...</>
-                  : <><RotateCcw className="w-3.5 h-3.5" />Confirmar restauración</>
-                }
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
+                {resultRestore && (
+                   <div className={`mb-6 p-4 rounded-2xl text-xs font-bold uppercase tracking-widest ${resultRestore.ok ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'}`}>
+                      {resultRestore.msg}
+                   </div>
+                )}
+
+                <div className="flex gap-3">
+                   <button onClick={() => setRestoreBackup(null)} disabled={loadingRestore}
+                      className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 rounded-2xl text-xs font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-200">
+                      Cancelar
+                   </button>
+                   <button onClick={handleRestore} disabled={loadingRestore || resultRestore?.ok}
+                      className="flex-1 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-lg shadow-rose-600/30 transition-all flex items-center justify-center gap-2">
+                       {loadingRestore ? <RefreshCw className="w-4 h-4 animate-spin"/> : 'Confirmar'}
+                   </button>
+                </div>
+             </ScaleIn>
+           </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

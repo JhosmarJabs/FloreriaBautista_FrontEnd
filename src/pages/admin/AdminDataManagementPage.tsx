@@ -55,8 +55,8 @@ function ActionModal({
   const isExport = mode === 'export';
 
   const types = [
-    { key: 'products'  as const, label: 'Productos',   icon: <Package className="w-5 h-5" />,  color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-200' },
-    { key: 'inventory' as const, label: 'Inventario',  icon: <Boxes   className="w-5 h-5" />,  color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
+    { key: 'products'  as const, label: 'Productos',   icon: <Package className="w-5 h-5" />,  color: 'text-blue-600 dark:text-blue-400',   bg: 'bg-blue-50 dark:bg-blue-900/40',   border: 'border-blue-200 dark:border-blue-800' },
+    { key: 'inventory' as const, label: 'Inventario',  icon: <Boxes   className="w-5 h-5" />,  color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/40', border: 'border-violet-200 dark:border-violet-800' },
   ];
 
   const handleConfirm = () => {
@@ -78,20 +78,20 @@ function ActionModal({
 
       <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96 }}
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-7 z-10">
+        className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-7 z-10 border border-slate-200 dark:border-slate-700">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-black text-slate-900">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">
               {isExport ? 'Exportar Datos' : 'Importar Datos'}
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
               {isExport ? 'Selecciona qué datos descargar' : 'Selecciona qué datos cargar'}
             </p>
           </div>
           <button onClick={onClose}
-            className="size-8 flex items-center justify-center bg-slate-100 rounded-lg text-slate-400 hover:bg-slate-200 transition-all">
+            className="size-8 flex items-center justify-center bg-slate-100 dark:bg-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -103,7 +103,7 @@ function ActionModal({
               className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all font-bold text-sm ${
                 selectedType === t.key
                   ? `${t.bg} ${t.border} ${t.color}`
-                  : 'border-slate-100 text-slate-500 hover:border-slate-200 hover:bg-slate-50'
+                  : 'border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50'
               }`}>
               <span className={`${selectedType === t.key ? t.color : 'text-slate-400'}`}>{t.icon}</span>
               {t.label}
@@ -114,14 +114,14 @@ function ActionModal({
         {/* File picker (solo import) */}
         {!isExport && (
           <label className={`flex items-center gap-3 p-4 border-2 border-dashed rounded-2xl cursor-pointer transition-all mb-5 ${
-            file ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/20'
+            file ? 'border-emerald-300 dark:border-emerald-600 bg-emerald-50/30' : 'border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:bg-blue-50/20'
           }`}>
             <FolderOpen className={`w-5 h-5 shrink-0 ${file ? 'text-emerald-500' : 'text-slate-400'}`} />
             <div className="flex-1 min-w-0">
-              <p className={`text-sm font-bold truncate ${file ? 'text-emerald-700' : 'text-slate-500'}`}>
+              <p className={`text-sm font-bold truncate ${file ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                 {file ? file.name : 'Seleccionar archivo'}
               </p>
-              <p className="text-xs text-slate-400">CSV, JSON o Excel (.csv, .json, .xlsx)</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">CSV, JSON o Excel (.csv, .json, .xlsx)</p>
             </div>
             <input ref={fileRef} type="file" accept=".csv,.json,.xlsx,.xls" className="hidden"
               onChange={e => setFile(e.target.files?.[0] ?? null)} />
@@ -131,7 +131,7 @@ function ActionModal({
         {/* Confirm */}
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
+            className="flex-1 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
             Cancelar
           </button>
           <AnimatedButton onClick={handleConfirm}
@@ -230,11 +230,11 @@ export default function AdminDataManagementPage() {
       {/* Header */}
       <FadeIn className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">Gestión de Datos</h1>
-          <p className="text-sm text-slate-500 font-medium">Importación, exportación y sincronización masiva de información</p>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Gestión de Datos</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Importación, exportación y sincronización masiva de información</p>
         </div>
         <div className="flex items-center gap-3">
-          <AnimatedButton className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-100 rounded-2xl text-sm font-black text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+          <AnimatedButton className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
             <History className="w-4 h-4" />
             Historial
           </AnimatedButton>
@@ -256,15 +256,15 @@ export default function AdminDataManagementPage() {
             {/* Importar */}
             <GlassCard
               onClick={() => setModal('import')}
-              className="p-8 border-none group cursor-pointer hover:shadow-lg transition-shadow">
-              <div className="size-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
+              className="p-8 border-none group cursor-pointer hover:shadow-lg transition-shadow dark:bg-slate-800">
+              <div className="size-14 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
                 <UploadCloud className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2">Importar Datos</h3>
-              <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed">
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Importar Datos</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed">
                 Carga masiva de productos o inventario desde archivos CSV, JSON o Excel.
               </p>
-              <div className="flex items-center gap-2 text-blue-600 text-sm font-black group-hover:translate-x-1 transition-transform">
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm font-black group-hover:translate-x-1 transition-transform">
                 Comenzar importación <ChevronRight className="w-4 h-4" />
               </div>
             </GlassCard>
@@ -272,15 +272,15 @@ export default function AdminDataManagementPage() {
             {/* Exportar */}
             <GlassCard
               onClick={() => setModal('export')}
-              className="p-8 border-none group cursor-pointer hover:shadow-lg transition-shadow">
-              <div className="size-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
+              className="p-8 border-none group cursor-pointer hover:shadow-lg transition-shadow dark:bg-slate-800">
+              <div className="size-14 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
                 <DownloadCloud className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2">Exportar Datos</h3>
-              <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed">
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Exportar Datos</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium leading-relaxed">
                 Descarga productos o inventario completo en formato CSV para análisis externo.
               </p>
-              <div className="flex items-center gap-2 text-emerald-600 text-sm font-black group-hover:translate-x-1 transition-transform">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-sm font-black group-hover:translate-x-1 transition-transform">
                 Generar reporte <ChevronRight className="w-4 h-4" />
               </div>
             </GlassCard>
@@ -289,32 +289,32 @@ export default function AdminDataManagementPage() {
           {/* Sync Status */}
           {syncItems.length > 0 && (
             <FadeIn delay={0.3}>
-              <GlassCard className="border-none overflow-hidden">
-                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                  <h3 className="text-sm font-black text-slate-800 flex items-center gap-2 uppercase tracking-widest">
-                    <ArrowLeftRight className="w-4 h-4 text-blue-600" /> Sincronización Externa
+              <GlassCard className="border-none overflow-hidden dark:bg-slate-800">
+                <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/30 dark:bg-slate-900/30">
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2 uppercase tracking-widest">
+                    <ArrowLeftRight className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Sincronización Externa
                   </h3>
-                  <span className="text-[10px] font-black bg-emerald-100 text-emerald-700 px-3 py-1 rounded-xl uppercase tracking-widest shadow-sm">
+                  <span className="text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-xl uppercase tracking-widest shadow-sm border border-emerald-200 dark:border-emerald-800/50">
                     Sincronizado
                   </span>
                 </div>
                 <div className="p-6 space-y-4">
                   {syncItems.map((sync: any, idx: number) => (
                     <FadeIn key={idx} delay={0.1 * idx}>
-                      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:bg-white hover:shadow-md transition-all group">
+                      <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition-all group">
                         <div className="flex items-center gap-4">
-                          <div className="size-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 shadow-sm group-hover:scale-110 transition-transform">
+                          <div className="size-12 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 dark:text-slate-500 shadow-sm group-hover:scale-110 transition-transform">
                             {sync.icon}
                           </div>
                           <div>
-                            <p className="text-sm font-black text-slate-900">{sync.name}</p>
-                            <p className="text-xs text-slate-500 font-bold flex items-center gap-1.5 mt-0.5">
-                              <Clock className="w-3.5 h-3.5 text-slate-400" /> {sync.lastSync}
+                            <p className="text-sm font-black text-slate-900 dark:text-white">{sync.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold flex items-center gap-1.5 mt-0.5">
+                              <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" /> {sync.lastSync}
                             </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className={`text-[10px] font-black uppercase tracking-widest ${sync.pending ? 'text-amber-600' : 'text-emerald-600'}`}>
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${sync.pending ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                             {sync.status}
                           </span>
                           {sync.pending
@@ -332,12 +332,12 @@ export default function AdminDataManagementPage() {
 
         {/* Sidebar */}
         <StaggerContainer className="space-y-6">
-          <GlassCard className="bg-amber-50/50 border-amber-200 p-8">
+          <GlassCard className="bg-amber-50/50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50 p-8">
             <div className="flex items-center gap-2 mb-4">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
-              <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest">Zona de Riesgo</h3>
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <h3 className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest">Zona de Riesgo</h3>
             </div>
-            <p className="text-xs text-amber-800 leading-relaxed mb-8 font-bold">
+            <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed mb-8 font-bold">
               Las operaciones de importación masiva pueden sobrescribir datos existentes.
               Asegúrese de realizar un respaldo antes de proceder.
             </p>
@@ -346,20 +346,20 @@ export default function AdminDataManagementPage() {
             </AnimatedButton>
           </GlassCard>
 
-          <GlassCard className="p-8 border-none">
-            <h3 className="text-xs font-black text-slate-800 mb-6 uppercase tracking-widest">Formatos Soportados</h3>
+          <GlassCard className="p-8 border-none dark:bg-slate-800">
+            <h3 className="text-xs font-black text-slate-800 dark:text-white mb-6 uppercase tracking-widest">Formatos Soportados</h3>
             <div className="space-y-3">
               {[
-                { fmt: 'CSV',  label: 'Valores Coma',    bg: 'bg-emerald-50 text-emerald-600' },
-                { fmt: 'JSON', label: 'JavaScript Obj',  bg: 'bg-blue-50 text-blue-600' },
-                { fmt: 'XLSX', label: 'MS Excel',        bg: 'bg-amber-50 text-amber-600' },
+                { fmt: 'CSV',  label: 'Valores Coma',    bg: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' },
+                { fmt: 'JSON', label: 'JavaScript Obj',  bg: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+                { fmt: 'XLSX', label: 'MS Excel',        bg: 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' },
               ].map(f => (
-                <div key={f.fmt} className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 bg-slate-50/50">
+                <div key={f.fmt} className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                   <div className="flex items-center gap-3">
                     <div className={`size-8 rounded-xl ${f.bg} flex items-center justify-center text-[10px] font-black shadow-sm`}>{f.fmt}</div>
-                    <span className="text-xs font-bold text-slate-600">{f.label}</span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{f.label}</span>
                   </div>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                 </div>
               ))}
             </div>

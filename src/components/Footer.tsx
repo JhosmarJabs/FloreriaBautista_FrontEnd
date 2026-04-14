@@ -37,6 +37,7 @@ export default function Footer() {
               <li><Link className="text-gray-300 hover:text-white transition-colors" to="/catalogo">Catálogo</Link></li>
               <li><Link className="text-gray-300 hover:text-white transition-colors" to="/testimonios">Testimonios</Link></li>
               <li><Link className="text-gray-300 hover:text-white transition-colors" to="/nosotros">Acerca de</Link></li>
+              <li><Link className="text-gray-300 hover:text-white transition-colors" to="/contacto">Contacto</Link></li>
             </ul>
           </div>
           {/* Column 3: Contacto */}
