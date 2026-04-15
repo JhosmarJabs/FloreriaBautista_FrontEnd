@@ -128,18 +128,23 @@ export default function AdminFlowersPage() {
         </div>
       </div>
 
-      {/* ── Stats chips ── */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* KPI Stats Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { label: 'Total insumos', value: loading ? '—' : String(total), color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-900/20', border: 'border-pink-100 dark:border-pink-800/50' },
-          { label: 'Flores primarias', value: loading ? '—' : String(flowers.filter(f => f.esFlorPrimaria).length), color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-100 dark:border-amber-800/50' },
-          { label: 'Bajo mínimo', value: loading ? '—' : String(flowers.filter(f => f.bajoMinimo).length), color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-100 dark:border-red-800/50' },
-        ].map(({ label, value, color, bg, border }) => (
-          <div key={label} className={`rounded-xl border ${border} ${bg} px-4 py-3 flex items-center gap-3`}>
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">{label}</p>
-              <p className={`text-lg font-black ${color}`}>{value}</p>
+          { label: 'Total insumos', value: loading ? '—' : String(total), icon: <Package2 />, color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-900/10', border: 'border-pink-100 dark:border-pink-700/50', trend: 'registrados' },
+          { label: 'Flores primarias', value: loading ? '—' : String(flowers.filter(f => f.esFlorPrimaria).length), icon: <Star />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-700/50', trend: 'para arreglos' },
+          { label: 'Bajo mínimo', value: loading ? '—' : String(flowers.filter(f => f.bajoMinimo).length), icon: <AlertTriangle />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-100 dark:border-red-700/50', trend: 'sin stock' },
+        ].map((s, i) => (
+          <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
+              <div className="mt-1 text-2xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
+              <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
             </div>
+            {React.cloneElement(s.icon as React.ReactElement, {
+               className: `absolute -bottom-4 -right-4 w-24 h-24 ${s.color} opacity-10`,
+               strokeWidth: 3
+            })}
           </div>
         ))}
       </div>

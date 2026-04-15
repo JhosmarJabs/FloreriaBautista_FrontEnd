@@ -26,7 +26,6 @@ export interface ProductBody {
   estado: string;
   visibilidad: string;
   imagenUrl: string;
-  imagenes: string[];
   categorias: string[];
   colecciones: string[];
   receta?: RecipeItem[];

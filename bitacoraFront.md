@@ -1,5 +1,30 @@
 # Bitácora de Desarrollo - Frontend
 
+## [15 de Abril de 2026] - Estandarización de Interfaz de Empleado e Infraestructura Dinámica
+
+### Cambios Realizados
+
+#### 🎨 Estandarización Premium de la Experiencia del Empleado
+Se aplicó el patrón de diseño "Premium Business Intelligence" a todas las vistas operativas para asegurar consistencia con el panel administrativo:
+- **Módulos Actualizados**: Dashboard (`EmployeeDashboardPage.tsx`), Pedidos (`OrdersPage.tsx`), Inventario (`QuickInventoryPage.tsx`), Venta Rápida (`QuickSalePage.tsx`) y Entregas (`DailyDeliveriesPage.tsx`).
+- **Patrón de KPIs**: Implementación de tarjetas de indicadores clave con gradientes sutiles, iconos descriptivos y estados dinámicos (Stock Bajo, Pendientes, Recaudación).
+- **Consistencia Visual**: Refactorización de `EmployeeLayout.tsx` y `AdminLayout.tsx` para compartir la misma estética de sidebar, logo y controles de configuración.
+
+#### 📦 Inventario de Empleado Dinámico (API Real)
+- **`QuickInventoryPage.tsx`**: Migración completa de datos estáticos a consumo de API real mediante `AdminService.getAdminInventory`.
+- **Persistencia de Stock**: Habilitada la actualización de existencias directamente desde la vista de empleado hacia el servidor mediante `updateInventoryItem`.
+- **Filtros Dinámicos**: Implementación de filtrado por sucursal y búsqueda de insumos sincronizada con el backend.
+
+#### 🚀 Infraestructura y Configuración
+- **Proxy Dinámico**: Configuración de `vite.config.ts` para detectar automáticamente el entorno (Docker vs Local) mediante la variable `VITE_API_URL`.
+- **Optimización de Docker**: Creación de archivos `.dockerignore` tanto en frontend como en backend para reducir el tamaño de las imágenes y acelerar el despliegue.
+- **Redirección de Seguridad**: Ajuste en `LoginPage.tsx` y `AnimatedRoutes.tsx` para asegurar que el personal de staff sea redirigido correctamente a `/dashboard` tras autenticarse.
+
+#### 📦 Control de Versiones
+- **Commit**: `v 1.3.0 feat(employee): Estandarización Premium de Interfaces para Empleados e Integración Dinámica de Inventario`
+
+---
+
 ## [14 de Abril de 2026] - Ajustes en Estructura de Productos y Estandarización Final
 
 ### Cambios Realizados

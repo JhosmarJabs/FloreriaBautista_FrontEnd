@@ -122,7 +122,7 @@ export const AdminService = {
     const res = await fetch(`${API_BASE}/backups/full`, {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ descripcion }),
+      body: JSON.stringify({ descripcion, formato: 'BACKUP' }),
     });
     if (!res.ok) throw new Error('Error al crear respaldo completo');
     return res.json();
@@ -175,6 +175,19 @@ export const AdminService = {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('Error al guardar configuración de automatización');
+    return res.json();
+  },
+
+  triggerAutomaticBackup: async (): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch(`${API_BASE}/backups/full`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ 
+        descripcion: "ejecucion automatica",
+        formato: "BACKUP"
+      }),
+    });
+    if (!res.ok) throw new Error('Error al ejecutar respaldo automático manual');
     return res.json();
   },
 

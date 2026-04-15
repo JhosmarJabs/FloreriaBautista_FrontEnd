@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldAlert, User, Clock, Search, RefreshCw, Activity, 
   Lock, ChevronLeft, ChevronRight, Filter, Eye, X, ArrowRight,
-  Database, AlertCircle, Terminal, HardDrive
+  Database, AlertCircle, Terminal, HardDrive, Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
@@ -236,16 +236,23 @@ export default function AdminAuditPage() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s, idx) => (
+        {[
+          { label: 'Eventos registrados', value: total, icon: <Activity />, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-500/10', border: 'border-slate-100 dark:border-slate-500/20', trend: 'Total logs' },
+          { label: 'Acciones críticas', value: logs.filter(l => l.accion === 'ELIMINAR').length, icon: <ShieldAlert />, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20', trend: 'Eliminaciones' },
+          { label: 'Operaciones BD', value: total, icon: <Database />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Transacciones' },
+          { label: 'Session OK', value: 'ACTIVO', icon: <Lock />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: 'Seguridad' },
+        ].map((s, idx) => (
           <motion.div key={idx} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-4 flex gap-4 hover:shadow-lg transition-all">
-            <div className={`size-10 rounded-2xl ${s.bg} dark:bg-opacity-10 ${s.color} shrink-0 flex items-center justify-center border ${s.border} dark:border-current dark:border-opacity-20`}>
-              {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
-            </div>
-            <div>
+            className={`relative overflow-hidden bg-white dark:bg-slate-800 border ${s.border} rounded-3xl p-4 h-24 group transition-all hover:shadow-lg`}>
+            <div className="relative z-10 flex flex-col justify-between h-full">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] leading-none mb-1.5">{s.label}</p>
               <h3 className="text-xl font-black text-slate-800 dark:text-white leading-none">{loading ? '—' : s.value}</h3>
+              <p className={`text-[8px] font-black uppercase tracking-tighter ${s.color} opacity-70`}>{s.trend}</p>
             </div>
+            {React.cloneElement(s.icon as React.ReactElement, { 
+              className: `absolute -bottom-4 -right-4 w-20 h-20 ${s.color} opacity-10 group-hover:scale-110 transition-transform duration-500`,
+              strokeWidth: 3
+            })}
           </motion.div>
         ))}
       </div>

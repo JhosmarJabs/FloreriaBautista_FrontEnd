@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   ChevronRight,
   TrendingUp,
+  ShoppingBag,
 } from 'lucide-react';
 
 interface CatalogItem {

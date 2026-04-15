@@ -131,17 +131,21 @@ export default function AdminSystemMonitoringPage() {
             {/* Health Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Tiempo de Actividad', value: systemInfo?.data.tiempoActividad || '...', icon: <Clock />, color: 'text-blue-600' },
-                { label: 'Carga de Trabjo', value: systemInfo?.data.tiempoRespuesta || '...', icon: <Zap />, color: 'text-amber-500' },
-                { label: 'Threads Activos', value: systemInfo?.data.conexionesActivas || '0', icon: <Cpu />, color: 'text-purple-500' },
-                { label: 'Origen Datos', value: systemInfo?.data.baseDatos || 'BD', icon: <Database />, color: 'text-emerald-500' },
+                { label: 'Tiempo de Actividad', value: systemInfo?.data.tiempoActividad || '...', icon: <Clock />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Sistema Online' },
+                { label: 'Carga de Trabajo', value: systemInfo?.data.tiempoRespuesta || '...', icon: <Zap />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20', trend: 'Latencia' },
+                { label: 'Threads Activos', value: systemInfo?.data.conexionesActivas || '0', icon: <Cpu />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20', trend: 'En ejecución' },
+                { label: 'Origen Datos', value: systemInfo?.data.baseDatos || 'BD', icon: <Database />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: 'SQL Server/PG' },
               ].map((s, idx) => (
-                <div key={idx} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[24px] p-5 shadow-sm hover:shadow-md transition-all">
-                   <div className={`size-10 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 ${s.color} flex items-center justify-center mb-4`}>
-                      {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
+                <div key={idx} className={`relative overflow-hidden group bg-white dark:bg-slate-800 border ${s.border} rounded-[24px] p-5 transition-all hover:shadow-md h-28`}>
+                   <div className="relative z-10 flex flex-col justify-between h-full">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{s.label}</p>
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">{s.value}</h3>
+                      <p className={`text-[8px] font-black uppercase tracking-tighter ${s.color} opacity-70`}>{s.trend}</p>
                    </div>
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
-                   <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">{s.value}</h3>
+                   {React.cloneElement(s.icon as React.ReactElement, { 
+                      className: `absolute -bottom-4 -right-4 w-20 h-20 ${s.color} opacity-10 group-hover:scale-110 transition-transform duration-500`,
+                      strokeWidth: 3
+                   })}
                 </div>
               ))}
             </div>
@@ -216,17 +220,21 @@ export default function AdminSystemMonitoringPage() {
             {/* Monitor Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Peso Total BD', value: monitor?.estadisticas.tamanoTotalBd || '...', icon: <HardDrive />, color: 'text-blue-500' },
-                { label: 'Cache Hit Ratio', value: `${monitor?.estadisticas.porcentajeCacheHit.toFixed(2)}%`, icon: <Zap />, color: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'text-emerald-500' : 'text-amber-500' },
-                { label: 'Transacciones', value: monitor?.estadisticas.totalTransacciones.toLocaleString() || '0', icon: <Activity />, color: 'text-indigo-500' },
-                { label: 'Último Vacuum', value: monitor?.estadisticas.fechaUltimoVacuum ? new Date(monitor.estadisticas.fechaUltimoVacuum).toLocaleDateString() : '...', icon: <RefreshCw />, color: 'text-blue-400' },
+                { label: 'Peso Total BD', value: monitor?.estadisticas.tamanoTotalBd || '...', icon: <HardDrive />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Storage' },
+                { label: 'Cache Hit Ratio', value: `${monitor?.estadisticas.porcentajeCacheHit.toFixed(2)}%`, icon: <Zap />, color: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400', bg: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-amber-50 dark:bg-amber-500/10', border: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'border-emerald-100 dark:border-emerald-500/20' : 'border-amber-100 dark:border-amber-500/20', trend: 'Performance' },
+                { label: 'Transacciones', value: monitor?.estadisticas.totalTransacciones.toLocaleString() || '0', icon: <Activity />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-100 dark:border-indigo-500/20', trend: 'Actividad' },
+                { label: 'Último Vacuum', value: monitor?.estadisticas.fechaUltimoVacuum ? new Date(monitor.estadisticas.fechaUltimoVacuum).toLocaleDateString() : '...', icon: <RefreshCw />, color: 'text-blue-600 dark:text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Mantenimiento' },
               ].map((s, idx) => (
-                <div key={idx} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[24px] p-5 shadow-sm">
-                   <div className={`size-10 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 ${s.color} flex items-center justify-center mb-4`}>
-                      {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
+                <div key={idx} className={`relative overflow-hidden group bg-white dark:bg-slate-800 border ${s.border} rounded-[24px] p-5 shadow-sm transition-all hover:shadow-md h-28`}>
+                   <div className="relative z-10 flex flex-col justify-between h-full">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{s.label}</p>
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white truncate tracking-tight">{s.value}</h3>
+                      <p className={`text-[8px] font-black uppercase tracking-tighter ${s.color} opacity-70`}>{s.trend}</p>
                    </div>
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
-                   <h3 className="text-lg font-black text-slate-900 dark:text-white truncate">{s.value}</h3>
+                   {React.cloneElement(s.icon as React.ReactElement, { 
+                      className: `absolute -bottom-4 -right-4 w-20 h-20 ${s.color} opacity-10 group-hover:scale-110 transition-transform duration-500`,
+                      strokeWidth: 3
+                   })}
                 </div>
               ))}
             </div>

@@ -11,8 +11,8 @@ import { AdminService } from '../../services/adminService';
 import { ImportProductsResult, InventoryItem } from '../../types';
 import { FadeIn, ScaleIn, AnimatedButton } from '../../components/Animations';
 import ImportModal from '../../components/ImportModal';
-import ExportModal from '../../components/ExportModal';
 import { useToast } from '../../hooks/useToast';
+import { filterCSV } from '../../utils/exportUtils';
 
 export default function AdminInventoryPage() {
   const navigate = useNavigate();
@@ -60,14 +60,11 @@ export default function AdminInventoryPage() {
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleImportConfirm = async (_data: any[], file: File) => {
     try {
-      const result = await AdminService.importAdminProducts(file);
-      setImportResult(result.data);
+      await AdminService.importAdminInventory(file);
       await loadInventory();
-      showToast(`${result.message}`, 'success');
+      showToast('Inventario importado con éxito', 'success');
     } catch (err: any) {
-      showToast(`Error al importar: ${err.message ?? 'desconocido'}`, 'error');
-    } finally {
-      setIsImportModalOpen(false);
+      throw err; // El ImportModal lo capturará y mostrará
     }
   };
 
@@ -111,7 +108,27 @@ export default function AdminInventoryPage() {
           <div className="flex flex-wrap items-center gap-2">
             {[
               { label: 'Importar',    icon: UploadCloud,   action: () => setIsImportModalOpen(true) },
-              { label: 'Exportar',    icon: DownloadCloud, action: () => setIsExportModalOpen(true) },
+              { label: 'Exportar',    icon: DownloadCloud, action: async () => {
+                setLoading(true);
+                try {
+                  const blob = await AdminService.exportAdminInventory();
+                  const text = await blob.text();
+                  const filteredText = filterCSV(text);
+                  const filteredBlob = new Blob([filteredText], { type: 'text/csv;charset=utf-8;' });
+                  
+                  const url = URL.createObjectURL(filteredBlob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'inventario_total.csv';
+                  link.click();
+                  URL.revokeObjectURL(url);
+                  showToast('Inventario total exportado (ID filtrado)', 'success');
+                } catch (err: any) {
+                  showToast(`Error al exportar: ${err.message}`, 'error');
+                } finally {
+                  setLoading(false);
+                }
+              }},
               { label: 'Movimientos', icon: History,       action: () => setIsMovementsModalOpen(true) },
             ].map(btn => (
               <AnimatedButton key={btn.label} onClick={btn.action}
@@ -129,25 +146,25 @@ export default function AdminInventoryPage() {
         </div>
       </FadeIn>
 
-      {/* ── KPI CARDS ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* ── KPI Stats ── */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total registros', value: loading ? '—' : String(invTotal),                                         icon: TrendingUp,     color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20',    sub: 'en inventario' },
-          { label: 'Bajo mínimo',     value: loading ? '—' : String(inventory.filter(i => i.bajoMinimo).length),       icon: AlertTriangle,  color: 'text-rose-600 dark:text-rose-400',    bg: 'bg-rose-50 dark:bg-rose-500/10',    border: 'border-rose-100 dark:border-rose-500/20',    sub: 'requieren reposición' },
-          { label: 'Suma al costo',   value: loading ? '—' : String(inventory.filter(i => i.sumaAlCosto).length),      icon: ArrowUpRight,   color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', sub: 'afectan costo base' },
-          { label: 'Sucursales',      value: loading ? '—' : String(new Set(inventory.map(i => i.sucursal)).size),     icon: ArrowDownRight, color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10',   border: 'border-amber-100 dark:border-amber-500/20',   sub: 'con insumos activos' },
+          { label: 'Total registros', value: loading ? '—' : String(invTotal), icon: <TrendingUp />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'en inventario' },
+          { label: 'Bajo mínimo', value: loading ? '—' : String(inventory.filter(i => i.bajoMinimo).length), icon: <AlertTriangle />, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20', trend: 'requieren reposición' },
+          { label: 'Suma al costo', value: loading ? '—' : String(inventory.filter(i => i.sumaAlCosto).length), icon: <ArrowUpRight />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: 'afectan costo base' },
+          { label: 'Sucursales', value: loading ? '—' : String(new Set(inventory.map(i => i.sucursal)).size), icon: <Boxes />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20', trend: 'con insumos activos' },
         ].map((s, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className={`bg-white dark:bg-slate-800 border ${s.border} rounded-xl p-3.5 flex items-center gap-3 hover:shadow-md transition-shadow`}>
-            <div className={`size-8 rounded-lg shrink-0 ${s.bg} ${s.color} flex items-center justify-center`}>
-              <s.icon className="w-4 h-4" />
+          <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
+              <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
+              <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">{s.label}</p>
-              <p className={`text-xl font-black leading-tight text-slate-900 dark:text-white`}>{s.value}</p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">{s.sub}</p>
-            </div>
-          </motion.div>
+            {React.cloneElement(s.icon as React.ReactElement, {
+               className: `absolute -bottom-4 -right-4 w-24 h-24 ${s.color} opacity-10`,
+               strokeWidth: 3
+            })}
+          </div>
         ))}
       </div>
 
@@ -376,7 +393,6 @@ export default function AdminInventoryPage() {
 
       {/* ── MODALS ── */}
       <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onConfirm={handleImportConfirm} title="Importar Insumos" />
-      <ExportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} data={inventory} title="Reporte de Inventario" filename="inventario_admin" />
 
 
       {/* MOVIMIENTOS */}

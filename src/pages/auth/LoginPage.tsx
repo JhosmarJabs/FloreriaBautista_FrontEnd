@@ -1,13 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  ArrowLeft,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  AlertCircle,
-} from "lucide-react";
+import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -37,15 +30,28 @@ export default function LoginPage() {
       const json = await res.json();
       const payload = json.data ?? json;
 
-      localStorage.setItem("accessToken", payload.accessToken ?? payload.token ?? "");
-      if (payload.refreshToken) localStorage.setItem("refreshToken", payload.refreshToken);
-      localStorage.setItem("usuario", JSON.stringify(payload.usuario ?? payload.user ?? payload));
+      localStorage.setItem(
+        "accessToken",
+        payload.accessToken ?? payload.token ?? "",
+      );
+      if (payload.refreshToken)
+        localStorage.setItem("refreshToken", payload.refreshToken);
+      localStorage.setItem(
+        "usuario",
+        JSON.stringify(payload.usuario ?? payload.user ?? payload),
+      );
 
-      const roles: string[] = (payload.usuario?.roles ?? payload.user?.roles ?? payload.roles ?? [])
-        .map((r: string) => r.toLowerCase());
+      const roles: string[] = (
+        payload.usuario?.roles ??
+        payload.user?.roles ??
+        payload.roles ??
+        []
+      ).map((r: string) => r.toLowerCase());
 
       if (roles.includes("administrador") || roles.includes("admin")) {
         navigate("/admin/dashboard");
+      } else if (roles.includes("empleado") || roles.includes("staff")) {
+        navigate("/dashboard");
       } else {
         navigate("/");
       }
@@ -84,7 +90,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           <div className="mb-8">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="inline-flex items-center gap-2 text-brand-coral hover:text-brand-coral/80 font-semibold transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -184,7 +190,9 @@ export default function LoginPage() {
             >
               {loading ? (
                 <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : "Iniciar sesión"}
+              ) : (
+                "Iniciar sesión"
+              )}
             </button>
           </form>
 

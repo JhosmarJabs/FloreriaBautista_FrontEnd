@@ -3,7 +3,7 @@ import {
   Users, UserPlus, Search, Shield, ShoppingBag, 
   Mail, Phone, Calendar, CheckCircle2, XCircle, 
   RefreshCw, LayoutGrid, List, ChevronLeft, ChevronRight,
-  User as UserIcon, MoreVertical, Edit
+  User as UserIcon, MoreVertical, Edit, TrendingUp, TrendingDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FadeIn, StaggerContainer, AnimatedButton } from '../../components/Animations';
@@ -66,10 +66,10 @@ export default function AdminUsersPage() {
   }, [loadUsers]);
 
   const stats = [
-    { label: 'Total Usuarios', value: total, icon: <Users className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
-    { label: 'Administradores', value: users.filter(u => (u.roles ?? []).includes('ADMIN')).length, icon: <Shield className="w-5 h-5" />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20' },
-    { label: 'Activos', value: users.filter(u => u.estado === 'ACTIVO').length, icon: <CheckCircle2 className="w-5 h-5" />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
-    { label: 'Inactivos', value: users.filter(u => u.estado !== 'ACTIVO').length, icon: <XCircle className="w-5 h-5" />, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-700/50', border: 'border-slate-100 dark:border-slate-700' },
+    { label: 'Total Usuarios', value: total, icon: <Users />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
+    { label: 'Administradores', value: users.filter(u => (u.roles ?? []).includes('ADMIN')).length, icon: <Shield />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20' },
+    { label: 'Activos', value: users.filter(u => u.estado === 'ACTIVO').length, icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
+    { label: 'Inactivos', value: users.filter(u => u.estado !== 'ACTIVO').length, icon: <XCircle />, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20' },
   ];
 
   const renderRow = (user: User) => {
@@ -154,18 +154,24 @@ export default function AdminUsersPage() {
         </div>
       </FadeIn>
 
-      {/* Stats */}
+      {/* Stats KPI Section */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
-          <motion.div key={idx} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-            className={`bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex gap-4 hover:shadow-md transition-shadow`}>
-            <div className={`size-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shrink-0 border ${stat.border}`}>
-              {stat.icon}
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.05 }}
+            className={`relative overflow-hidden rounded-2xl border ${stat.border} ${stat.bg} p-5`}
+          >
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{stat.label}</p>
+              <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{stat.value}</div>
             </div>
-            <div>
-              <p className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest leading-none mb-1">{stat.label}</p>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white leading-none">{stat.value}</h3>
-            </div>
+            {React.cloneElement(stat.icon as React.ReactElement, {
+               className: `absolute -bottom-4 -right-4 w-24 h-24 ${stat.color} opacity-10`,
+               strokeWidth: 3
+            })}
           </motion.div>
         ))}
       </div>

@@ -31,6 +31,8 @@ import PhysicalOrderPage from '../pages/employee/PhysicalOrderPage';
 import DailyDeliveriesPage from '../pages/employee/DailyDeliveriesPage';
 import QuickInventoryPage from '../pages/employee/QuickInventoryPage';
 import QuickSalePage from '../pages/employee/QuickSalePage';
+import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
+import EmployeeSettingsPage from '../pages/employee/EmployeeSettingsPage';
 
 // ── Client ────────────────────────────────────────
 import HomePage from '../pages/client/HomePage';
@@ -75,8 +77,8 @@ export default function AnimatedRoutes() {
         <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
         <Route path="/registro" element={<PageTransition><RegisterPage /></PageTransition>} />
 
-        {/* ── Admin ───────────────────────────────── */}
-        <Route path="/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
+        {/* ── Admin / Dashboards ─────────────────────── */}
+        <Route path="/dashboard" element={<PageTransition><EmployeeDashboardPage /></PageTransition>} />
         <Route path="/admin/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
         <Route path="/admin/reportes" element={<PageTransition><ReportsPage /></PageTransition>} />
         <Route path="/admin/respaldos" element={<PageTransition><BackupsPage /></PageTransition>} />
@@ -103,6 +105,7 @@ export default function AnimatedRoutes() {
         <Route path="/empleado/entregas" element={<PageTransition><DailyDeliveriesPage /></PageTransition>} />
         <Route path="/empleado/inventario" element={<PageTransition><QuickInventoryPage /></PageTransition>} />
         <Route path="/empleado/venta-rapida" element={<PageTransition><QuickSalePage /></PageTransition>} />
+        <Route path="/empleado/configuracion" element={<PageTransition><EmployeeSettingsPage /></PageTransition>} />
 
       </Routes>
     </AnimatePresence>

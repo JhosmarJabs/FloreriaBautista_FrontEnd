@@ -11,6 +11,7 @@ import { AnimatedButton } from '../../components/Animations';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
 import { useToast } from '../../hooks/useToast';
+import { FadeIn } from '../../components/Animations';
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -32,7 +33,6 @@ const emptyForm = (): ProductBody => ({
   estado: 'ACTIVO',
   visibilidad: 'PUBLICO',
   imagenUrl: '',
-  imagenes: [],
   categorias: [],
   colecciones: [],
   receta: [],
@@ -164,7 +164,6 @@ export default function ProductManagementPage() {
           estado: p.estado,
           visibilidad: p.visibilidad ?? 'PUBLICO',
           imagenUrl: p.imagenUrl ?? '',
-          imagenes: [],
           categorias: p.categorias ?? [],
           colecciones: p.colecciones ?? [],
           receta: p.receta ?? [],
@@ -302,39 +301,44 @@ export default function ProductManagementPage() {
     <div className="flex flex-col h-full overflow-hidden">
 
       {/* ── Header fijo ── */}
-      <div className="flex-none flex items-center justify-between py-3 px-1 border-b border-slate-100 dark:border-slate-700 mb-4">
-        <div>
-          <nav className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">
-            <span className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors" onClick={() => navigate('/admin/catalogo')}>Catálogo</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-700 dark:text-slate-300">{isEdit ? 'Editar Producto' : 'Nuevo Producto'}</span>
-          </nav>
-          <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
-            {isEdit ? 'Editar Producto' : 'Nuevo Producto'}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <AnimatedButton onClick={() => navigate('/admin/catalogo')} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
-            Cancelar
-          </AnimatedButton>
-          <AnimatedButton onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-black hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-60">
-            {saving
-              ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" />{isUploadingImage ? 'Subiendo imagen...' : 'Guardando...'}</>
-              : <><Save className="w-3.5 h-3.5" />{isEdit ? 'Guardar Cambios' : 'Crear Producto'}</>
-            }
-          </AnimatedButton>
-          {isEdit && (
-            <AnimatedButton
-              onClick={handleDelete}
-              disabled={saving}
-              className="p-2 bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900 transition-all disabled:opacity-50"
-              title="Desactivar producto"
-            >
-              <Trash2 className="w-5 h-5" />
+      <FadeIn>
+        <div className="flex-none flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 px-1 border-b border-slate-100 dark:border-slate-700 mb-6">
+          <div>
+            <nav className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest cursor-pointer hover:underline" onClick={() => navigate('/admin/catalogo')}>Catálogo</span>
+              <ChevronRight className="w-3 h-3 text-slate-400" />
+              <div className="flex items-center gap-1.5">
+                <span className="flex size-1.5 rounded-full bg-slate-400" />
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{isEdit ? 'Edición de Producto' : 'Creación Directa'}</span>
+              </div>
+            </nav>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              {isEdit ? 'Editar Producto' : 'Nuevo Producto'}
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <AnimatedButton onClick={() => navigate('/admin/catalogo')} className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+              Cancelar
             </AnimatedButton>
-          )}
+            <AnimatedButton onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-60">
+              {saving
+                ? <><RefreshCw className="w-4 h-4 animate-spin" />{isUploadingImage ? 'Subiendo...' : 'Guardando...'}</>
+                : <><Save className="w-4 h-4" />{isEdit ? 'Guardar Cambios' : 'Crear Producto'}</>
+              }
+            </AnimatedButton>
+            {isEdit && (
+              <AnimatedButton
+                onClick={handleDelete}
+                disabled={saving}
+                className="p-2.5 bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-800/50 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-900 transition-all disabled:opacity-50"
+                title="Desactivar producto"
+              >
+                <Trash2 className="w-5 h-5" />
+              </AnimatedButton>
+            )}
+          </div>
         </div>
-      </div>
+      </FadeIn>
 
       {/* ── Contenido scrollable ── */}
       <div className="flex-1 overflow-y-auto pr-1">

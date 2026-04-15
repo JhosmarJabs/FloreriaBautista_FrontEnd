@@ -31,6 +31,7 @@ export default function BackupsPage() {
   const [mantenimientoActivo, setMantenimientoActivo] = useState(true);
   const [schedulerInfo, setSchedulerInfo] = useState<{ proximoBackup: string; proximoMantenimiento: string } | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [loadingTrigger, setLoadingTrigger] = useState(false);
   const [resultConfig, setResultConfig] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const [filterFechaDesde, setFilterFechaDesde] = useState('');
@@ -196,22 +197,24 @@ export default function BackupsPage() {
       </FadeIn>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Respaldos totales', value: loading ? '—' : backups.length, icon: <HardDrive />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' },
-          { label: 'Última copia', value: backups.length ? new Date(backups[0].creadoEn).toLocaleDateString() : 'N/A', icon: <Clock />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
-          { label: 'Próxima tarea', value: schedulerInfo ? schedulerInfo.proximoBackup.split(' ')[0] : 'N/A', icon: <Zap />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
-          { label: 'Espacio usado', value: formatSize(backups.reduce((a, b) => a + b.tamanoBytes, 0)), icon: <Database />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20' },
+          { label: 'Respaldos totales', value: loading ? '—' : backups.length, icon: <HardDrive />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20', trend: 'Drive Cloud' },
+          { label: 'Última copia', value: backups.length ? new Date(backups[0].creadoEn).toLocaleDateString() : 'N/A', icon: <Clock />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Sincronizado' },
+          { label: 'Próxima tarea', value: schedulerInfo ? schedulerInfo.proximoBackup.split(' ')[0] : 'N/A', icon: <Zap />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: 'Automatizado' },
+          { label: 'Espacio usado', value: formatSize(backups.reduce((a, b) => a + b.tamanoBytes, 0)), icon: <Database />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20', trend: 'Total Drive' },
         ].map((s, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-            className={`bg-white dark:bg-slate-800 border ${s.border} rounded-2xl p-4 flex gap-4`}>
-            <div className={`size-10 rounded-xl ${s.bg} border ${s.border} ${s.color} flex items-center justify-center shrink-0`}>
-              {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
-            </div>
-            <div>
+            className={`relative overflow-hidden bg-white dark:bg-slate-800 border ${s.border} rounded-2xl p-4 h-24 group transition-all hover:shadow-md`}>
+            <div className="relative z-10 flex flex-col justify-between h-full">
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{s.label}</p>
               <h3 className="text-lg font-black text-slate-900 dark:text-white leading-none">{s.value}</h3>
+              <p className={`text-[8px] font-black uppercase tracking-tighter ${s.color} opacity-70`}>{s.trend}</p>
             </div>
+            {React.cloneElement(s.icon as React.ReactElement, { 
+              className: `absolute -bottom-4 -right-4 w-20 h-20 ${s.color} opacity-10 group-hover:scale-110 transition-transform duration-500`,
+              strokeWidth: 3
+            })}
           </motion.div>
         ))}
       </div>
@@ -249,10 +252,27 @@ export default function BackupsPage() {
 
           {/* Scheduler Config */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden shadow-sm">
-             <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
-                <div className="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center"><Calendar className="w-4 h-4"/></div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Automatización</h3>
-             </div>
+              <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                    <div className="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center"><Calendar className="w-4 h-4"/></div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Automatización</h3>
+                 </div>
+                 <button 
+                    onClick={async () => {
+                       setLoadingTrigger(true);
+                       try {
+                          await AdminService.triggerAutomaticBackup();
+                          loadBackups();
+                       } catch (err: any) { console.error(err); }
+                       finally { setLoadingTrigger(false); }
+                    }}
+                    disabled={loadingTrigger}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all active:scale-95 disabled:opacity-50"
+                 >
+                    {loadingTrigger ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                    {loadingTrigger ? 'Ejecutando...' : 'Ejecutar ahora'}
+                 </button>
+              </div>
              <form onSubmit={handleSaveConfig} className="p-5 space-y-5">
                 <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700">
                    <div className="flex items-center gap-2">

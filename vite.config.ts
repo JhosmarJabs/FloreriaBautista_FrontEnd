@@ -4,7 +4,11 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, process.cwd(), '');
+  const apiTarget = env.VITE_API_URL || 'http://localhost:5000';
+
+  console.log(`🚀 Vite Proxy Target: ${apiTarget}`);
+
   return {
     plugins: [react(), tailwindcss()],
     define: {
@@ -16,15 +20,15 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: '0.0.0.0',      // 👈 agregar esto
-      port: 5173,           // 👈 agregar esto también
+      host: '0.0.0.0',
+      port: 5173,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: {
         usePolling: true,
       },
       proxy: {
         '/api': {
-          target: 'http://api:5000',  // 👈 nombre del servicio en docker-compose
+          target: apiTarget,
           changeOrigin: true,
           secure: false,
         },

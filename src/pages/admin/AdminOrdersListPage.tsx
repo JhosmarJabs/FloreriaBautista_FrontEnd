@@ -120,24 +120,25 @@ export default function AdminOrdersListPage() {
         </div>
       </FadeIn>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total registros', value: total, color: 'text-blue-600', icon: <ReceiptText /> },
-          { label: 'Pendientes', value: pendientes, color: 'text-amber-600', icon: <Clock /> },
-          { label: 'Entregados hoy', value: entregados, color: 'text-emerald-600', icon: <CheckCircle2 className="w-5 h-5" /> },
-          { label: 'Recaudación bruta', value: `$${orders.reduce((acc, o) => acc + o.total, 0).toLocaleString()}`, color: 'text-indigo-600', icon: <Tag /> },
+          { label: 'Total pedidos', value: total, icon: <ReceiptText />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/10', border: 'border-blue-100 dark:border-blue-700/50', trend: 'registrados' },
+          { label: 'Pendientes', value: pendientes, icon: <Clock />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-700/50', trend: 'por procesar' },
+          { label: 'Entregados hoy', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-100 dark:border-emerald-700/50', trend: 'completados' },
+          { label: 'Recaudación bruta', value: `$${orders.reduce((acc, o) => acc + o.total, 0).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-700/50', trend: 'últimos pedidos' },
         ].map((s, idx) => (
-          <motion.div key={idx} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex gap-4">
-            <div className={`size-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 flex items-center justify-center ${s.color}`}>
-              {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
+          <div key={idx} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
+              <div className="mt-1 text-2xl font-black text-slate-800 dark:text-slate-100">{loading ? "—" : s.value}</div>
+              <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
             </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white leading-none">{loading ? '—' : s.value}</h3>
-            </div>
-          </motion.div>
+            {React.cloneElement(s.icon as React.ReactElement, {
+               className: `absolute -bottom-4 -right-4 w-24 h-24 ${s.color} opacity-10`,
+               strokeWidth: 3
+            })}
+          </div>
         ))}
       </div>
 

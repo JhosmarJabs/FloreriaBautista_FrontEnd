@@ -80,7 +80,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
       isSidebarOpen ? "px-4 gap-3" : "justify-center px-0"
     } ${
       active 
-        ? "bg-white text-[#1e3a5f] shadow-lg shadow-white/10 scale-[1.02]" 
+        ? "bg-white dark:bg-blue-600 text-[#1e3a5f] dark:text-white shadow-lg shadow-white/10 dark:shadow-blue-500/20 scale-[1.02]" 
         : "text-slate-300 hover:bg-white/5 hover:text-white"
     }`;
 
@@ -91,7 +91,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
         initial={{ x: -260 }}
         animate={{ x: 0, width: isSidebarOpen ? 256 : 72 }}
         transition={{ type: "spring", stiffness: 280, damping: 28 }}
-        className="bg-[#1e3a5f] border-r border-black/30 shadow-2xl flex flex-col flex-shrink-0 z-20 overflow-hidden"
+        className="bg-[#1e3a5f] dark:bg-[#0f172a] border-r border-black/30 dark:border-white/5 shadow-2xl flex flex-col flex-shrink-0 z-20 overflow-hidden transition-colors"
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-[18px] border-b border-white/10 overflow-hidden">

@@ -23,6 +23,7 @@ import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
 import { FadeIn, StaggerContainer, GlassCard, AnimatedButton } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
+import { filterCSV } from '../../utils/exportUtils';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function downloadBlob(blob: Blob, filename: string) {
@@ -171,11 +172,19 @@ export default function AdminDataManagementPage() {
     const key = `export_${type}`;
     setJobLoading(key);
     try {
+      // Consumimos el endpoint de la API directamente
       const blob = type === 'products'
         ? await AdminService.exportAdminProducts()
         : await AdminService.exportAdminInventory();
-      downloadBlob(blob, type === 'products' ? 'productos.csv' : 'inventario.csv');
-      showToast('Archivo descargado correctamente', 'success');
+      
+      // Convertimos a texto para filtrar el ID por seguridad antes de la descarga
+      const originalText = await blob.text();
+      const filteredText = filterCSV(originalText);
+      
+      const filteredBlob = new Blob([filteredText], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob(filteredBlob, type === 'products' ? 'productos.csv' : 'inventario.csv');
+      
+      showToast('Archivo exportado desde API (ID filtrado)', 'success');
       setModal(null);
     } catch (err: any) {
       showToast(err.message ?? 'Error al exportar', 'error');

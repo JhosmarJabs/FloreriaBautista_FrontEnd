@@ -80,9 +80,9 @@ export default function AdminPromotionsPage() {
         ].map(({ label, value, trend, color, bg, border, icon: Icon }) => (
           <div key={label} className={`relative overflow-hidden rounded-2xl border ${border} ${bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
-              <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{value}</div>
-              <p className={`text-xs mt-1.5 font-medium ${color} opacity-80`}>{trend}</p>
+               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
+               <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{value}</div>
+               <p className={`text-xs mt-1.5 font-medium ${color} opacity-80`}>{trend}</p>
             </div>
             <Icon className={`absolute -bottom-2 -right-4 w-20 h-20 ${color} opacity-[0.08]`} strokeWidth={3} />
           </div>

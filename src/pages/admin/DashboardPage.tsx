@@ -177,43 +177,47 @@ export default function DashboardPage() {
         </FadeIn>
 
         {/* KPIs */}
-        <StaggerContainer className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { 
               label: 'Ventas Totales',  
               value: stats ? `$${stats.totalSales.toLocaleString()}` : ' -- ', 
-              icon: TrendingUp,  color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20',    trend: stats ? '+15.4%' : '...',    trendUp: true 
+              icon: <TrendingUp />,  color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20',    trend: stats ? '+15.4% mes actual' : '...'
             },
             { 
               label: 'Pedidos Totales', 
               value: stats ? stats.orderCount.toString() : ' -- ',             
-              icon: ShoppingCart, color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10',   border: 'border-amber-100 dark:border-amber-500/20',   trend: stats ? 'Activos' : '...',   trendUp: null 
+              icon: <ShoppingCart />, color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10',   border: 'border-amber-100 dark:border-amber-500/20',   trend: stats ? 'Activos en sistema' : '...'
             },
             { 
               label: 'Ticket Promedio', 
               value: stats ? `$${stats.averageTicket.toFixed(2)}` : ' -- ',    
-              icon: CreditCard,  color: 'text-indigo-600 dark:text-indigo-400',  bg: 'bg-indigo-50 dark:bg-indigo-500/10',  border: 'border-indigo-100 dark:border-indigo-500/20',  trend: stats ? 'Optimizado' : '...', trendUp: null 
+              icon: <CreditCard />,  color: 'text-indigo-600 dark:text-indigo-400',  bg: 'bg-indigo-50 dark:bg-indigo-500/10',  border: 'border-indigo-100 dark:border-indigo-500/20',  trend: stats ? 'Por cada venta' : '...'
             },
             { 
               label: 'Nuevos Clientes', 
               value: stats ? stats.newCustomers.toString() : ' -- ',           
-              icon: UserPlus,    color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: stats ? '+8.2%' : '...',     trendUp: true 
+              icon: <UserPlus />,    color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: stats ? '+8.2% crecimiento' : '...'
             },
           ].map((s, i) => (
             <motion.div key={i}
-              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className={`bg-white dark:bg-slate-800 border ${s.border} rounded-2xl p-5 hover:shadow-md transition-shadow`}>
-              <div className="flex items-start justify-between mb-4">
-                <div className={`size-9 rounded-xl ${s.bg} ${s.color} flex items-center justify-center`}>
-                  <s.icon className="w-[18px] h-[18px]" />
-                </div>
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${s.bg} ${s.color}`}>{s.trend}</span>
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.07 }}
+              className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}
+            >
+              <div className="relative z-10 flex flex-col justify-between h-full">
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
+                <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
+                <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
               </div>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{s.label}</p>
-              <p className={`text-2xl font-black mt-1 text-slate-900 dark:text-white`}>{s.value}</p>
+              {React.cloneElement(s.icon as React.ReactElement, {
+                className: `absolute -bottom-4 -right-4 w-24 h-24 ${s.color} opacity-10`,
+                strokeWidth: 3
+              })}
             </motion.div>
           ))}
-        </StaggerContainer>
+        </div>
 
         {/* Alerts + Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

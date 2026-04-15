@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DownloadCloud, X, FileText, FileSpreadsheet } from 'lucide-react';
 import { AnimatedButton } from './Animations';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { exportToCSV, exportToPDF } from '../utils/exportUtils';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -24,37 +22,9 @@ export default function ExportModal({ isOpen, onClose, data, title, filename = '
     }
 
     if (format === 'csv') {
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-
-      // BOM (\uFEFF) para que Excel detecte UTF-8 y muestre tildes y ñ correctamente
-      const BOM = '\uFEFF';
-      const blob = new Blob([BOM + csvOutput], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${filename}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      exportToCSV(data, filename);
     } else if (format === 'pdf') {
-      const doc = new jsPDF();
-      
-      doc.text(title, 14, 15);
-      
-      const headers = Object.keys(data[0]);
-      const rows = data.map(item => headers.map(header => String(item[header])));
-      
-      (doc as any).autoTable({
-        head: [headers],
-        body: rows,
-        startY: 20,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [30, 58, 95] }
-      });
-      
-      doc.save(`${filename}.pdf`);
+      exportToPDF(data, title, filename);
     }
     
     onClose();

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShoppingBag, Search, RefreshCw, AlertTriangle, ChevronRight,
-  ChevronLeft, Filter, X, Plus, Eye, Edit, FlaskConical, LayoutGrid, List
+  ChevronLeft, Filter, X, Plus, Eye, Edit, FlaskConical, LayoutGrid, List,
+  CheckCircle2
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
 import { Product } from '../../types';
@@ -108,16 +109,23 @@ export default function AdminProductsListPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* KPI Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Total productos', value: loading ? '—' : String(total), color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-100 dark:border-blue-800/50' },
-          { label: 'Activos', value: loading ? '—' : String(products.filter(p => p.estado === 'ACTIVO').length), color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-100 dark:border-emerald-800/50' },
-          { label: 'Borradores', value: loading ? '—' : String(products.filter(p => p.estado === 'BORRADOR').length), color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-100 dark:border-amber-800/50' },
-        ].map(({ label, value, color, bg, border }) => (
-          <div key={label} className={`rounded-xl border ${border} dark:border-opacity-20 ${bg} dark:bg-opacity-10 px-4 py-3`}>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">{label}</p>
-            <p className={`text-lg font-black ${color} dark:text-white`}>{value}</p>
+          { label: 'Total productos', value: loading ? '—' : String(total), icon: <ShoppingBag />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/10', border: 'border-blue-100 dark:border-blue-700/50', trend: 'registrados' },
+          { label: 'Activos', value: loading ? '—' : String(products.filter(p => p.estado === 'ACTIVO').length), icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-100 dark:border-emerald-700/50', trend: 'en catálogo' },
+          { label: 'Borradores', value: loading ? '—' : String(products.filter(p => p.estado === 'BORRADOR').length), icon: <AlertTriangle />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-700/50', trend: 'por publicar' },
+        ].map((s, i) => (
+          <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
+            <div className="relative z-10 flex flex-col justify-between h-full">
+              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
+              <div className="mt-1 text-2xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
+              <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
+            </div>
+            {React.cloneElement(s.icon as React.ReactElement, {
+               className: `absolute -bottom-4 -right-4 w-24 h-24 ${s.color} opacity-10`,
+               strokeWidth: 3
+            })}
           </div>
         ))}
       </div>

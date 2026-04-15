@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  Flower2, 
   User, 
   ShoppingBasket, 
   PlusCircle, 
@@ -10,13 +9,18 @@ import {
   CreditCard, 
   Save,
   Image as ImageIcon,
-  Edit3
+  Edit3,
+  Plus,
+  Minus,
+  MapPin,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { FadeIn } from '../../components/Animations';
 
 export default function PhysicalOrderPage() {
   const [items, setItems] = useState([
-    { id: 1, name: 'Ramo 24 Rosas Rojas', quantity: 1, price: 850 }
+    { id: 1, name: 'Ramo de 24 Rosas Rojas', quantity: 1, price: 850 }
   ]);
 
   const updateQuantity = (id: number, delta: number) => {
@@ -36,103 +40,119 @@ export default function PhysicalOrderPage() {
   const shipping = 120;
   const total = subtotal + shipping;
 
+  const cardCls = "bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-all";
+  const labelCls = "block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5";
+  const inputCls = "w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all";
+
   return (
     <motion.main 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-7xl mx-auto"
+      className="max-w-[1280px] mx-auto"
     >
-      {/* Title and Quick Actions */}
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-[#1A3B5B] flex items-center gap-2">
-          <Flower2 className="w-8 h-8" />
-          Registro de Pedido Físico
-        </h1>
-        <div className="flex gap-2">
-          <button className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-            Limpiar Formulario
-          </button>
+      {/* Header Section */}
+      <FadeIn>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 mb-8 transition-colors">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest leading-none">Nueva Operación</span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Registro de Pedido Físico</h1>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-2 font-medium">Captura manual para ventas directas o telefónicas.</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm">
+              Limpiar Formulario
+            </button>
+          </div>
         </div>
-      </div>
+      </FadeIn>
 
       <form className="grid grid-cols-1 lg:grid-cols-12 gap-6" onSubmit={(e) => e.preventDefault()}>
         {/* Left Column (Customer & Items) */}
-        <section className="lg:col-span-7 space-y-6">
+        <div className="lg:col-span-7 space-y-6">
           {/* Customer Information Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center gap-2 mb-4 border-b pb-2 text-[#1A3B5B]">
+          <div className={cardCls}>
+            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 mb-6 pb-2 border-b border-slate-100 dark:border-slate-700/50">
               <User className="w-5 h-5" />
-              <h2 className="font-semibold text-gray-800">Información del Cliente</h2>
+              <h2 className="font-black text-lg text-slate-800 dark:text-white tracking-tight">Datos del Cliente</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre del Cliente</label>
-                <input className="w-full rounded-md border-gray-300 shadow-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B] sm:text-sm" placeholder="Ej. Juan Pérez" type="text"/>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className={labelCls}>Nombre Completo</label>
+                <input className={inputCls} placeholder="Ej. Juan Pérez" type="text"/>
               </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Teléfono de Contacto</label>
-                <input className="w-full rounded-md border-gray-300 shadow-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B] sm:text-sm" placeholder="Ej. 55 1234 5678" type="tel"/>
+              <div>
+                <label className={labelCls}>Teléfono / WhatsApp</label>
+                <input className={inputCls} placeholder="Ej. 55 1234 5678" type="tel"/>
               </div>
             </div>
           </div>
 
           {/* Order Items Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex justify-between items-center mb-4 border-b pb-2">
-              <div className="flex items-center gap-2 text-[#1A3B5B]">
+          <div className={cardCls}>
+            <div className="flex justify-between items-center mb-6 pb-2 border-b border-slate-100 dark:border-slate-700/50">
+              <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
                 <ShoppingBasket className="w-5 h-5" />
-                <h2 className="font-semibold text-gray-800">Productos del Pedido</h2>
+                <h2 className="font-black text-lg text-slate-800 dark:text-white tracking-tight">Selección de Productos</h2>
               </div>
-              <button className="flex items-center gap-1 text-sm font-semibold text-[#1A3B5B] hover:text-blue-800 transition-colors" type="button">
+              <button className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xs rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all" type="button">
                 <PlusCircle className="w-4 h-4" />
-                Añadir Producto
+                AÑADIR ÍTEM
               </button>
             </div>
-            <div className="overflow-x-auto custom-scrollbar">
+            <div className="overflow-x-auto min-h-[200px]">
               <table className="w-full text-left">
                 <thead>
-                  <tr className="text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
-                    <th className="py-2 pr-4">Producto</th>
-                    <th className="py-2 px-4 text-center">Cantidad</th>
-                    <th className="py-2 px-4 text-right">Precio</th>
-                    <th className="py-2 px-4 text-center">Personalizar</th>
-                    <th className="py-2 pl-4"></th>
+                  <tr className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-700">
+                    <th className="py-4 pr-4">Descripción del Producto</th>
+                    <th className="py-4 px-4 text-center">Cant.</th>
+                    <th className="py-4 px-4 text-right">Subtotal</th>
+                    <th className="py-4 px-4 text-center">Gestión</th>
+                    <th className="py-4 pl-4"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
                   <AnimatePresence>
                     {items.map(item => (
                       <motion.tr 
                         key={item.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 10 }}
+                        className="group hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors"
                       >
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-md flex items-center justify-center text-gray-400">
-                              <ImageIcon className="w-5 h-5" />
+                        <td className="py-4 pr-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700">
+                              <ImageIcon className="w-6 h-6" />
                             </div>
-                            <span className="text-sm font-medium text-gray-700">{item.name}</span>
+                            <div>
+                                <p className="text-sm font-black text-slate-800 dark:text-white">{item.name}</p>
+                                <p className="text-xs text-slate-400 font-medium">Precio unit: ${item.price}</p>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button onClick={() => updateQuantity(item.id, -1)} className="w-6 h-6 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50" type="button">-</button>
-                            <span className="text-sm w-4 text-center">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.id, 1)} className="w-6 h-6 rounded border border-gray-300 flex items-center justify-center hover:bg-gray-50" type="button">+</button>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center justify-center gap-3">
+                            <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-500 transition-colors" type="button"><Minus size={14} /></button>
+                            <span className="text-sm font-black text-slate-700 dark:text-white w-4 text-center leading-none">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:border-emerald-500 transition-colors" type="button"><Plus size={14} /></button>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right text-sm font-semibold text-gray-900">${(item.price * item.quantity).toFixed(2)}</td>
-                        <td className="py-3 px-4 text-center">
-                          <button className="text-[#1A3B5B] hover:underline text-xs flex items-center justify-center gap-1 mx-auto" type="button">
-                            <Edit3 className="w-3 h-3" />
-                            Nota/Tarjeta
+                        <td className="py-4 px-4 text-right">
+                            <span className="text-sm font-black text-slate-900 dark:text-white leading-none">${(item.price * item.quantity).toFixed(2)}</span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <button className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 mx-auto transition-colors" type="button">
+                            <Edit3 className="w-3.5 h-3.5" />
+                            Personalizar
                           </button>
                         </td>
-                        <td className="py-3 pl-4 text-right">
-                          <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500" type="button">
-                            <Trash2 className="w-4 h-4" />
+                        <td className="py-4 pl-4 text-right">
+                          <button onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors" type="button">
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </td>
                       </motion.tr>
@@ -141,95 +161,108 @@ export default function PhysicalOrderPage() {
                 </tbody>
               </table>
             </div>
+            {items.length === 0 && (
+                <div className="py-12 flex flex-col items-center justify-center text-slate-300">
+                    <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-full mb-4">
+                        <ShoppingBasket size={48} className="opacity-20" />
+                    </div>
+                    <p className="text-sm font-bold uppercase tracking-widest leading-none">Sin productos</p>
+                </div>
+            )}
           </div>
-        </section>
+        </div>
 
-        {/* Right Column (Delivery & Payment) */}
-        <section className="lg:col-span-5 space-y-6">
+        {/* Right Column (Logistics & Sumary) */}
+        <div className="lg:col-span-5 space-y-6">
           {/* Delivery Details Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center gap-2 mb-4 border-b pb-2 text-[#1A3B5B]">
+          <div className={cardCls}>
+            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 mb-6 pb-2 border-b border-slate-100 dark:border-slate-700/50">
               <Truck className="w-5 h-5" />
-              <h2 className="font-semibold text-gray-800">Entrega y Logística</h2>
+              <h2 className="font-black text-lg text-slate-800 dark:text-white tracking-tight">Logística de Entrega</h2>
             </div>
             {/* Delivery Type Toggle */}
-            <div className="flex bg-gray-100 p-1 rounded-lg mb-4">
-              <button className="flex-1 py-2 text-xs font-semibold rounded-md bg-white shadow-sm text-[#1A3B5B]" type="button">PROGRAMADO</button>
-              <button className="flex-1 py-2 text-xs font-semibold rounded-md text-gray-500 hover:text-gray-700" type="button">ENTREGA INMEDIATA</button>
+            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl mb-6">
+              <button className="flex-1 py-2.5 text-[10px] font-black rounded-xl bg-white dark:bg-slate-800 shadow-sm text-emerald-600 dark:text-emerald-400 transition-all uppercase tracking-widest" type="button">PROGRAMADO</button>
+              <button className="flex-1 py-2.5 text-[10px] font-black rounded-xl text-slate-400 dark:text-slate-600 hover:text-slate-600 transition-all uppercase tracking-widest" type="button">INSTANTÁNEO</button>
             </div>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</label>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className={labelCls}>Fecha de Entrega</label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <input className="w-full pl-9 rounded-md border-gray-300 shadow-sm sm:text-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B]" type="date"/>
+                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input className={`${inputCls} pl-10`} type="date"/>
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Bloque Horario</label>
-                <select className="w-full rounded-md border-gray-300 shadow-sm sm:text-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B]">
-                  <option>Mañana (9:00 - 13:00)</option>
-                  <option>Tarde (13:00 - 18:00)</option>
-                  <option>Noche (18:00 - 21:00)</option>
-                </select>
+              <div>
+                <label className={labelCls}>Bloque Horario</label>
+                <div className="relative">
+                  <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <select className={`${inputCls} pl-10 appearance-none`}>
+                    <option>Mañana (9:00 - 13:00)</option>
+                    <option>Tarde (13:00 - 18:00)</option>
+                    <option>Noche (18:00 - 21:00)</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Dirección Completa</label>
-                <textarea className="w-full rounded-md border-gray-300 shadow-sm sm:text-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B]" placeholder="Calle, número, colonia, código postal..." rows={2}></textarea>
+            <div className="space-y-4">
+              <div>
+                <label className={labelCls}>Dirección Destino</label>
+                <div className="relative">
+                    <MapPin className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+                    <textarea className={`${inputCls} pl-10 h-24 resize-none`} placeholder="Calle, número, colonia, CP..." rows={2}></textarea>
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Referencias / Indicaciones</label>
-                <input className="w-full rounded-md border-gray-300 shadow-sm sm:text-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B]" placeholder="Ej: Portón verde, junto al OXXO" type="text"/>
+              <div>
+                <label className={labelCls}>Referencias / Notas</label>
+                <input className={inputCls} placeholder="Ej: Portón verde, junto a la tienda" type="text"/>
               </div>
             </div>
           </div>
 
           {/* Payment Summary Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-            <div className="flex items-center gap-2 mb-4 border-b pb-2 text-[#1A3B5B]">
+          <div className={cardCls}>
+            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 mb-6 pb-2 border-b border-slate-100 dark:border-slate-700/50">
               <CreditCard className="w-5 h-5" />
-              <h2 className="font-semibold text-gray-800">Resumen y Pago</h2>
+              <h2 className="font-black text-lg text-slate-800 dark:text-white tracking-tight">Finanzas & Pago</h2>
             </div>
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+            <div className="space-y-4 mb-6 pt-2">
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">Subtotal Productos</span>
+                <span className="text-slate-900 dark:text-white font-black">${subtotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Envío</span>
-                <span>${shipping.toFixed(2)}</span>
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">Costo de Envío</span>
+                <span className="text-slate-900 dark:text-white font-black">${shipping.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-dashed">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+              <div className="flex justify-between items-end pt-4 border-t border-dashed border-slate-200 dark:border-slate-700">
+                <span className="text-slate-400 uppercase tracking-widest text-[10px] font-black">Total de la Orden</span>
+                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tighter leading-none">${total.toFixed(2)}</span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Método de Pago</label>
-                <select className="w-full rounded-md border-gray-300 shadow-sm sm:text-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B]">
+              <div>
+                <label className={labelCls}>Canal de Pago</label>
+                <select className={`${inputCls} appearance-none`}>
                   <option>Efectivo</option>
-                  <option>Tarjeta Crédito/Débito</option>
-                  <option>Transferencia</option>
+                  <option>Terminal (Tarjeta)</option>
+                  <option>Transferencia SPEI</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">Monto a Pagar</label>
+              <div>
+                <label className={labelCls}>Liquidación</label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-gray-500 sm:text-sm">$</span>
-                  <input className="w-full pl-7 rounded-md border-gray-300 shadow-sm sm:text-sm focus:border-[#1A3B5B] focus:ring-[#1A3B5B]" type="number" defaultValue={total.toFixed(2)}/>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">$</span>
+                  <input className={`${inputCls} pl-8 font-black text-emerald-600`} type="number" defaultValue={total.toFixed(2)}/>
                 </div>
               </div>
             </div>
-            {/* Primary Action */}
-            <button className="w-full mt-6 bg-[#1A3B5B] text-white py-3 px-4 rounded-lg font-bold text-lg hover:bg-blue-900 transition-all shadow-md active:scale-[0.98] flex items-center justify-center gap-3" type="submit">
-              <Save className="w-5 h-5" />
-              Registrar pedido
+            <button className="w-full mt-8 bg-emerald-600 dark:bg-emerald-500 text-white py-5 px-4 rounded-2xl font-black text-xl shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 uppercase tracking-tighter" type="submit">
+              <Save className="w-6 h-6" />
+              Confirmar Operación
             </button>
           </div>
-        </section>
+        </div>
       </form>
     </motion.main>
   );
