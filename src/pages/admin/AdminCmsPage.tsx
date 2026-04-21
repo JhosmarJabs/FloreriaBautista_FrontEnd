@@ -92,12 +92,7 @@ export default function AdminCmsPage() {
   return (
     <div className="w-full flex flex-col gap-5">
 
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
-        <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer" onClick={() => navigate('/dashboard')}>Dashboard</span>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-slate-700 dark:text-slate-300">Personalizar Sitio</span>
-      </nav>
+
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">

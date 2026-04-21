@@ -68,10 +68,10 @@ export default function EmployeeDashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-emerald-100 dark:border-emerald-900/30 border-t-emerald-500 rounded-full animate-spin"></div>
-          <RefreshCw className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-emerald-500 w-6 h-6" />
+          <div className="w-16 h-16 border-4 border-slate-200 dark:border-white/5 border-t-[#1e3a5f] rounded-full animate-spin"></div>
+          <RefreshCw className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#1e3a5f] w-6 h-6" />
         </div>
-        <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Sincronizando panel...</p>
+        <p className="text-slate-500 dark:text-slate-400 font-serif italic animate-pulse">Sincronizando boutique...</p>
       </div>
     );
   }
@@ -81,111 +81,111 @@ export default function EmployeeDashboardPage() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8"
+      className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 space-y-4"
     >
-      {/* Welcome Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {/* ── Welcome Header ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest transition-colors">
-              {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight transition-colors">
-            ¡Hola, <span className="text-emerald-500">Equipo</span>!
+          <h1 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tight leading-none">
+            Gestión <span className="text-[#eab308] italic">Bautista</span>
           </h1>
-          <p className="text-slate-400 dark:text-slate-500 text-lg mt-1 transition-colors">Bienvenido al centro de operaciones. Aquí tienes el pulso de la tienda hoy.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium italic leading-none">"El arte de florecer en cada detalle."</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={loadData}
-            className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm group"
+            className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 rounded-xl text-[#1e3a5f] dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm group"
           >
-            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
+            <RefreshCw className="w-4.5 h-4.5 group-hover:rotate-180 transition-transform duration-700" />
           </button>
-          <button className="bg-slate-900 dark:bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-slate-200 dark:shadow-none">
-            <Bell className="w-5 h-5" />
-            Notificaciones
+          <button className="bg-[#1e3a5f] dark:bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:translate-y-[-1px] transition-all shadow-xl shadow-blue-900/10 active:scale-95">
+            <PlusCircle className="w-4 h-4" />
+            Venta Nueva
           </button>
         </div>
       </div>
 
-      {/* KPI Stats - Standardized Pattern */}
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── KPI Stats ── */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 relative z-10">
         {[
-          { label: 'Ventas Hoy', value: stats.todayCount, trend: '+12% vs ayer', icon: <ShoppingBasket />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
-          { label: 'Ingresos Hoy', value: `$${stats.todayRevenue.toFixed(0)}`, trend: 'Promedio estable', icon: <DollarSign />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
-          { label: 'Pendientes', value: stats.pendingCount, trend: 'En espera', icon: <Clock />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' },
-          { label: 'Stock Bajo', value: stats.lowStockCount, trend: stats.lowStockCount > 0 ? 'Reponer pronto' : 'Todo al día', icon: <Package />, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20' },
+          { label: 'Ventas Hoy', value: stats.todayCount, trend: '+4% vs ayer', icon: <ShoppingBasket />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
+          { label: 'Recaudación', value: `$${stats.todayRevenue.toFixed(0)}`, trend: 'Meta: 75%', icon: <DollarSign />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
+          { label: 'Pendientes', value: stats.pendingCount, trend: 'Prioridad alta', icon: <Clock />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' },
+          { label: 'Stock Bajo', value: stats.lowStockCount, trend: 'Reponer hoy', icon: <Package />, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20' },
         ].map((s, i) => (
           <motion.div 
             key={i}
             variants={itemVariants}
-            className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5 shadow-sm hover:shadow-md transition-all group`}
+            className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-4 shadow-sm hover:shadow-xl hover:bg-white dark:hover:bg-slate-800 transition-all group`}
           >
+            <div className="absolute inset-0 bg-white/40 dark:bg-black/20 backdrop-blur-[1px] pointer-events-none" />
             <div className="relative z-10 flex flex-col justify-between h-full">
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
-              <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
-              <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
+              <p className="text-[9px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-[0.2em]">{s.label}</p>
+              <div className="mt-1 text-xl font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">{s.value}</div>
+              <p className={`text-[9px] mt-2 font-black uppercase tracking-widest ${s.color} opacity-80 flex items-center gap-1`}>
+                <div className="w-1 h-1 rounded-full bg-current animate-pulse" />
+                {s.trend}
+              </p>
             </div>
             {React.cloneElement(s.icon as React.ReactElement, {
-              className: `absolute -bottom-4 -right-4 w-24 h-24 ${s.color} opacity-10 group-hover:scale-110 transition-transform`,
-              strokeWidth: 3
+              className: `absolute -bottom-4 -right-4 w-20 h-20 ${s.color} opacity-[0.05] group-hover:scale-110 group-hover:rotate-12 transition-all duration-700`,
+              strokeWidth: 2
             })}
           </motion.div>
         ))}
       </section>
 
-      {/* Main Content: Bento Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* ── Main Content: Bento Layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 relative z-10">
         {/* Left Column: Priority Orders */}
-        <section className="lg:col-span-8 space-y-6">
-          <div className="flex items-center justify-between px-2">
+        <section className="lg:col-span-8 space-y-4">
+          <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-3">
-              <div className="w-1.5 h-8 bg-emerald-500 rounded-full"></div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Pedidos Prioritarios</h2>
+              <div className="w-1.5 h-8 bg-[#eab308] rounded-full shadow-lg shadow-amber-600/20"></div>
+              <h2 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white">Pedidos en Proceso</h2>
             </div>
-            <Link to="/empleado/pedidos" className="group flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:opacity-80 transition-all">
-              Ver todos
-              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            <Link to="/empleado/pedidos" className="group flex items-center gap-2 text-[#1e3a5f] dark:text-blue-400 font-black text-[9px] uppercase tracking-widest hover:bg-[#1e3a5f] hover:text-white transition-all px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/50 backdrop-blur-md">
+              Ver Todo
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
           </div>
           
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             <AnimatePresence mode="popLayout">
-              {orders.slice(0, 4).map((order) => (
+              {orders.slice(0, 6).map((order) => (
                 <motion.div 
                   key={order.id}
                   variants={itemVariants}
-                  className="bg-white dark:bg-slate-800 p-4 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row gap-4 items-center hover:shadow-xl hover:border-emerald-500/30 transition-all group"
+                  className="bg-white/90 dark:bg-slate-800/40 backdrop-blur-xl p-3 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex flex-col sm:flex-row gap-4 items-center hover:shadow-xl hover:border-blue-500/20 transition-all group overflow-hidden relative"
                 >
-                  <div className="w-24 h-24 rounded-2xl bg-slate-100 dark:bg-slate-900 shrink-0 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-1000" />
+                  
+                  <div className="size-12 rounded-xl bg-slate-50 dark:bg-slate-900 shrink-0 overflow-hidden relative shadow-inner">
                     <img 
                       src={order.items[0]?.image || `https://picsum.photos/seed/${order.id}/200/200`} 
-                      alt="Order Item" 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      alt="Product" 
+                      className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-1000"
                     />
-                    <div className="absolute inset-0 bg-black/5 dark:bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                    <div className="absolute inset-0 bg-[#1e3a5f]/5 dark:bg-black/20 group-hover:bg-transparent transition-colors"></div>
                   </div>
-                  <div className="flex-grow space-y-2 w-full text-center sm:text-left">
+                  <div className="flex-grow space-y-2 w-full text-center sm:text-left relative z-10">
                     <div className="flex flex-wrap items-center justify-center sm:justify-between gap-2">
-                      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">#{order.id}</span>
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                        order.status === 'pending' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20'
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">ID: {order.id}</span>
+                      <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5 ${
+                        order.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:border-amber-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-500/20'
                       }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
-                        {order.status === 'pending' ? 'Pendiente' : 'Completado'}
+                        <div className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-emerald-500'}`}></div>
+                        {order.status === 'pending' ? 'Pendiente' : 'Listo'}
                       </span>
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">Pedido General</h3>
-                      <p className="text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-widest mt-0.5 transition-colors">Total: <span className="text-emerald-600 dark:text-emerald-400">${order.total.toFixed(2)}</span></p>
+                      <h3 className="text-lg font-bold text-[#1e3a5f] dark:text-white group-hover:text-blue-600 transition-colors leading-tight uppercase">Pedido General</h3>
+                      <p className="text-slate-400 dark:text-slate-500 text-[9px] font-black uppercase tracking-widest mt-0.5">Cargo: <span className="text-[#1e3a5f] dark:text-blue-400 font-bold">${order.total.toFixed(2)}</span></p>
                     </div>
                   </div>
-                  <div className="shrink-0 w-full sm:w-auto">
-                    <Link to={`/empleado/pedidos/${order.id}`} className="w-full sm:w-14 h-14 bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-600 group-hover:bg-emerald-600 group-hover:text-white rounded-2xl transition-all flex items-center justify-center">
-                      <ChevronRight className="w-6 h-6" />
+                  <div className="shrink-0 w-full sm:w-auto relative z-10">
+                    <Link to={`/empleado/pedidos/${order.id}`} className="w-full sm:w-10 h-10 bg-[#1e3a5f] dark:bg-blue-600 text-white group-hover:bg-[#eab308] group-hover:text-[#1e3a5f] rounded-xl transition-all flex items-center justify-center shadow-lg shadow-blue-900/10 active:scale-90">
+                      <ChevronRight className="w-5 h-5" />
                     </Link>
                   </div>
                 </motion.div>
@@ -194,98 +194,105 @@ export default function EmployeeDashboardPage() {
           </div>
         </section>
 
-        {/* Right Column: Quick Actions & Tips */}
-        <section className="lg:col-span-4 space-y-8">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3 px-2">
-              <div className="w-1.5 h-8 bg-emerald-500 rounded-full"></div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white transition-colors">Acciones</h2>
+        {/* Right Column: Actions */}
+        <section className="lg:col-span-4 space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 px-1">
+              <div className="w-1.5 h-8 bg-blue-500 rounded-full shadow-lg shadow-blue-600/20"></div>
+              <h2 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white">Accesos</h2>
             </div>
             
-            <div className="grid grid-cols-1 gap-4">
-              <Link to="/empleado/venta-rapida" className="bg-slate-900 dark:bg-slate-800 p-6 rounded-[2rem] text-white flex items-center justify-between group hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-slate-200 dark:shadow-none">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center group-hover:bg-emerald-500 transition-colors">
-                    <PlusCircle className="w-6 h-6" />
+            <div className="grid grid-cols-1 gap-3">
+              <Link to="/empleado/venta-rapida" className="bg-[#1e3a5f] dark:bg-slate-800 p-4 rounded-2xl text-white flex items-center justify-between group hover:shadow-xl transition-all relative overflow-hidden active:scale-95">
+                <div className="absolute inset-0 bg-white/5 pointer-events-none" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:bg-[#eab308] group-hover:text-[#1e3a5f] transition-all duration-500">
+                    <PlusCircle className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="font-bold text-lg leading-none">Venta Rápida</p>
-                    <p className="text-white/50 text-xs mt-1">Nueva orden de mostrador</p>
+                    <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] mt-1.5">Módulo Directo</p>
                   </div>
                 </div>
-                <ArrowUpRight className="w-5 h-5 text-white/30 group-hover:text-white transition-colors" />
+                <ArrowUpRight className="w-5 h-5 text-white/30 group-hover:text-white transition-colors relative z-10" />
               </Link>
               
-              <div className="grid grid-cols-2 gap-4">
-                <Link to="/empleado/inventario" className="bg-white dark:bg-slate-800 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-3 text-center hover:border-emerald-500 hover:shadow-lg transition-all group overflow-hidden relative">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all z-10">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <span className="font-black text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors z-10">Inventario</span>
+              <div className="grid grid-cols-2 gap-3">
+                <Link to="/empleado/inventario" className="bg-white/70 dark:bg-slate-800/40 backdrop-blur-xl p-5 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex flex-col items-center justify-center gap-2 text-center hover:border-blue-500 hover:shadow-xl transition-all group overflow-hidden relative">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all z-10">
+                        <Package className="w-5 h-5" />
+                    </div>
+                    <span className="font-black text-[9px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-[#1e3a5f] transition-colors z-10">Suministros</span>
                 </Link>
                 
-                <Link to="/empleado/pedidos" className="bg-white dark:bg-slate-800 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-3 text-center hover:border-emerald-500 hover:shadow-lg transition-all group overflow-hidden relative">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all z-10">
-                    <ClipboardList className="w-6 h-6" />
-                  </div>
-                  <span className="font-black text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors z-10">Logística</span>
+                <Link to="/empleado/pedidos" className="bg-white/70 dark:bg-slate-800/40 backdrop-blur-xl p-5 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex flex-col items-center justify-center gap-2 text-center hover:border-blue-500 hover:shadow-xl transition-all group overflow-hidden relative">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-all z-10">
+                        <ClipboardList className="w-5 h-5" />
+                    </div>
+                    <span className="font-black text-[9px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-amber-600 transition-colors z-10">Bitácora</span>
                 </Link>
               </div>
 
-              <button className="w-full bg-emerald-50 dark:bg-emerald-500/10 p-6 rounded-[2rem] border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-between group hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all">
+              <button className="w-full bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200/50 dark:border-white/5 flex items-center justify-between group hover:bg-white dark:hover:bg-slate-800 transition-all shadow-inner active:scale-95">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm transition-colors">
-                    <Scan className="w-6 h-6" />
+                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-[#1e3a5f] dark:text-blue-400 shadow-md transition-colors group-hover:scale-110">
+                    <Scan className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <p className="font-bold text-slate-900 dark:text-white leading-none transition-colors">Escanear Ticket</p>
-                    <p className="text-emerald-700/60 dark:text-emerald-400/60 text-xs mt-1 transition-colors">Check-in de entrega</p>
+                    <p className="font-bold text-slate-700 dark:text-white leading-none text-base transition-colors">Escanear</p>
+                    <p className="text-blue-600 dark:text-blue-400/60 text-[8px] font-black uppercase tracking-widest mt-1 underline underline-offset-2 decoration-[#eab308]">Tickets de entrega</p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-emerald-300 group-hover:text-emerald-600 transition-colors" />
+                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#1e3a5f] transition-colors" />
               </button>
             </div>
           </div>
 
           {/* Smart Tip */}
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="p-6 bg-slate-900 dark:bg-slate-800 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl shadow-slate-300 dark:shadow-none transition-colors"
+            className="p-6 bg-[#1e3a5f] dark:bg-blue-950/40 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl transition-all"
           >
-            <div className="absolute -right-4 -top-4 text-white/5 dark:text-emerald-500/5 transition-colors">
-              <Lightbulb size={120} />
+            <div className="absolute -right-8 -top-8 text-white/5 group-hover:rotate-12 transition-transform duration-1000">
+              <Lightbulb size={180} />
             </div>
             <div className="relative z-10 space-y-4">
-              <div className="flex items-center gap-2 text-emerald-400 font-black text-[10px] uppercase tracking-[0.2em]">
-                <Lightbulb className="w-4 h-4" />
-                <span>Tip del día</span>
+              <div className="flex items-center gap-3 text-[#eab308] font-black text-[9px] uppercase tracking-[0.3em]">
+                <div className="p-2 bg-[#eab308]/10 rounded-lg">
+                    <Lightbulb className="w-5 h-5" />
+                </div>
+                <span>Nota Operativa</span>
               </div>
-              <p className="text-xl font-medium leading-relaxed">
-                Revisa el stock de <span className="text-emerald-400 font-bold">Girasoles</span>. Quedan pocas unidades para hoy.
+              <p className="text-xl font-serif font-medium leading-tight">
+                Reponer <span className="text-[#eab308] italic underline underline-offset-4">Girasoles</span> para turno vespertino.
               </p>
-              <button className="text-xs font-black uppercase tracking-widest text-white/50 hover:text-white transition-colors flex items-center gap-2">
-                Entendido
-                <CheckCircle2 className="w-3 h-3" />
+              <button className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-white transition-all flex items-center gap-2 bg-white/5 px-6 py-2.5 rounded-full border border-white/10">
+                Confirmado
+                <CheckCircle2 className="w-3.5 h-3.5" />
               </button>
             </div>
           </motion.div>
         </section>
       </div>
 
-      {/* Footer Info */}
-      <footer className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] gap-4 transition-colors">
-        <div className="flex items-center gap-6">
+      {/* ── Corporate Footer ── */}
+      <footer className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-200 dark:border-white/5 text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] gap-4 relative z-10 transition-colors">
+        <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-            <span>Servidor Online</span>
+            <div className="w-2 h-2 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
+            <span>En Línea</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-            <span>{orders.length} Registros</span>
+            <div className="w-2 h-2 bg-[#eab308] rounded-full shadow-lg shadow-amber-500/50"></div>
+            <span>{orders.length} Pedidos</span>
           </div>
         </div>
-        <p>© 2024 Florería Bautista • Panel Operativo</p>
+        <div className="flex items-center gap-2 text-slate-400/60">
+            <span>© 2024 FB</span>
+            <div className="w-1 h-1 bg-slate-200 rounded-full" />
+            <span className="text-[#1e3a5f] dark:text-blue-400/40">Z-Centro</span>
+        </div>
       </footer>
     </motion.main>
   );

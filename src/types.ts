@@ -13,7 +13,7 @@ export interface ProductDetail extends Product {
   esPersonalizable?: boolean;
   visibilidad?: string;
   categorias?: string[];
-  colecciones?: string[];
+  catalogos?: string[];
   receta?: RecipeItem[];
 }
 
@@ -27,7 +27,7 @@ export interface ProductBody {
   visibilidad: string;
   imagenUrl: string;
   categorias: string[];
-  colecciones: string[];
+  catalogos: string[];
   receta?: RecipeItem[];
   activo?: boolean;
 }
@@ -304,4 +304,19 @@ export interface OrderDetail extends Order {
   correoCliente?: string;
   telefonoCliente?: string;
   items?: OrderItem[];
+}
+
+export interface AdminCategory {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  estado: string;
+}
+
+export interface AdminCatalogo {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  estado: string;
+  imagenUrl: string | null;
 }

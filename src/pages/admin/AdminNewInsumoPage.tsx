@@ -13,7 +13,7 @@ const TIPOS = ['Insumos', 'Accesorios', 'Bases', 'Follaje', 'Flores', 'Empaque',
 const UNIDADES = ['PIEZA', 'PAQUETE', 'METRO', 'ROLLO', 'CAJA', 'DOCENA', 'TALLO'];
 
 const inputBase =
-  'w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 outline-none transition-all focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400 dark:placeholder:text-slate-600';
+  'w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 outline-none transition-all focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400 dark:placeholder:text-slate-600';
 const labelBase = 'block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5';
 
 type FormState = {
@@ -38,7 +38,7 @@ export default function AdminNewInsumoPage() {
 
   const [form, setForm] = useState<FormState>({
     nombre:         '',
-    sucursal:       'Matriz',
+    sucursal:       'Sucursal Principal',
     stockActual:    '0',
     stockMinimo:    '10',
     unidadMedida:   'PIEZA',
@@ -182,7 +182,7 @@ export default function AdminNewInsumoPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-4 w-full h-full">
 
       {/* ── HEADER ── */}
       <FadeIn>
@@ -207,11 +207,11 @@ export default function AdminNewInsumoPage() {
         </div>
       ) : (
         <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden flex flex-col">
 
-        <div className="px-8 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
+        <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Configuración de inventario</p>
           <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 cursor-pointer group">
@@ -237,103 +237,112 @@ export default function AdminNewInsumoPage() {
           </div>
         </div>
 
-        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* Nombre */}
-          <div className="md:col-span-2">
-            <label className={labelBase}>Nombre del insumo *</label>
-            <input
-              type="text"
-              value={form.nombre}
-              onChange={set('nombre')}
-              className={`${inputBase} ${errors.nombre ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-400' : ''}`}
-              placeholder="Ej. Espuma floral verde, Cinta dorada, Base cerámica..."
-            />
-            {errors.nombre && (
-              <p className="mt-1.5 text-xs text-rose-500 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />{errors.nombre}
-              </p>
-            )}
-          </div>
-
-          {/* Sucursal */}
-          <div>
-            <label className={labelBase}>Sucursal (Almacén) *</label>
-            <input
-              type="text"
-              value={form.sucursal}
-              onChange={set('sucursal')}
-              className={`${inputBase} ${errors.sucursal ? 'border-rose-400' : ''}`}
-              placeholder="Ej. Matriz, Bodega Norte..."
-            />
-          </div>
-
-          {/* Unidad de Medida */}
-          <div>
-            <label className={labelBase}>Unidad de medida *</label>
-            <select
-              value={form.unidadMedida}
-              onChange={set('unidadMedida')}
-              className={inputBase}>
-              {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
-          </div>
-
-          {/* Stock Actual */}
-          <div>
-            <label className={labelBase}>Stock Inicial (Existencia) *</label>
-            <input
-              type="number"
-              value={form.stockActual}
-              onChange={set('stockActual')}
-              className={`${inputBase} ${errors.stockActual ? 'border-rose-400' : ''}`}
-            />
-          </div>
-
-          {/* Precio Costo */}
-          <div>
-            <label className={labelBase}>Precio de Costo (Unitario) *</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 dark:text-slate-500">$</span>
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+          
+          {/* Columna Izquierda: Formulario (Col 7) */}
+          <div className="lg:col-span-7 space-y-5">
+            {/* Nombre */}
+            <div>
+              <label className={labelBase}>Nombre del insumo *</label>
               <input
-                type="number"
-                value={form.precioCosto}
-                onChange={set('precioCosto')}
-                className={`${inputBase} pl-8`}
-                placeholder="0.00"
-                step="0.01"
+                type="text"
+                value={form.nombre}
+                onChange={set('nombre')}
+                className={`${inputBase} ${errors.nombre ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-400' : ''}`}
+                placeholder="Ej. Espuma floral verde, Cinta dorada, Base cerámica..."
+              />
+              {errors.nombre && (
+                <p className="mt-1 text-xs text-rose-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />{errors.nombre}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Sucursal */}
+              <div>
+                <label className={labelBase}>Sucursal (Almacén) *</label>
+                <select
+                  value={form.sucursal}
+                  onChange={set('sucursal')}
+                  className={`${inputBase} ${errors.sucursal ? 'border-rose-400' : ''}`}
+                >
+                  <option value="Sucursal Principal">Sucursal Principal</option>
+                  <option value="Almacen">Almacén</option>
+                </select>
+              </div>
+
+              {/* Unidad de Medida */}
+              <div>
+                <label className={labelBase}>Unidad de medida *</label>
+                <select
+                  value={form.unidadMedida}
+                  onChange={set('unidadMedida')}
+                  className={inputBase}>
+                  {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              {/* Stock Actual */}
+              <div>
+                <label className={labelBase}>Existencia *</label>
+                <input
+                  type="number"
+                  value={form.stockActual}
+                  onChange={set('stockActual')}
+                  className={`${inputBase} ${errors.stockActual ? 'border-rose-400' : ''}`}
+                />
+              </div>
+
+              {/* Stock Mínimo */}
+              <div>
+                <label className={labelBase}>Mínimo *</label>
+                <input
+                  type="number"
+                  value={form.stockMinimo}
+                  onChange={set('stockMinimo')}
+                  className={`${inputBase} ${errors.stockMinimo ? 'border-rose-400' : ''}`}
+                />
+              </div>
+
+              {/* Precio Costo */}
+              <div>
+                <label className={labelBase}>Costo Unitario *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 dark:text-slate-500 text-xs">$</span>
+                  <input
+                    type="number"
+                    value={form.precioCosto}
+                    onChange={set('precioCosto')}
+                    className={`${inputBase} pl-6`}
+                    placeholder="0.00"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Columna Derecha: Imagen (Col 5) */}
+          <div className="lg:col-span-5">
+            <div className="h-full">
+              <ImageUploader
+                label="Imagen del insumo"
+                hint="Se subirá al presionar Guardar"
+                onFileSelect={setSelectedFile}
+                isUploading={isUploading}
+                existingUrl={isEdit ? form.imagenUrl : undefined}
+                uploadedUrl={uploadedUrl}
               />
             </div>
           </div>
 
-          {/* Stock Mínimo */}
-          <div>
-            <label className={labelBase}>Stock Mínimo (Alerta) *</label>
-            <input
-              type="number"
-              value={form.stockMinimo}
-              onChange={set('stockMinimo')}
-              className={`${inputBase} ${errors.stockMinimo ? 'border-rose-400' : ''}`}
-            />
-          </div>
-
-          {/* Imagen — se sube a Cloudinary al presionar Guardar */}
-          <div className="md:col-span-2">
-            <ImageUploader
-              label="Imagen del insumo"
-              hint="Se subirá al presionar Guardar"
-              onFileSelect={setSelectedFile}
-              isUploading={isUploading}
-              existingUrl={isEdit ? form.imagenUrl : undefined}
-              uploadedUrl={uploadedUrl}
-            />
-          </div>
-
-
         </div>
 
         {/* Footer acciones */}
-        <div className="px-8 py-5 border-t border-slate-100 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/60 flex items-center justify-between gap-3">
+        <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/60 flex items-center justify-between gap-3">
           {isEdit && (
             <button
               type="button"
@@ -385,23 +394,6 @@ export default function AdminNewInsumoPage() {
         </div>
       </motion.div>
       )}
-
-      {/* INFO */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-xl flex gap-3 text-sm text-blue-700 dark:text-blue-400">
-        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400 dark:text-blue-500" />
-        <div>
-          <p className="font-bold">Flujo de guardado</p>
-          <p className="text-blue-500 dark:text-blue-400 text-xs mt-0.5">
-            Al presionar <strong>Guardar</strong>: (1) imagen → Cloudinary → URL,
-            (2) datos + URL → <code className="font-mono bg-blue-100 dark:bg-blue-900/60 px-1 rounded text-blue-800 dark:text-blue-200">POST /api/admin/inventory</code>
-          </p>
-        </div>
-      </motion.div>
-
     </div>
   );
 }

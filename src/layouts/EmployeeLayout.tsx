@@ -70,24 +70,37 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
     }`;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-900 transition-colors">
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0a0f14] transition-colors relative">
+      {/* ── Background Pattern ── */}
+      <div 
+        className="absolute inset-0 z-0 opacity-[0.04] dark:opacity-[0.02] pointer-events-none transition-opacity"
+        style={{ 
+          backgroundImage: 'url("/botanical-bg.png")',
+          backgroundSize: '450px',
+          backgroundRepeat: 'repeat'
+        }}
+      />
+
       {/* ── Sidebar ── */}
       <motion.aside
         initial={{ x: -260 }}
         animate={{ x: 0, width: isSidebarOpen ? 256 : 72 }}
         transition={{ type: "spring", stiffness: 280, damping: 28 }}
-        className="bg-[#1e3a5f] dark:bg-[#0f172a] border-r border-black/30 dark:border-white/5 shadow-2xl flex flex-col flex-shrink-0 z-20 overflow-hidden transition-colors"
+        className="bg-[#1e3a5f] dark:bg-[#0b1624] border-r border-[#1e3a5f]/20 dark:border-white/5 shadow-2xl flex flex-col flex-shrink-0 z-20 overflow-hidden transition-colors relative"
       >
-        {/* Logo */}
-        <div className="h-16 flex items-center px-[18px] border-b border-white/10 overflow-hidden">
-          <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
+        {/* Sidebar background overlay */}
+        <div className="absolute inset-0 bg-black/10 pointer-events-none" />
+
+        {/* Logo Section */}
+        <div className="h-16 flex items-center px-[18px] border-b border-white/10 overflow-hidden relative z-10">
+          <Link to="/empleado/dashboard" className="flex items-center gap-3 min-w-0">
             <div className="relative flex-shrink-0">
               <img
                 src="/Logo.png"
                 alt="Logo"
-                className="w-8 h-8 object-contain relative z-10"
+                className="w-7 h-7 object-contain relative z-10"
               />
-              <div className="absolute inset-0 bg-[#FBBF24] blur-lg opacity-20 animate-pulse" />
+              <div className="absolute inset-0 bg-[#eab308] blur-lg opacity-40 animate-pulse" />
             </div>
             <AnimatePresence initial={false}>
               {isSidebarOpen && (
@@ -96,7 +109,7 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.2 }}
-                  className="font-bold text-lg whitespace-nowrap"
+                  className="font-serif font-bold text-lg whitespace-nowrap"
                 >
                   <span className="text-white">Florería </span>
                   <span className="text-[#eab308]">Bautista</span>
@@ -106,9 +119,9 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
           </Link>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 custom-scrollbar">
-          <Link to="/dashboard" className={linkCls(isActive('/dashboard'))}>
+        {/* Nav Section */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar relative z-10">
+          <Link to="/empleado/dashboard" className={linkCls(isActive('/empleado/dashboard'))}>
             <Home className="w-5 h-5 flex-shrink-0" />
             <Label>Inicio</Label>
           </Link>
@@ -138,15 +151,15 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
             <Label>Inventario</Label>
           </Link>
 
-          <div className="py-3">
+          <div className="py-6">
             <AnimatePresence initial={false} mode="wait">
               {isSidebarOpen ? (
                 <motion.p key="label" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
-                  className="px-3 text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                  Sistema
+                  className="px-3 text-[10px] font-black text-white/30 uppercase tracking-[0.25em] mb-3">
+                  Administración
                 </motion.p>
               ) : (
-                <motion.div key="line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-t border-white/10 mx-2" />
+                <motion.div key="line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-t border-white/10 mx-2 mb-6" />
               )}
             </AnimatePresence>
           </div>
@@ -157,7 +170,7 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
           >
             <div className={`relative ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
               <Bell className="w-5 h-5 flex-shrink-0" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold px-1 rounded-full shadow-sm">3</span>
+              <span className="absolute -top-1.5 -right-1.5 bg-[#eab308] text-[#1e3a5f] text-[10px] font-black px-1.5 rounded-full shadow-lg border border-[#1e3a5f]/50">3</span>
             </div>
             <Label>Notificaciones</Label>
           </Link>
@@ -172,8 +185,8 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
 
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center rounded-xl text-sm font-medium transition-colors duration-150 text-red-400 hover:bg-red-900/20 py-2.5 mt-4 ${
-              isSidebarOpen ? "px-3 gap-3" : "justify-center px-0"
+            className={`w-full flex items-center rounded-xl text-sm font-bold transition-all duration-200 text-rose-300 elements hover:bg-rose-500/10 hover:text-rose-400 py-3 mt-8 ${
+              isSidebarOpen ? "px-4 gap-3" : "justify-center px-0"
             }`}
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
@@ -181,21 +194,21 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
           </button>
         </nav>
 
-        {/* Collapse button */}
-        <div className="p-3 border-t border-white/10">
+        {/* Footer Sidebar */}
+        <div className="p-3 border-t border-white/10 relative z-10">
           <button
             onClick={() => setIsSidebarOpen((v) => !v)}
-            className={`w-full flex items-center p-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all ${
+            className={`w-full flex items-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all shadow-inner shadow-black/20 ${
               isSidebarOpen ? "gap-3" : "justify-center"
             }`}
           >
             <motion.div animate={{ rotate: isSidebarOpen ? 0 : 180 }} transition={{ type: "spring", stiffness: 260, damping: 22 }}>
-              <PanelLeftClose className="w-6 h-6 flex-shrink-0" />
+              <PanelLeftClose className="w-5 h-5 flex-shrink-0" />
             </motion.div>
             <AnimatePresence initial={false}>
               {isSidebarOpen && (
-                <motion.span initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} className="text-xs font-bold uppercase tracking-wider">
-                  Contraer Menú
+                <motion.span initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} className="text-[10px] font-black uppercase tracking-widest">
+                  Minimizar
                 </motion.span>
               )}
             </AnimatePresence>
@@ -203,73 +216,76 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
         </div>
       </motion.aside>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* TopNavbar */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-8 flex-shrink-0 z-10 transition-colors">
-          <div>
-            <h2 className="text-lg font-bold text-[#1e3a5f] dark:text-white">
-              Panel de Ventas
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+        {/* Top Navbar */}
+        <header className="h-16 bg-white/95 dark:bg-[#0b1624]/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 md:px-10 flex-shrink-0 z-10 transition-colors">
+          <div className="flex flex-col">
+            <h2 className="text-lg font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">
+              Panel de ventas
             </h2>
           </div>
-          <div className="flex items-center gap-6">
-            <button
-              className="relative p-2 text-gray-400 hover:text-[#1e3a5f] dark:hover:text-white transition-colors"
-            >
-              <Bell className="w-6 h-6" />
-              <span className="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
-            </button>
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-[#1e3a5f] dark:text-slate-200">
-                  {user?.nombre ?? user?.name ?? "Empleado"}
+                <p className="text-sm font-bold text-[#1e3a5f] dark:text-slate-100">
+                  {user?.nombre ?? user?.name ?? "Colaborador"}
                 </p>
-                <p className="text-xs text-gray-400 dark:text-slate-500 capitalize">
-                  {user?.role || "Vendedor"}
-                </p>
+                <div className="flex items-center justify-end gap-1.5 mt-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                      {user?.role || "Ventas"}
+                    </p>
+                </div>
               </div>
-              <div className="relative">
+              <div className="relative group">
+                <div className="absolute inset-0 bg-[#eab308] rounded-xl blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
                 <img
                   alt="User Profile"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-slate-800 shadow-sm"
+                  className="w-9 h-9 rounded-xl object-cover border-2 border-white dark:border-[#1e3a5f] shadow-2xl relative z-10 transition-transform group-hover:scale-105"
                   src={user?.photoURL || "https://lh3.googleusercontent.com/aida-public/AB6AXuCzCV9ts9T2_K_tTgV_0M_ZYJNV9mEnhkvGa7qDtXK2aPuNsu_56CyYvy6dBZL7_g7ftd1Hwz23LsnXWReDheXL-sawX0VvmltjhVX1XeJxtrXUSmvbHQvY7ps3PlOTD2aUy9bWQUk18JMOZylHTwPZUZ8MSBs-3cs_bwBMoo0cJMgNtxURHFmsiv4P29gdI8oMt_9iPJlJ0pg7DM96BDRyAHa1W--Xw6OuuMSL8o7NU8hRJVBd2u4Azto9MI7OTcdu-tS4AsmJJ8IH"}
                 />
-                <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-white dark:border-slate-900" />
               </div>
             </div>
           </div>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 md:p-6 lg:p-8 custom-scrollbar transition-colors relative">
-          {/* Error Banner */}
+        {/* Global Main Area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-6 custom-scrollbar transition-colors relative">
+          {/* Status Notifications */}
           <AnimatePresence>
             {showError && (
               <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="absolute top-4 left-1/2 transform -translate-x-1/2 w-full max-w-lg z-50 px-4"
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className="absolute top-6 left-1/2 transform -translate-x-1/2 w-full max-w-lg z-50 px-4"
               >
-                <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-md shadow-lg flex items-center justify-between">
+                <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 p-5 rounded-3xl shadow-2xl flex items-center justify-between backdrop-blur-2xl">
                   <div className="flex items-center">
-                    <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-                    <p className="text-sm text-red-700 dark:text-red-400 font-medium">Error al cargar datos. Por favor, reintente.</p>
+                    <div className="w-11 h-11 rounded-2xl bg-rose-500 text-white flex items-center justify-center mr-4 shadow-xl shadow-rose-500/30">
+                        <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-slate-900 dark:text-white font-black uppercase tracking-tight">Incidencia de Sistema</p>
+                        <p className="text-xs text-rose-600 dark:text-rose-400 font-medium italic mt-0.5">Error al sincronizar con el backend central.</p>
+                    </div>
                   </div>
-                  <button className="text-red-500 hover:text-red-700" onClick={() => setShowError(false)}>
-                    <X className="h-4 w-4" />
+                  <button className="p-2 text-slate-400 hover:text-rose-500 transition-colors" onClick={() => setShowError(false)}>
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
+          {/* Sub-page Render Area */}
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="min-h-full flex flex-col w-full"
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            className="min-h-full flex flex-col w-full relative z-10"
           >
             {children}
           </motion.div>

@@ -91,10 +91,7 @@ export default function AdminSystemMonitoringPage() {
       <FadeIn>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-4 h-4 text-blue-500" />
-              <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Infraestructura Crítica</span>
-            </div>
+
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Dashboard de Salud</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-tight">Monitoreo en tiempo real de recursos y disponibilidad</p>
           </div>
@@ -131,10 +128,10 @@ export default function AdminSystemMonitoringPage() {
             {/* Health Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Tiempo de Actividad', value: systemInfo?.data.tiempoActividad || '...', icon: <Clock />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Sistema Online' },
-                { label: 'Carga de Trabajo', value: systemInfo?.data.tiempoRespuesta || '...', icon: <Zap />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20', trend: 'Latencia' },
-                { label: 'Threads Activos', value: systemInfo?.data.conexionesActivas || '0', icon: <Cpu />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20', trend: 'En ejecución' },
-                { label: 'Origen Datos', value: systemInfo?.data.baseDatos || 'BD', icon: <Database />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: 'SQL Server/PG' },
+                { label: 'Tiempo de Actividad', value: systemInfo?.data.tiempoActividad || '...', icon: <Clock />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'Sistema Online' },
+                { label: 'Carga de Trabajo', value: systemInfo?.data.tiempoRespuesta || '...', icon: <Zap />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'Latencia' },
+                { label: 'Threads Activos', value: systemInfo?.data.conexionesActivas || '0', icon: <Cpu />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', trend: 'En ejecución' },
+                { label: 'Origen Datos', value: systemInfo?.data.baseDatos || 'BD', icon: <Database />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'SQL Server/PG' },
               ].map((s, idx) => (
                 <div key={idx} className={`relative overflow-hidden group bg-white dark:bg-slate-800 border ${s.border} rounded-[24px] p-5 transition-all hover:shadow-md h-28`}>
                    <div className="relative z-10 flex flex-col justify-between h-full">
@@ -220,10 +217,10 @@ export default function AdminSystemMonitoringPage() {
             {/* Monitor Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Peso Total BD', value: monitor?.estadisticas.tamanoTotalBd || '...', icon: <HardDrive />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Storage' },
-                { label: 'Cache Hit Ratio', value: `${monitor?.estadisticas.porcentajeCacheHit.toFixed(2)}%`, icon: <Zap />, color: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400', bg: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-amber-50 dark:bg-amber-500/10', border: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'border-emerald-100 dark:border-emerald-500/20' : 'border-amber-100 dark:border-amber-500/20', trend: 'Performance' },
-                { label: 'Transacciones', value: monitor?.estadisticas.totalTransacciones.toLocaleString() || '0', icon: <Activity />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-100 dark:border-indigo-500/20', trend: 'Actividad' },
-                { label: 'Último Vacuum', value: monitor?.estadisticas.fechaUltimoVacuum ? new Date(monitor.estadisticas.fechaUltimoVacuum).toLocaleDateString() : '...', icon: <RefreshCw />, color: 'text-blue-600 dark:text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Mantenimiento' },
+                { label: 'Peso Total BD', value: monitor?.estadisticas.tamanoTotalBd || '...', icon: <HardDrive />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'Storage' },
+                { label: 'Cache Hit Ratio', value: `${monitor?.estadisticas.porcentajeCacheHit.toFixed(2)}%`, icon: <Zap />, color: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300', bg: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'bg-emerald-100/70 dark:bg-emerald-500/20' : 'bg-amber-100/70 dark:bg-amber-500/20', border: monitor?.estadisticas.porcentajeCacheHit >= 95 ? 'border-emerald-200 dark:border-emerald-500/40' : 'border-amber-200 dark:border-amber-500/40', trend: 'Performance' },
+                { label: 'Transacciones', value: monitor?.estadisticas.totalTransacciones.toLocaleString() || '0', icon: <Activity />, color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40', trend: 'Actividad' },
+                { label: 'Último Vacuum', value: monitor?.estadisticas.fechaUltimoVacuum ? new Date(monitor.estadisticas.fechaUltimoVacuum).toLocaleDateString() : '...', icon: <RefreshCw />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'Mantenimiento' },
               ].map((s, idx) => (
                 <div key={idx} className={`relative overflow-hidden group bg-white dark:bg-slate-800 border ${s.border} rounded-[24px] p-5 shadow-sm transition-all hover:shadow-md h-28`}>
                    <div className="relative z-10 flex flex-col justify-between h-full">

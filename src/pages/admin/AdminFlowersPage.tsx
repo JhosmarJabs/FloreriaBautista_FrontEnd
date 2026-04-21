@@ -131,9 +131,9 @@ export default function AdminFlowersPage() {
       {/* KPI Stats Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { label: 'Total insumos', value: loading ? '—' : String(total), icon: <Package2 />, color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-900/10', border: 'border-pink-100 dark:border-pink-700/50', trend: 'registrados' },
-          { label: 'Flores primarias', value: loading ? '—' : String(flowers.filter(f => f.esFlorPrimaria).length), icon: <Star />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-700/50', trend: 'para arreglos' },
-          { label: 'Bajo mínimo', value: loading ? '—' : String(flowers.filter(f => f.bajoMinimo).length), icon: <AlertTriangle />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/10', border: 'border-red-100 dark:border-red-700/50', trend: 'sin stock' },
+          { label: 'Total insumos', value: loading ? '—' : String(total), icon: <Package2 />, color: 'text-pink-700 dark:text-pink-300', bg: 'bg-pink-100/70 dark:bg-pink-500/20', border: 'border-pink-200 dark:border-pink-500/40', trend: 'registrados' },
+          { label: 'Flores primarias', value: loading ? '—' : String(flowers.filter(f => f.esFlorPrimaria).length), icon: <Star />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'para arreglos' },
+          { label: 'Bajo mínimo', value: loading ? '—' : String(flowers.filter(f => f.bajoMinimo).length), icon: <AlertTriangle />, color: 'text-red-700 dark:text-red-300', bg: 'bg-red-100/70 dark:bg-red-500/20', border: 'border-red-200 dark:border-red-500/40', trend: 'sin stock' },
         ].map((s, i) => (
           <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">

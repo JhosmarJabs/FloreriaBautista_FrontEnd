@@ -1,7 +1,3 @@
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
 export const filterSensitiveFields = (data: any[]) => {
   return data.map(item => {
     const newItem = { ...item };
@@ -16,7 +12,10 @@ export const filterSensitiveFields = (data: any[]) => {
   });
 };
 
-export const exportToCSV = (data: any[], filename: string) => {
+export const exportToCSV = async (data: any[], filename: string) => {
+  // Carga diferida de XLSX
+  const XLSX = await import('xlsx');
+  
   const filteredData = filterSensitiveFields(data);
   const worksheet = XLSX.utils.json_to_sheet(filteredData);
   const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
@@ -32,7 +31,11 @@ export const exportToCSV = (data: any[], filename: string) => {
   URL.revokeObjectURL(url);
 };
 
-export const exportToPDF = (data: any[], title: string, filename: string) => {
+export const exportToPDF = async (data: any[], title: string, filename: string) => {
+  // Carga diferida de jsPDF y su plugin
+  const { default: jsPDF } = await import('jspdf');
+  await import('jspdf-autotable');
+
   const filteredData = filterSensitiveFields(data);
   if (filteredData.length === 0) return;
 

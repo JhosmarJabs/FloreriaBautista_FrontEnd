@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronRight, Info, Settings, Save, RefreshCw,
   Package, Tag, Layers, X, Plus, ImagePlus,
-  FlaskConical, Star, Search, Trash2, Calculator,
+  FlaskConical, Star, Search, Trash2, Calculator, Check, AlertTriangle,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
-import { ProductBody, RecipeItem, InventoryItem } from '../../types';
+import { ProductBody, RecipeItem, InventoryItem, AdminCategory, AdminCatalogo } from '../../types';
 import { AnimatedButton } from '../../components/Animations';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
@@ -15,7 +16,22 @@ import { FadeIn } from '../../components/Animations';
 
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const TIPOS = ['Arreglo Floral', 'Ramo', 'Flores de Corte', 'Planta', 'Insumos', 'Accesorios'];
+const TIPOS = [
+  { value: 'ARREGLO_FLORAL', label: 'Arreglo Floral' },
+  { value: 'RAMO', label: 'Ramo' },
+  { value: 'FLORES_CORTE', label: 'Flores de Corte' },
+  { value: 'PLANTA', label: 'Planta' },
+  { value: 'INSUMOS', label: 'Insumos' },
+  { value: 'ACCESORIOS', label: 'Accesorios' },
+];
+
+const VISIBILIDAD_OPTIONS = [
+  { value: 'PUBLICO', label: 'Público (Web)' },
+  { value: 'PRIVADO', label: 'Privado (Solo Admin)' },
+  { value: 'CATALOGO', label: 'Solo Catálogo PDF' },
+  { value: 'AMBOS', label: 'Ambos (Web y Catálogo)' },
+];
+
 const ESTADOS = [
   { value: 'ACTIVO', label: 'Activo' },
   { value: 'INACTIVO', label: 'Inactivo' },
@@ -28,13 +44,13 @@ const emptyForm = (): ProductBody => ({
   nombre: '',
   descripcion: '',
   precioBase: 0,
-  tipo: 'Arreglo Floral',
+  tipo: 'ARREGLO_FLORAL',
   esPersonalizable: false,
   estado: 'ACTIVO',
-  visibilidad: 'PUBLICO',
+  visibilidad: 'AMBOS',
   imagenUrl: '',
   categorias: [],
-  colecciones: [],
+  catalogos: [],
   receta: [],
 });
 
@@ -126,6 +142,13 @@ export default function ProductManagementPage() {
   const [saving, setSaving]            = useState(false);
   const [catInput, setCatInput]         = useState('');
   const [colInput, setColInput]         = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // ── Listas globales para sugerencias ───────────────────────────────────────
+  const [availableCategories, setAvailableCategories] = useState<AdminCategory[]>([]);
+  const [availableCatalogos, setAvailableCatalogos]   = useState<AdminCatalogo[]>([]);
+  const [showCatSuggestions, setShowCatSuggestions]   = useState(false);
+  const [showColSuggestions, setShowColSuggestions]   = useState(false);
 
   /* ── Imagen ──────────────────────────────────── */
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
@@ -134,10 +157,12 @@ export default function ProductManagementPage() {
 
   // ── Cálculos de receta ─────────────────────────────────────────────────────
   const receta = form.receta ?? [];
+  const costoTotalInsumos = receta.reduce((sum, r) => sum + r.cantidad * r.flowerPrecioCosto, 0);
   const costoBaseFloresPrimarias = receta
     .filter(r => r.esFlorPrimaria)
     .reduce((sum, r) => sum + r.cantidad * r.flowerPrecioCosto, 0);
   const precioSugerido = costoBaseFloresPrimarias * FACTOR_MARGEN;
+  const margenGanancia = form.precioBase > 0 ? ((form.precioBase - costoTotalInsumos) / form.precioBase) * 100 : 0;
 
   // Preload precio sugerido when recipe changes and user hasn't manually set it
   const [precioManual, setPrecioManual] = useState(false);
@@ -162,11 +187,17 @@ export default function ProductManagementPage() {
           tipo: p.tipo,
           esPersonalizable: p.esPersonalizable ?? false,
           estado: p.estado,
-          visibilidad: p.visibilidad ?? 'PUBLICO',
+          visibilidad: p.visibilidad ?? 'AMBOS',
           imagenUrl: p.imagenUrl ?? '',
           categorias: p.categorias ?? [],
-          colecciones: p.colecciones ?? [],
-          receta: p.receta ?? [],
+          catalogos: p.catalogos ?? [],
+          receta: (p.receta ?? []).map((r: any) => ({
+             inventoryItemId: r.inventoryItemId,
+             flowerNombre: r.nombre || r.flowerNombre, // Soporta ambos nombres de propiedad
+             flowerPrecioCosto: r.precioCosto || r.flowerPrecioCosto,
+             esFlorPrimaria: r.esFlorPrimaria,
+             cantidad: r.cantidad,
+          })),
         });
         setPrecioManual(true);
       } catch {
@@ -177,18 +208,34 @@ export default function ProductManagementPage() {
     })();
   }, [id]);
 
+  // ── Load global catalogues for suggestions ─────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const [catsRes, colsRes] = await Promise.all([
+          AdminService.getCategorias(),
+          AdminService.getCatalogos()
+        ]);
+        setAvailableCategories(catsRes.data);
+        setAvailableCatalogos(colsRes.data);
+      } catch (err) {
+        console.error('Error al cargar catálogos globales:', err);
+      }
+    })();
+  }, []);
+
 
   const set = (field: keyof ProductBody, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }));
 
-  const addTag = (field: 'categorias' | 'colecciones', value: string, clear: () => void) => {
+  const addTag = (field: 'categorias' | 'catalogos', value: string, clear: () => void) => {
     const trimmed = value.trim();
     if (!trimmed) return;
     if (!(form[field] as string[]).includes(trimmed)) set(field, [...(form[field] as string[]), trimmed]);
     clear();
   };
 
-  const removeTag = (field: 'categorias' | 'colecciones', tag: string) =>
+  const removeTag = (field: 'categorias' | 'catalogos', tag: string) =>
     set(field, (form[field] as string[]).filter(t => t !== tag));
 
   // ── Recipe handlers ────────────────────────────────────────────────────────
@@ -216,11 +263,16 @@ export default function ProductManagementPage() {
 
 
   // ── Save ───────────────────────────────────────────────────────────────────
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!form.nombre.trim()) { showToast('El nombre es obligatorio.', 'error'); return; }
     if (form.precioBase <= 0) { showToast('El precio debe ser mayor a 0.', 'error'); return; }
-    setSaving(true);
+    setShowConfirmModal(true);
+  };
 
+  // ── Save logic (executed after confirmation) ────────────────────────────────
+  const confirmSave = async () => {
+    setShowConfirmModal(false);
+    setSaving(true);
     /* 1. Si hay archivo seleccionado → subir a Cloudinary primero */
     let imagenUrl = form.imagenUrl ?? '';
     if (selectedImageFile) {
@@ -247,7 +299,7 @@ export default function ProductManagementPage() {
         inventoryItemId: r.inventoryItemId,
         cantidad: r.cantidad,
       })),
-      activo: true // Por defecto lo garantizamos como true en creación/edición normal
+      activo: true
     };
     try {
       if (isEdit && id) {
@@ -298,20 +350,13 @@ export default function ProductManagementPage() {
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <>
+      <div className="flex flex-col h-full overflow-hidden">
 
       {/* ── Header fijo ── */}
       <FadeIn>
-        <div className="flex-none flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 px-1 border-b border-slate-100 dark:border-slate-700 mb-6">
+        <div className="flex-none flex flex-col md:flex-row md:items-center justify-between gap-4 py-2 px-1 border-b border-slate-100 dark:border-slate-700 mb-4">
           <div>
-            <nav className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest cursor-pointer hover:underline" onClick={() => navigate('/admin/catalogo')}>Catálogo</span>
-              <ChevronRight className="w-3 h-3 text-slate-400" />
-              <div className="flex items-center gap-1.5">
-                <span className="flex size-1.5 rounded-full bg-slate-400" />
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{isEdit ? 'Edición de Producto' : 'Creación Directa'}</span>
-              </div>
-            </nav>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               {isEdit ? 'Editar Producto' : 'Nuevo Producto'}
             </h1>
@@ -360,23 +405,32 @@ export default function ProductManagementPage() {
                   <textarea value={form.descripcion} onChange={e => set('descripcion', e.target.value)} placeholder="Describe el producto..." className={`${inp} resize-none h-16`} />
                 </div>
                 <div>
-                  <label className={lbl}>Precio Base de Venta (MXN) <span className="text-red-500">*</span></label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className={lbl}>Precio de Venta (Público) <span className="text-red-500">*</span></label>
+                    {margenGanancia > 0 && (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${margenGanancia > 40 ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'}`}>
+                        Margen: {margenGanancia.toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm">$</span>
                     <input
                       type="number"
                       value={form.precioBase}
                       onChange={e => { setPrecioManual(true); set('precioBase', Number(e.target.value)); }}
-                      className={`${inp} pl-7`}
+                      className={`${inp} pl-7 text-lg font-black text-blue-600 dark:text-blue-400`}
                       placeholder="0.00" min={0} step={0.01}
                     />
                   </div>
-                  {costoBaseFloresPrimarias > 0 && (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                      Precio sugerido: <strong className="text-blue-600 dark:text-blue-400">${precioSugerido.toFixed(2)}</strong> (factor ×{FACTOR_MARGEN}) —{' '}
-                      <button type="button" onClick={() => { set('precioBase', parseFloat(precioSugerido.toFixed(2))); setPrecioManual(false); }} className="text-blue-500 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300">usar sugerido</button>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <p className="text-[10px] text-slate-400">
+                      Inversión en insumos: <strong className="text-slate-600 dark:text-slate-300">${costoTotalInsumos.toFixed(2)}</strong>
                     </p>
-                  )}
+                    {precioSugerido > 0 && Math.abs(form.precioBase - precioSugerido) > 1 && (
+                      <button type="button" onClick={() => { set('precioBase', parseFloat(precioSugerido.toFixed(2))); setPrecioManual(false); }} className="text-[10px] font-bold text-blue-500 dark:text-blue-400 underline hover:text-blue-700">Restaurar sugerido (${precioSugerido.toFixed(0)})</button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -452,31 +506,16 @@ export default function ProductManagementPage() {
                     </table>
                   </div>
 
-                  {/* Cost summary */}
-                  <div className="mt-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl space-y-1.5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calculator className="w-3.5 h-3.5 text-indigo-500" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Cálculo de costo</span>
+                  {/* Cost summary simplificado */}
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Inversión Total</p>
+                      <p className="text-sm font-black text-slate-700 dark:text-slate-200">${costoTotalInsumos.toFixed(2)}</p>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">Costo total (todos los insumos)</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-200">
-                        ${receta.reduce((s, r) => s + r.cantidad * r.flowerPrecioCosto, 0).toFixed(2)}
-                      </span>
+                    <div className="p-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/50 rounded-xl">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-400 mb-1">Precio Sugerido</p>
+                      <p className="text-sm font-black text-blue-600 dark:text-blue-400">${precioSugerido.toFixed(2)}</p>
                     </div>
-                    <div className="flex justify-between text-xs border-t border-indigo-100 dark:border-indigo-800/50 pt-1.5">
-                      <span className="text-indigo-700 dark:text-indigo-400 font-bold flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                        Costo base (solo flores primarias)
-                      </span>
-                      <span className="font-black text-indigo-700 dark:text-indigo-300">${costoBaseFloresPrimarias.toFixed(2)}</span>
-                    </div>
-                    {costoBaseFloresPrimarias > 0 && (
-                      <div className="flex justify-between text-xs border-t border-indigo-100 dark:border-indigo-800/50 pt-1.5">
-                        <span className="text-slate-500 dark:text-slate-400">Precio sugerido (×{FACTOR_MARGEN})</span>
-                        <span className="font-black text-blue-600 dark:text-blue-400">${precioSugerido.toFixed(2)}</span>
-                      </div>
-                    )}
                   </div>
                 </>
               ) : (
@@ -488,6 +527,103 @@ export default function ProductManagementPage() {
               )}
             </div>
 
+
+            {/* Categorías y catálogos */}
+            <div className={sec}>
+              <p className={secTitle}><Tag className="w-3.5 h-3.5 text-amber-500" /> Categorías y Catálogos (Festividades)</p>
+              <div className="space-y-3">
+                <div>
+                  <label className={lbl}>Categorías</label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {form.categorias.map(cat => (
+                      <span key={cat} className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded-full text-xs font-bold">
+                        {cat}<button type="button" onClick={() => removeTag('categorias', cat)}><X className="w-2.5 h-2.5" /></button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 relative">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={catInput}
+                        onChange={e => { setCatInput(e.target.value); setShowCatSuggestions(true); }}
+                        onFocus={() => setShowCatSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowCatSuggestions(false), 200)}
+                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag('categorias', catInput, () => { setCatInput(''); setShowCatSuggestions(false); }))}
+                        placeholder="Nueva categoría o selecciona..."
+                        className={`${inp} w-full`}
+                      />
+                      {showCatSuggestions && availableCategories.length > 0 && (
+                        <div className="absolute z-30 bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                          {availableCategories
+                            .filter(c => c.nombre.toLowerCase().includes(catInput.toLowerCase()))
+                            .filter(c => !form.categorias.includes(c.nombre))
+                            .map(c => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => addTag('categorias', c.nombre, () => { setCatInput(''); setShowCatSuggestions(false); })}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors"
+                              >
+                                {c.nombre}
+                              </button>
+                            ))
+                          }
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => addTag('categorias', catInput, () => { setCatInput(''); setShowCatSuggestions(false); })} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                <div>
+                  <label className={lbl}>Catálogos (Festividades)</label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {form.catalogos.map(col => (
+                      <span key={col} className="flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 rounded-full text-xs font-bold">
+                        {col}<button type="button" onClick={() => removeTag('catalogos', col)}><X className="w-2.5 h-2.5" /></button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 relative">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={colInput}
+                        onChange={e => { setColInput(e.target.value); setShowColSuggestions(true); }}
+                        onFocus={() => setShowColSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowColSuggestions(false), 200)}
+                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag('catalogos', colInput, () => { setColInput(''); setShowColSuggestions(false); }))}
+                        placeholder="Nuevo catálogo o selecciona..."
+                        className={`${inp} w-full`}
+                      />
+                      {showColSuggestions && availableCatalogos.length > 0 && (
+                        <div className="absolute z-30 bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-40 overflow-y-auto">
+                          {availableCatalogos
+                            .filter(c => c.nombre.toLowerCase().includes(colInput.toLowerCase()))
+                            .filter(c => !form.catalogos.includes(c.nombre))
+                            .map(c => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => addTag('catalogos', c.nombre, () => { setColInput(''); setShowColSuggestions(false); })}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300 transition-colors"
+                              >
+                                {c.nombre}
+                              </button>
+                            ))
+                          }
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => addTag('catalogos', colInput, () => { setColInput(''); setShowColSuggestions(false); })} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-4">
             {/* Imágenes */}
             <div className={sec}>
               <p className={secTitle}><ImagePlus className="w-3.5 h-3.5 text-pink-500" /> Imágenes del Producto</p>
@@ -501,44 +637,6 @@ export default function ProductManagementPage() {
               />
             </div>
 
-            {/* Categorías y colecciones */}
-            <div className={sec}>
-              <p className={secTitle}><Tag className="w-3.5 h-3.5 text-amber-500" /> Categorías y Colecciones</p>
-              <div className="space-y-3">
-                <div>
-                  <label className={lbl}>Categorías</label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {form.categorias.map(cat => (
-                      <span key={cat} className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded-full text-xs font-bold">
-                        {cat}<button type="button" onClick={() => removeTag('categorias', cat)}><X className="w-2.5 h-2.5" /></button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input type="text" value={catInput} onChange={e => setCatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag('categorias', catInput, () => setCatInput('')))} placeholder="Nueva categoría + Enter" className={`${inp} flex-1`} />
-                    <button type="button" onClick={() => addTag('categorias', catInput, () => setCatInput(''))} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-                <div>
-                  <label className={lbl}>Colecciones</label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {form.colecciones.map(col => (
-                      <span key={col} className="flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 rounded-full text-xs font-bold">
-                        {col}<button type="button" onClick={() => removeTag('colecciones', col)}><X className="w-2.5 h-2.5" /></button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input type="text" value={colInput} onChange={e => setColInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag('colecciones', colInput, () => setColInput('')))} placeholder="Nueva colección + Enter" className={`${inp} flex-1`} />
-                    <button type="button" onClick={() => addTag('colecciones', colInput, () => setColInput(''))} className="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-4">
             {/* Clasificación */}
             <div className={sec}>
               <p className={secTitle}><Layers className="w-3.5 h-3.5 text-purple-500" /> Clasificación</p>
@@ -546,7 +644,7 @@ export default function ProductManagementPage() {
                 <div>
                   <label className={lbl}>Tipo</label>
                   <select value={form.tipo} onChange={e => set('tipo', e.target.value)} className={inp}>
-                    {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                    {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
@@ -558,9 +656,7 @@ export default function ProductManagementPage() {
                 <div>
                   <label className={lbl}>Visibilidad</label>
                   <select value={form.visibilidad} onChange={e => set('visibilidad', e.target.value)} className={inp}>
-                    <option value="PUBLICO">Público (Web)</option>
-                    <option value="PRIVADO">Privado (Solo Admin)</option>
-                    <option value="CATALOGO">Solo Catálogo PDF</option>
+                    {VISIBILIDAD_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -590,7 +686,7 @@ export default function ProductManagementPage() {
                 {[
                   { label: 'Nombre', value: form.nombre || '—' },
                   { label: 'Precio', value: `$${form.precioBase.toLocaleString()}` },
-                  { label: 'Tipo', value: form.tipo },
+                  { label: 'Tipo', value: TIPOS.find(t => t.value === form.tipo)?.label ?? form.tipo },
                   { label: 'Estado', value: ESTADOS.find(s => s.value === form.estado)?.label ?? form.estado },
                    { label: 'Imagen', value: form.imagenUrl ? '✓ Subida' : 'Sin imagen' },
                   { label: 'Insumos', value: String(receta.length) },
@@ -610,5 +706,85 @@ export default function ProductManagementPage() {
         </div>
       </div>
     </div>
+
+    {/* ── Modal de Confirmación ── */}
+    <AnimatePresence>
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowConfirmModal(false)}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative w-full max-w-lg bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="size-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <Check className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">Confirmar Datos</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Verifica que todo esté correcto antes de {isEdit ? 'actualizar' : 'crear'}.</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 mb-6">
+                <div className="flex items-center gap-2 mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <Package className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Resumen del Producto</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-6">
+                  {[
+                    { label: 'Nombre', value: form.nombre || '—' },
+                    { label: 'Precio', value: `$${form.precioBase.toLocaleString()}`, highlight: true },
+                    { label: 'Tipo', value: TIPOS.find(t => t.value === form.tipo)?.label ?? form.tipo },
+                    { label: 'Estado', value: ESTADOS.find(s => s.value === form.estado)?.label ?? form.estado },
+                    { label: 'Imagen', value: (selectedImageFile || form.imagenUrl) ? '✓ Lista para subir' : 'Sin imagen' },
+                    { label: 'Insumos', value: `${receta.length} items` },
+                    { label: 'Costo base', value: `$${costoBaseFloresPrimarias.toFixed(2)}` },
+                    { label: 'Categorías', value: form.categorias.length > 0 ? form.categorias.join(', ') : 'Ninguna' },
+                  ].map(row => (
+                    <div key={row.label} className="flex flex-col">
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">{row.label}</span>
+                      <span className={`text-sm font-bold truncate ${row.highlight ? 'text-blue-600 dark:text-blue-400 font-black' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {row.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 px-6 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-400 text-sm font-bold rounded-2xl transition-all"
+                >
+                  Regresar y editar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmSave}
+                  className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Confirmar y Guardar
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+    </>
   );
 }
+

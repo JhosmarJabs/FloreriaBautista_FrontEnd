@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
-import Navigation from './Navigation';
-import Footer from './Footer';
+import Navigation from '../components/Navigation';
+import Footer from '../components/Footer';
 import AnimatedRoutes from '../routes/AppRoutes';
-import AdminLayout from './AdminLayout';
-import EmployeeLayout from './EmployeeLayout';
-import { NavbarCliente } from './NavbarCliente';
+import AdminLayout from '../layouts/AdminLayout';
+import EmployeeLayout from '../layouts/EmployeeLayout';
+import { NavbarCliente } from '../components/NavbarCliente';
 import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
 import { DataService } from '../services/dataService';
 import { Loader2 } from 'lucide-react';
@@ -56,13 +56,13 @@ export default function Layout() {
     if (isEmployee) {
       return (
         <EmployeeLayout user={user}>
-          {location.pathname === '/dashboard' ? <EmployeeDashboardPage /> : <AnimatedRoutes />}
+          {location.pathname === '/empleado/dashboard' ? <EmployeeDashboardPage /> : <AnimatedRoutes />}
         </EmployeeLayout>
       );
     }
 
-    if (location.pathname === '/') {
-      return <Navigate to="/dashboard" replace />;
+    if (location.pathname === '/' || location.pathname === '/dashboard') {
+      return <Navigate to={isAdmin ? "/admin/dashboard" : "/empleado/dashboard"} replace />;
     }
 
     return (

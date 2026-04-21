@@ -5,7 +5,7 @@ import {
   TrendingUp, ShoppingCart, CreditCard, UserPlus, AlertTriangle,
   MoreVertical, ChevronRight, Download, Briefcase, UserCircle,
   User, Package, MapPin, ArrowRight, Heart, Clock, CheckCircle2,
-  Bell, BarChart2, Boxes, Maximize2, Minimize2
+  Bell, BarChart2, Boxes, LayoutDashboard
 } from 'lucide-react';
 import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
@@ -47,9 +47,8 @@ export default function DashboardPage() {
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'shipped'>('all');
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [fullscreen, setFullscreen] = useState(false);
 
-  const pageSize   = 3;
+  const pageSize   = 2;
   const totalPages = Math.ceil(alerts.length / pageSize);
   const displayedAlerts = alerts.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
@@ -71,7 +70,7 @@ export default function DashboardPage() {
       try {
         const [statsRes, ordersRes] = await Promise.all([
           AdminService.getDashboardStats(),
-          AdminService.getAdminOrders({ size: 5 })
+          AdminService.getAdminOrders({ size: 4 })
         ]);
         
         if (statsRes.success) {
@@ -118,7 +117,7 @@ export default function DashboardPage() {
 
   const handleUpdateOrderStatus = async (_orderId: string, _status: string) => {
     try {
-      const res = await AdminService.getAdminOrders({ size: 5 });
+      const res = await AdminService.getAdminOrders({ size: 4 });
       setRecentOrders(res.data.items);
     } catch { /* ignore */ }
     setOpenActionMenu(null);
@@ -139,28 +138,21 @@ export default function DashboardPage() {
 
   if (isAdmin) {
     return (
-      <div className={fullscreen ? "fixed inset-0 z-50 bg-white dark:bg-slate-900 overflow-auto p-4 md:p-8 space-y-8" : "w-full h-full space-y-8"}>
+      <div className="w-full h-full space-y-3 p-4 md:p-5 overflow-hidden">
 
         {/* Header */}
         <FadeIn>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="flex size-2 rounded-full bg-blue-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest">Resumen general</span>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 flex items-center justify-center">
+                <LayoutDashboard className="w-5 h-5 text-blue-500 dark:text-blue-400" />
               </div>
-              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Panel de Control</h1>
-              <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">Rendimiento de tu florería</p>
+              <div>
+                <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Dashboard</h1>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Resumen operativo y métricas principales</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setFullscreen((f: boolean) => !f)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all"
-                title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-              >
-                {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                {fullscreen ? 'Salir' : 'Pantalla completa'}
-              </button>
               <button onClick={handleExportReport}
                 className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all">
                 <Download className="w-4 h-4" />
@@ -182,33 +174,33 @@ export default function DashboardPage() {
             { 
               label: 'Ventas Totales',  
               value: stats ? `$${stats.totalSales.toLocaleString()}` : ' -- ', 
-              icon: <TrendingUp />,  color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10',    border: 'border-blue-100 dark:border-blue-500/20',    trend: stats ? '+15.4% mes actual' : '...'
+              icon: <TrendingUp />,  color: 'text-blue-700 dark:text-blue-300',    bg: 'bg-blue-100/70 dark:bg-blue-500/20',    border: 'border-blue-200 dark:border-blue-500/40',    trend: stats ? '+15.4% mes actual' : '...'
             },
             { 
               label: 'Pedidos Totales', 
               value: stats ? stats.orderCount.toString() : ' -- ',             
-              icon: <ShoppingCart />, color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10',   border: 'border-amber-100 dark:border-amber-500/20',   trend: stats ? 'Activos en sistema' : '...'
+              icon: <ShoppingCart />, color: 'text-amber-700 dark:text-amber-300',   bg: 'bg-amber-100/70 dark:bg-amber-500/20',   border: 'border-amber-200 dark:border-amber-500/40',   trend: stats ? 'Activos en sistema' : '...'
             },
             { 
               label: 'Ticket Promedio', 
               value: stats ? `$${stats.averageTicket.toFixed(2)}` : ' -- ',    
-              icon: <CreditCard />,  color: 'text-indigo-600 dark:text-indigo-400',  bg: 'bg-indigo-50 dark:bg-indigo-500/10',  border: 'border-indigo-100 dark:border-indigo-500/20',  trend: stats ? 'Por cada venta' : '...'
+              icon: <CreditCard />,  color: 'text-indigo-700 dark:text-indigo-300',  bg: 'bg-indigo-100/70 dark:bg-indigo-500/20',  border: 'border-indigo-200 dark:border-indigo-500/40',  trend: stats ? 'Por cada venta' : '...'
             },
             { 
               label: 'Nuevos Clientes', 
               value: stats ? stats.newCustomers.toString() : ' -- ',           
-              icon: <UserPlus />,    color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: stats ? '+8.2% crecimiento' : '...'
+              icon: <UserPlus />,    color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: stats ? '+8.2% crecimiento' : '...'
             },
           ].map((s, i) => (
             <motion.div key={i}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
-              className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}
+              className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-4`}
             >
               <div className="relative z-10 flex flex-col justify-between h-full">
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
-                <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
+                <div className="mt-1 text-xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
                 <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
               </div>
               {React.cloneElement(s.icon as React.ReactElement, {
@@ -220,7 +212,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Alerts + Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* Stock Alerts */}
           <FadeIn delay={0.2} className="lg:col-span-1 flex flex-col gap-4">
@@ -300,7 +292,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="flex items-end justify-between gap-3 h-48">
+              <div className="flex items-end justify-between gap-3 h-32">
                 {weeklySales.map((item, idx) => {
                   const maxTotal = Math.max(...weeklySales.map(d => d.total));
                   const pct = maxTotal > 0 ? (item.total / maxTotal) * 100 : 5;
@@ -362,7 +354,7 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-700/50">
                     {['ID Pedido', 'Monto', 'Estado', 'Cliente', 'Fecha', ''].map((h, i) => (
-                      <th key={i} className={`px-6 py-4 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
+                      <th key={i} className={`px-6 py-2.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -392,7 +384,7 @@ export default function DashboardPage() {
 
                   {!ordersError && filteredOrders.map((order, idx) => (
                     <tr key={idx} className="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors group">
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-2.5">
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">#{order.id}</span>
                       </td>
                       <td className="px-6 py-4">

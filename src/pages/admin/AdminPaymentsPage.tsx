@@ -112,11 +112,7 @@ export default function AdminPaymentsPage() {
     <div className="w-full space-y-6">
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium tracking-tight">
-        <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">Administración</span>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-slate-700 dark:text-slate-300">Pagos y Facturación</span>
-      </nav>
+
 
       {/* Header */}
       <FadeIn>
@@ -146,14 +142,14 @@ export default function AdminPaymentsPage() {
       {/* Metrics Banner */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Ingresos hoy', value: `$${stats.incomeToday.toLocaleString()}`, icon: <TrendingUp />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-          { label: 'Por cobrar', value: `$${stats.pendingAmount.toLocaleString()}`, icon: <Clock />, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-          { label: 'Cancelados', value: stats.failedCount, icon: <XCircle />, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-500/10' },
-          { label: 'Operaciones', value: stats.totalTransactions, icon: <CreditCard />, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+          { label: 'Ingresos hoy', value: `$${stats.incomeToday.toLocaleString()}`, icon: <TrendingUp />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40' },
+          { label: 'Por cobrar', value: `$${stats.pendingAmount.toLocaleString()}`, icon: <Clock />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40' },
+          { label: 'Cancelados', value: stats.failedCount, icon: <XCircle />, color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40' },
+          { label: 'Operaciones', value: stats.totalTransactions, icon: <CreditCard />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40' },
         ].map((s, idx) => (
           <motion.div key={idx} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-5 shadow-sm group">
-            <div className={`size-10 rounded-2xl ${s.bg} border border-slate-100 dark:border-slate-700 ${s.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+            <div className={`size-10 rounded-2xl ${s.bg} border ${s.border} ${s.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                {React.cloneElement(s.icon as React.ReactElement, { className: 'w-5 h-5' })}
             </div>
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>

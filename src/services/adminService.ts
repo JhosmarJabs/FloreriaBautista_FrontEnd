@@ -19,6 +19,8 @@ import {
   UserBody,
   AuditLog,
   SchedulerConfigResponse,
+  AdminCategory,
+  AdminCatalogo,
 } from '../types';
 
 const API_BASE = '/api/admin';
@@ -204,14 +206,14 @@ export const AdminService = {
   getProducts: async (params: {
     busqueda?: string;
     categoria?: string;
-    coleccion?: string;
+    catalogo?: string;
     page?: number;
     size?: number;
   } = {}): Promise<ApiResponse<Product>> => {
     const query = new URLSearchParams();
     if (params.busqueda !== undefined) query.set('busqueda', params.busqueda);
     if (params.categoria !== undefined) query.set('categoria', params.categoria);
-    if (params.coleccion !== undefined) query.set('coleccion', params.coleccion);
+    if (params.catalogo !== undefined) query.set('catalogo', params.catalogo);
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
     const qs = query.toString();
@@ -624,6 +626,23 @@ export const AdminService = {
       const errorText = await res.text();
       throw new Error(`Error ${res.status}: ${errorText}`);
     }
+    return res.json();
+  },
+
+  // ─── Catálogos globales ────────────────────────────────────────
+  getCategorias: async (): Promise<SingleResponse<AdminCategory[]>> => {
+    const res = await fetch(`${API_BASE}/categories`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener catálogo de categorías');
+    return res.json();
+  },
+
+  getCatalogos: async (): Promise<SingleResponse<AdminCatalogo[]>> => {
+    const res = await fetch(`${API_BASE}/catalogos`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener catálogos de festividades');
     return res.json();
   },
 };

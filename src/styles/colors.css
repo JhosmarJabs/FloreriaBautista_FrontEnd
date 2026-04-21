@@ -16,4 +16,11 @@
   --color-blue-700: #15304a;
   --color-blue-800: #102438;
   --color-blue-900: #0a1825;
+  /* Botanical Palette - Refined for Blue Theme */
+  --color-botanical-sage: #94a3b8; /* Slate Blue-Gray */
+  --color-botanical-rose: #fda4af;
+  --color-botanical-dark: #1e3a5f; /* Brand Deep Blue */
+  --color-botanical-cream: #f8fafc;
+  --color-botanical-amber: #eab308;
+  --color-botanical-slate: #334155;
 }

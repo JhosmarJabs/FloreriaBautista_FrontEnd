@@ -10,6 +10,7 @@ import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
 import { FadeIn, StaggerContainer, GlassCard, AnimatedButton } from '../../components/Animations';
 import { filterCSV } from '../../utils/exportUtils';
+import { useNavigate } from 'react-router-dom';
 
 // ─── Mock data para las gráficas estadísticas ─────────────────────────────────
 const FLOWER_STATS = [
@@ -37,6 +38,55 @@ const DATE_LABELS = [
 function calcExponential(x0: number, k: number, t: number) {
   return x0 * Math.exp(k * t);
 }
+
+// ─── Datos Ficticios para Demostración (Provicional) ──────────────────────────
+const MOCK_GENERAL_STATS = {
+  totalSales: 12450.00,
+  orderCount: 124,
+  averageTicket: 100.40,
+  newCustomers: 12
+};
+
+const generateDynamicWeeklySales = () => {
+  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const result = [];
+  const now = new Date();
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    result.push({
+      day: days[d.getDay()],
+      date: `${d.getDate()} ${months[d.getMonth()]}`,
+      fullDate: d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' }),
+      total: 800 + Math.random() * 1200,
+      orders: Math.floor(5 + Math.random() * 15),
+      growth: (Math.random() * 8).toFixed(1)
+    });
+  }
+  return result;
+};
+
+const MOCK_TOP_PRODUCTS_PRO = [
+  { name: 'Rosas Rojas Premium (A)', sales: 540, total: 27000 },
+  { name: 'Tulipanes de Holanda',     sales: 420, total: 18900 },
+  { name: 'Arreglo Girasol Gigante', sales: 310, total: 31000 },
+  { name: 'Orquídea Zen Blanca',     sales: 245, total: 36750 },
+  { name: 'Caja Sorpresa Mixta',     sales: 180, total: 22500 }
+];
+
+const MOCK_TOP_CUSTOMERS_PRO = [
+  { name: 'María Eugenia Ortiz', total: 12500, status: 'VIP Gold' },
+  { name: 'Corporativo San Angel', total: 42300, status: 'Empresarial' },
+  { name: 'Juan Carlos Méndez',  total: 8200,  status: 'Frecuente' },
+];
+
+const MOCK_INVENTORY_ALERTS_PRO = [
+  { name: 'Espuma Floral Oasis', stock: 5, stock_minimo: 50 },
+  { name: 'Cinta Decorativa Oro', stock: 2, stock_minimo: 20 },
+  { name: 'Papel Coreano Rosa',   stock: 8, stock_minimo: 30 }
+];
 
 // ─── Gráfica 5.1 — Promedio / Media / Moda ───────────────────────────────────
 function Chart51() {
@@ -413,14 +463,17 @@ export default function ReportsPage() {
   const [inventoryStats, setInventoryStats]   = useState<any>(null);
   const [loading, setLoading]                 = useState(true);
   const [activeTab, setActiveTab]             = useState<'general' | 'demanda'>('general');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setStats(DataService.getDashboardStats());
-    setWeeklySales(DataService.getWeeklySalesData());
-    setTopCustomers(DataService.getTopCustomers(3));
-    setTopProducts(DataService.getTopProducts(4));
-    setInventoryAlerts(DataService.getInventoryAlerts().slice(0, 3));
+    // ── USANDO DATOS FICTICIOS PROVICIONALES ──
+    setStats(MOCK_GENERAL_STATS);
+    setWeeklySales(generateDynamicWeeklySales());
+    setTopCustomers(MOCK_TOP_CUSTOMERS_PRO);
+    setTopProducts(MOCK_TOP_PRODUCTS_PRO);
+    setInventoryAlerts(MOCK_INVENTORY_ALERTS_PRO);
     setInventoryStats(DataService.getInventoryStats());
+    
     setLoading(false);
   }, []);
 
@@ -456,12 +509,7 @@ export default function ReportsPage() {
       <FadeIn>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-               <div className="size-8 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                  <BarChart2 className="w-4 h-4 text-blue-600" />
-               </div>
-               <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Business Intelligence</span>
-            </div>
+
             <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Reportes Analíticos</h1>
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Visión integral de métricas operativas y proyecciones de stock.</p>
           </div>
@@ -480,10 +528,10 @@ export default function ReportsPage() {
             {/* KPI Grid Section */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Ingresos Totales', value: `$${stats?.totalSales.toLocaleString()}`, icon: <TrendingUp />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: '+12.5% vs mes anterior' },
-                { label: 'Pedidos Generados', value: stats?.orderCount, icon: <ShoppingBag />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: '+8.2% incremento' },
-                { label: 'Ticket Promedio', value: `$${stats?.averageTicket.toFixed(2)}`, icon: <PieChart />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20', trend: '-2.1% variación' },
-                { label: 'Nuevos Clientes', value: stats?.newCustomers, icon: <UserPlus />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20', trend: '+15% nuevos prospectos' },
+                { label: 'Ingresos Totales', value: `$${stats?.totalSales.toLocaleString()}`, icon: <TrendingUp />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: '+12.5% vs mes anterior' },
+                { label: 'Pedidos Generados', value: stats?.orderCount, icon: <ShoppingBag />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: '+8.2% incremento' },
+                { label: 'Ticket Promedio', value: `$${stats?.averageTicket.toFixed(2)}`, icon: <PieChart />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: '-2.1% variación' },
+                { label: 'Nuevos Clientes', value: stats?.newCustomers, icon: <UserPlus />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', trend: '+15% nuevos prospectos' },
               ].map((s, i) => (
                 <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
                   <div className="relative z-10 flex flex-col justify-between h-full">
@@ -505,7 +553,7 @@ export default function ReportsPage() {
                    <div className="flex items-center justify-between mb-10">
                       <div>
                          <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Relleno de Ventas Semanales</h3>
-                         <p className="text-xs font-medium text-slate-500 tracking-tight">Análisis comparativo de los últimos 7 días operativos</p>
+                         <p className="text-xs font-medium text-slate-500 tracking-tight">Datos actualizados al día de hoy: {new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
                       </div>
                       <div className="flex items-center gap-4">
                          <div className="flex items-center gap-2">
@@ -514,22 +562,65 @@ export default function ReportsPage() {
                          </div>
                       </div>
                    </div>
-                   <div className="flex items-end justify-between h-56 gap-4 px-4 bg-slate-50/50 dark:bg-slate-900/30 rounded-[32px] border border-slate-50 dark:border-slate-800 py-6 mb-2">
-                       {weeklySales.map((d, i) => {
-                          const max = Math.max(...weeklySales.map(s => s.total));
-                          const h = (d.total / max) * 100;
-                          return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-4 group cursor-pointer">
-                               <div className="relative w-full flex flex-col items-center justify-end h-full">
-                                  <motion.div initial={{ height: 0 }} animate={{ height: `${h}%` }} transition={{ delay: i * 0.1, duration: 1 }}
-                                     className="w-full max-w-[40px] bg-blue-600 rounded-t-xl shadow-xl shadow-blue-600/10 group-hover:brightness-125 transition-all relative overflow-hidden">
-                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                                  </motion.div>
-                               </div>
-                               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{d.day}</span>
-                            </div>
-                          )
-                       })}
+
+                   <div className="flex gap-8">
+                     {/* Columna Izquierda: Datos Resumidos */}
+                     <div className="hidden md:flex flex-col gap-4 w-48 border-r border-slate-100 dark:border-slate-700/50 pr-8">
+                        <div className="space-y-1">
+                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ticket Promedio</p>
+                           <p className="text-xl font-black text-slate-900 dark:text-white">${(stats?.averageTicket || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="space-y-4 mt-4">
+                           {weeklySales.slice(-3).reverse().map((d, i) => (
+                             <div key={i} className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <p className="text-[8px] font-black text-slate-400 uppercase">{d.day} {d.date}</p>
+                                <p className="text-sm font-black text-slate-800 dark:text-slate-200 mt-0.5">${d.total.toFixed(0)}</p>
+                                <div className="flex items-center gap-1 mt-1">
+                                   <TrendingUp className="w-3 h-3 text-emerald-500" />
+                                   <span className="text-[8px] font-bold text-emerald-500">+{d.growth}%</span>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                     </div>
+
+                     {/* Gráfica */}
+                     <div className="flex-1">
+                        <div className="flex items-end justify-between h-56 gap-4 px-4 bg-slate-50/50 dark:bg-slate-900/30 rounded-[32px] border border-slate-50 dark:border-slate-800 py-6 mb-2">
+                             {weeklySales.map((d, i) => {
+                                const max = Math.max(...weeklySales.map(s => s.total));
+                                const h = (d.total / max) * 100;
+                                return (
+                                  <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group cursor-pointer">
+                                     <motion.span 
+                                       initial={{ opacity: 0, y: 5 }} 
+                                       animate={{ opacity: 1, y: 0 }} 
+                                       transition={{ delay: i * 0.1 + 0.5 }}
+                                       className="text-[9px] font-black text-blue-600 dark:text-blue-400 mb-2"
+                                     >
+                                       ${d.total.toFixed(0)}
+                                     </motion.span>
+                                     
+                                     <div className="h-40 w-full flex items-end justify-center">
+                                        <motion.div 
+                                          initial={{ height: 0 }} 
+                                          animate={{ height: `${h}%` }} 
+                                          transition={{ delay: i * 0.1, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                                          className="w-full max-w-[40px] bg-gradient-to-t from-blue-600 to-blue-400 rounded-t-xl shadow-lg shadow-blue-500/10 relative overflow-hidden group-hover:brightness-110 transition-all"
+                                        >
+                                           <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </motion.div>
+                                     </div>
+
+                                     <div className="flex flex-col items-center mt-4">
+                                        <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest">{d.day}</span>
+                                        <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">{d.date}</span>
+                                     </div>
+                                  </div>
+                                )
+                             })}
+                        </div>
+                     </div>
                    </div>
                 </div>
 
@@ -537,9 +628,13 @@ export default function ReportsPage() {
                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-8">Top Productos</h3>
                    <div className="space-y-6 flex-1">
                       {topProducts.map((p, idx) => (
-                        <div key={idx} className="group">
+                        <div 
+                           key={idx} 
+                           className="group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 p-2 -m-2 rounded-2xl transition-all"
+                           onClick={() => navigate(`/admin/analisis-producto/${encodeURIComponent(p.name)}`)}
+                        >
                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[140px]">{p.name}</span>
+                              <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase truncate max-w-[140px] group-hover:text-blue-600">{p.name}</span>
                               <span className="text-[10px] font-black text-blue-600">{p.sales} u</span>
                            </div>
                            <div className="w-full bg-slate-100 dark:bg-slate-900 h-2 rounded-full overflow-hidden">

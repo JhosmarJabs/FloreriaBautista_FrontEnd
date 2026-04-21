@@ -39,11 +39,7 @@ export default function AdminPromotionsPage() {
   return (
     <div className="w-full flex flex-col gap-5">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
-        <span className="hover:text-rose-600 dark:hover:text-rose-500 cursor-pointer transition-colors" onClick={() => navigate('/dashboard')}>Dashboard</span>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-slate-700 dark:text-slate-300">Promociones & Descuentos</span>
-      </nav>
+
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -74,9 +70,9 @@ export default function AdminPromotionsPage() {
       {/* KPI Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Promociones Activas', value: '1', trend: '+15% uso esta semana', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20', icon: TrendingDown },
-          { label: 'Combos Oferta', value: '1', trend: 'Próxima: Día de las madres', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20', icon: Gift },
-          { label: 'Cupones Redimidos', value: '165', trend: 'Valor rescatado: $12,450 MXN', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', icon: Percent },
+          { label: 'Promociones Activas', value: '1', trend: '+15% uso esta semana', color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40', icon: TrendingDown },
+          { label: 'Combos Oferta', value: '1', trend: 'Próxima: Día de las madres', color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', icon: Gift },
+          { label: 'Cupones Redimidos', value: '165', trend: 'Valor rescatado: $12,450 MXN', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', icon: Percent },
         ].map(({ label, value, trend, color, bg, border, icon: Icon }) => (
           <div key={label} className={`relative overflow-hidden rounded-2xl border ${border} ${bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">

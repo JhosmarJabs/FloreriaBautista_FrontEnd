@@ -182,10 +182,7 @@ export default function BackupsPage() {
       <FadeIn>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Database className="w-4 h-4 text-amber-500" />
-              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Infraestructura Técnica</span>
-            </div>
+
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Respaldos y Seguridad</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Administración de copias de seguridad sincronizadas con la nube</p>
           </div>
@@ -199,10 +196,10 @@ export default function BackupsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Respaldos totales', value: loading ? '—' : backups.length, icon: <HardDrive />, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20', trend: 'Drive Cloud' },
-          { label: 'Última copia', value: backups.length ? new Date(backups[0].creadoEn).toLocaleDateString() : 'N/A', icon: <Clock />, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Sincronizado' },
-          { label: 'Próxima tarea', value: schedulerInfo ? schedulerInfo.proximoBackup.split(' ')[0] : 'N/A', icon: <Zap />, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: 'Automatizado' },
-          { label: 'Espacio usado', value: formatSize(backups.reduce((a, b) => a + b.tamanoBytes, 0)), icon: <Database />, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20', trend: 'Total Drive' },
+          { label: 'Respaldos totales', value: loading ? '—' : backups.length, icon: <HardDrive />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'Drive Cloud' },
+          { label: 'Última copia', value: backups.length ? new Date(backups[0].creadoEn).toLocaleDateString() : 'N/A', icon: <Clock />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'Sincronizado' },
+          { label: 'Próxima tarea', value: schedulerInfo ? schedulerInfo.proximoBackup.split(' ')[0] : 'N/A', icon: <Zap />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'Automatizado' },
+          { label: 'Espacio usado', value: formatSize(backups.reduce((a, b) => a + b.tamanoBytes, 0)), icon: <Database />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', trend: 'Total Drive' },
         ].map((s, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className={`relative overflow-hidden bg-white dark:bg-slate-800 border ${s.border} rounded-2xl p-4 h-24 group transition-all hover:shadow-md`}>

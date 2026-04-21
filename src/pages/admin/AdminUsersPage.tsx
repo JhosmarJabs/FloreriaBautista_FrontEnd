@@ -66,10 +66,10 @@ export default function AdminUsersPage() {
   }, [loadUsers]);
 
   const stats = [
-    { label: 'Total Usuarios', value: total, icon: <Users />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
-    { label: 'Administradores', value: users.filter(u => (u.roles ?? []).includes('ADMIN')).length, icon: <Shield />, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10', border: 'border-purple-100 dark:border-purple-500/20' },
-    { label: 'Activos', value: users.filter(u => u.estado === 'ACTIVO').length, icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
-    { label: 'Inactivos', value: users.filter(u => u.estado !== 'ACTIVO').length, icon: <XCircle />, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20' },
+    { label: 'Total Usuarios', value: total, icon: <Users />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40' },
+    { label: 'Administradores', value: users.filter(u => (u.roles ?? []).includes('ADMIN')).length, icon: <Shield />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40' },
+    { label: 'Activos', value: users.filter(u => u.estado === 'ACTIVO').length, icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40' },
+    { label: 'Inactivos', value: users.filter(u => u.estado !== 'ACTIVO').length, icon: <XCircle />, color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40' },
   ];
 
   const renderRow = (user: User) => {
@@ -136,10 +136,7 @@ export default function AdminUsersPage() {
       <FadeIn>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Shield className="w-4 h-4 text-blue-500" />
-              <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 uppercase tracking-widest">Seguridad y Acceso</span>
-            </div>
+
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Usuarios del Sistema</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Gestión de cuentas de clientes, empleados y administradores</p>
           </div>

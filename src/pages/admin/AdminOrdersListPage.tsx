@@ -92,11 +92,7 @@ export default function AdminOrdersListPage() {
     <div className="w-full flex flex-col gap-6">
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
-        <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer" onClick={() => navigate('/dashboard')}>Dashboard</span>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-slate-700 dark:text-slate-300">Pedidos</span>
-      </nav>
+
 
       {/* Header */}
       <FadeIn>
@@ -123,10 +119,10 @@ export default function AdminOrdersListPage() {
       {/* KPI Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total pedidos', value: total, icon: <ReceiptText />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/10', border: 'border-blue-100 dark:border-blue-700/50', trend: 'registrados' },
-          { label: 'Pendientes', value: pendientes, icon: <Clock />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-700/50', trend: 'por procesar' },
-          { label: 'Entregados hoy', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-100 dark:border-emerald-700/50', trend: 'completados' },
-          { label: 'Recaudación bruta', value: `$${orders.reduce((acc, o) => acc + o.total, 0).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/10', border: 'border-indigo-100 dark:border-indigo-700/50', trend: 'últimos pedidos' },
+          { label: 'Total pedidos', value: total, icon: <ReceiptText />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
+          { label: 'Pendientes', value: pendientes, icon: <Clock />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por procesar' },
+          { label: 'Entregados hoy', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'completados' },
+          { label: 'Recaudación bruta', value: `$${orders.reduce((acc, o) => acc + o.total, 0).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40', trend: 'últimos pedidos' },
         ].map((s, idx) => (
           <div key={idx} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">

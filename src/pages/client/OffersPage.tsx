@@ -8,7 +8,7 @@ const offersData = [
     id: 'OFF-001',
     name: 'Ramo de Rosas Elegance',
     category: 'Ramos',
-    collection: 'Colección Premium',
+    catalogo: 'Catálogo Premium',
     price: 450,
     oldPrice: 600,
     discount: 25,
@@ -20,7 +20,7 @@ const offersData = [
     id: 'OFF-002',
     name: 'Caja Premium Tulipanes Holandeses',
     category: 'Cajas de Regalo',
-    collection: 'Especial de Temporada',
+    catalogo: 'Especial de Temporada',
     price: 840,
     oldPrice: 990,
     discount: 15,
@@ -32,7 +32,7 @@ const offersData = [
     id: 'OFF-003',
     name: 'Canasta Radiante de Girasoles',
     category: 'Ramos',
-    collection: 'Favoritos del Sol',
+    catalogo: 'Favoritos del Sol',
     price: 320,
     oldPrice: 480,
     discount: 33,
@@ -45,7 +45,7 @@ const offersData = [
     id: 'OFF-004',
     name: 'Orquídea Phalaenopsis Púrpura',
     category: 'Plantas',
-    collection: 'Plantas de Interior',
+    catalogo: 'Plantas de Interior',
     price: 550,
     oldPrice: 620,
     discount: 11,
@@ -241,7 +241,7 @@ export default function OffersPage() {
                     <div className="absolute inset-0 bg-brand-coral transition-transform duration-500 group-hover:scale-110"></div>
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                     <span className="relative z-10 flex items-center gap-4 text-white text-base">
-                      Explorar Colección
+                      Explorar Catálogo
                       <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-3" />
                     </span>
                   </button>
@@ -403,7 +403,7 @@ export default function OffersPage() {
 
                 <div className="p-8 flex flex-col flex-grow relative z-10">
                   <div className="mb-4">
-                    <p className="text-[10px] text-slate-400 mb-1 uppercase tracking-[0.2em] font-black">{offer.collection}</p>
+                    <p className="text-[10px] text-slate-400 mb-1 uppercase tracking-[0.2em] font-black">{offer.catalogo}</p>
                     <h3 className="text-xl font-black text-brand-deep leading-tight group-hover:text-brand-coral transition-colors">{offer.name}</h3>
                   </div>
                   

@@ -5,10 +5,26 @@ import {
   Edit, FlaskConical, Star, Calculator, ImageIcon,
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
-import { ProductDetail } from '../../types';
+import { ProductDetail, AdminCategory, AdminCatalogo } from '../../types';
 
 const ESTADOS_LABEL: Record<string, string> = {
   ACTIVO: 'Activo', INACTIVO: 'Inactivo', BORRADOR: 'Borrador',
+};
+
+const TIPO_MAP: Record<string, string> = {
+  'ARREGLO_FLORAL': 'Arreglo Floral',
+  'RAMO':          'Ramo',
+  'FLORES_CORTE':  'Flores de Corte',
+  'PLANTA':        'Planta',
+  'INSUMOS':       'Insumos',
+  'ACCESORIOS':    'Accesorios',
+};
+
+const VISIBILIDAD_MAP: Record<string, string> = {
+  'PUBLICO': 'Público (Web)',
+  'PRIVADO': 'Privado (Solo Admin)',
+  'CATALOGO': 'Solo Catálogo PDF',
+  'AMBOS': 'Ambos (Web y Catálogo)',
 };
 
 export default function AdminProductDetailPage() {
@@ -17,6 +33,9 @@ export default function AdminProductDetailPage() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allCategorias, setAllCategorias] = useState<AdminCategory[]>([]);
+  const [allCatalogos, setAllCatalogos] = useState<AdminCatalogo[]>([]);
+  const [inventoryMap, setInventoryMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -24,10 +43,26 @@ export default function AdminProductDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await AdminService.getAdminProductById(id);
-        setProduct(res.data);
+        const [resProd, resCats, resCols, resInv] = await Promise.all([
+          AdminService.getAdminProductById(id),
+          AdminService.getCategorias().catch(() => ({ data: [] })),
+          AdminService.getCatalogos().catch(() => ({ data: [] })),
+          AdminService.getAdminInventory({ size: 100 }).catch(() => ({ data: { items: [] } }))
+        ]);
+
+        setProduct(resProd.data);
+        setAllCategorias(resCats.data);
+        setAllCatalogos(resCols.data);
+        
+        // Crear un mapa de inventario para acceso rápido
+        const invMap: Record<string, any> = {};
+        resInv.data.items.forEach((item: any) => {
+          invMap[item.id] = item;
+        });
+        setInventoryMap(invMap);
+
       } catch (err: any) {
-        setError(err.message || 'Error al cargar el producto');
+        setError(err.message || 'Error al cargar los datos');
       } finally {
         setLoading(false);
       }
@@ -113,7 +148,7 @@ export default function AdminProductDetailPage() {
                 <div>
                   <p className={lbl}>Tipo</p>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 border border-purple-100 dark:border-purple-800/50 rounded-full text-xs font-bold">
-                    <Layers className="w-3 h-3" />{product.tipo}
+                    <Layers className="w-3 h-3" />{TIPO_MAP[product.tipo] ?? product.tipo}
                   </span>
                 </div>
                 <div>
@@ -136,7 +171,7 @@ export default function AdminProductDetailPage() {
                 <div>
                   <p className={lbl}>Visibilidad</p>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {product.visibilidad ?? 'Público'}
+                    {VISIBILIDAD_MAP[product.visibilidad ?? ''] ?? product.visibilidad ?? 'No especificada'}
                   </span>
                 </div>
               </div>
@@ -177,31 +212,48 @@ export default function AdminProductDetailPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                        {receta.map(item => (
-                          <tr key={item.flowerId} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <p className="font-bold text-slate-800 dark:text-slate-200">{item.flowerNombre}</p>
-                                {item.esFlorPrimaria && (
-                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded-full text-[9px] font-black">
-                                    <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />Primaria
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className="font-bold text-slate-700 dark:text-slate-300">{item.cantidad}</span>
-                            </td>
-                            <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400 text-xs">
-                              ${item.flowerPrecioCosto.toFixed(2)}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <span className={`font-black text-sm ${item.esFlorPrimaria ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                ${(item.cantidad * item.flowerPrecioCosto).toFixed(2)}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {receta.map(item => {
+                          const detailedItem = inventoryMap[item.inventoryItemId];
+                          return (
+                            <tr key={item.inventoryItemId} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="size-8 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
+                                    {detailedItem?.imagenUrl ? (
+                                      <img src={detailedItem.imagenUrl} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                      <Package className="w-3.5 h-3.5 text-slate-400" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <p className="font-bold text-slate-800 dark:text-slate-200">{item.flowerNombre}</p>
+                                      {item.esFlorPrimaria && (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded-full text-[9px] font-black">
+                                          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />Primaria
+                                        </span>
+                                      )}
+                                    </div>
+                                    {detailedItem && (
+                                      <p className="text-[10px] text-slate-400 font-medium">Stock: {detailedItem.stockActual} {detailedItem.unidadMedida}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="font-bold text-slate-700 dark:text-slate-300">{item.cantidad}</span>
+                              </td>
+                              <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400 text-xs">
+                                ${item.flowerPrecioCosto.toFixed(2)}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <span className={`font-black text-sm ${item.esFlorPrimaria ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                  ${(item.cantidad * item.flowerPrecioCosto).toFixed(2)}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -247,34 +299,47 @@ export default function AdminProductDetailPage() {
               )}
             </div>
 
-            {/* Categorías y colecciones */}
-            {((product.categorias?.length ?? 0) > 0 || (product.colecciones?.length ?? 0) > 0) && (
-              <div className={sec}>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 flex items-center gap-2">
-                  <Tag className="w-3.5 h-3.5 text-amber-500" /> Categorías y Colecciones
-                </p>
-                {(product.categorias?.length ?? 0) > 0 && (
-                  <div className="mb-3">
-                    <p className={lbl}>Categorías</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {product.categorias!.map(c => (
-                        <span key={c} className="px-2.5 py-1 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded-full text-xs font-bold">{c}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {(product.colecciones?.length ?? 0) > 0 && (
-                  <div>
-                    <p className={lbl}>Colecciones</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {product.colecciones!.map(c => (
-                        <span key={c} className="px-2.5 py-1 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 rounded-full text-xs font-bold">{c}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            <div className={sec}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5 text-amber-500" /> Clasificación Global
+              </p>
+              
+              <div className="mb-6">
+                <p className={lbl}>Todas las Categorías en DB</p>
+                <div className="flex flex-wrap gap-2">
+                  {allCategorias.length > 0 ? allCategorias.map(c => {
+                    const isSelected = product.categorias?.includes(c.nombre);
+                    return (
+                      <span key={c.id} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                        isSelected 
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-sm' 
+                          : 'bg-slate-50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-600 border-slate-100 dark:border-slate-800'
+                      }`}>
+                        {c.nombre}
+                      </span>
+                    );
+                  }) : <p className="text-[10px] text-slate-400 italic">No hay categorías registradas</p>}
+                </div>
               </div>
-            )}
+
+              <div>
+                <p className={lbl}>Todos los Catálogos (Festividades) en DB</p>
+                <div className="flex flex-wrap gap-2">
+                  {allCatalogos.length > 0 ? allCatalogos.map(c => {
+                    const isSelected = product.catalogos?.includes(c.nombre);
+                    return (
+                      <span key={c.id} className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                        isSelected 
+                          ? 'bg-blue-500 text-white border-blue-600 shadow-sm' 
+                          : 'bg-slate-50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-600 border-slate-100 dark:border-slate-800'
+                      }`}>
+                        {c.nombre}
+                      </span>
+                    );
+                  }) : <p className="text-[10px] text-slate-400 italic">No hay catálogos registrados</p>}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -283,7 +348,7 @@ export default function AdminProductDetailPage() {
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Ficha rápida</p>
               <div className="space-y-2 text-sm">
                 {[
-                  { label: 'Tipo', value: product.tipo },
+                  { label: 'Tipo', value: TIPO_MAP[product.tipo] ?? product.tipo },
                   { label: 'Estado', value: ESTADOS_LABEL[product.estado] ?? product.estado },
                   { label: 'Precio venta', value: `$${product.precioBase.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` },
                   { label: 'Costo base', value: receta.length > 0 ? `$${costoBase.toFixed(2)}` : '—' },

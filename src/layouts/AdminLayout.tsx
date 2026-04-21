@@ -28,9 +28,13 @@ interface AdminLayoutProps {
 }
 
 const TECH_OPS_ITEMS = [
-  { to: "/admin/respaldos",  icon: Database,        label: "Respaldos manuales"    },
-  { to: "/admin/datos",      icon: ArrowLeftRight,  label: "Exportación / importación" },
-  { to: "/admin/monitoreo",  icon: Activity,        label: "Monitoreo base de datos" },
+  { to: "/admin/respaldos", icon: Database, label: "Respaldos manuales" },
+  {
+    to: "/admin/datos",
+    icon: ArrowLeftRight,
+    label: "Exportación / importación",
+  },
+  { to: "/admin/monitoreo", icon: Activity, label: "Monitoreo base de datos" },
 ];
 
 export default function AdminLayout({ children, user }: AdminLayoutProps) {
@@ -41,10 +45,14 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
   );
 
   useEffect(() => {
-    if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark')
+    if (
+      localStorage.getItem("theme") === "dark" ||
+      (!("theme" in localStorage) &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
+      document.documentElement.classList.add("dark");
     } else {
-      document.documentElement.classList.remove('dark')
+      document.documentElement.classList.remove("dark");
     }
   }, []);
 
@@ -79,8 +87,8 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
     `flex items-center rounded-xl text-sm font-semibold transition-all duration-200 py-3 ${
       isSidebarOpen ? "px-4 gap-3" : "justify-center px-0"
     } ${
-      active 
-        ? "bg-white dark:bg-blue-600 text-[#1e3a5f] dark:text-white shadow-lg shadow-white/10 dark:shadow-blue-500/20 scale-[1.02]" 
+      active
+        ? "bg-white dark:bg-blue-600 text-[#1e3a5f] dark:text-white shadow-lg shadow-white/10 dark:shadow-blue-500/20 scale-[1.02]"
         : "text-slate-300 hover:bg-white/5 hover:text-white"
     }`;
 
@@ -95,7 +103,10 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-[18px] border-b border-white/10 overflow-hidden">
-          <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
+          <Link
+            to="/admin/dashboard"
+            className="flex items-center gap-2 min-w-0"
+          >
             <div className="relative flex-shrink-0">
               <img
                 src="/Logo.png"
@@ -124,51 +135,82 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 custom-scrollbar">
           {/* 1. Dashboard */}
-          <Link to="/dashboard" className={linkCls(isActive("/dashboard"))}>
+          <Link
+            to="/admin/dashboard"
+            className={linkCls(isActive("/admin/dashboard"))}
+          >
             <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
             <Label>Dashboard</Label>
           </Link>
 
-          {/* 2. Pedidos */}
-          <Link to="/admin/pedidos" className={linkCls(location.pathname.startsWith("/admin/pedidos"))}>
-            <ShoppingCart className="w-5 h-5 flex-shrink-0" />
-            <Label>Pedidos</Label>
-          </Link>
-
-          {/* 3. Catálogos */}
-          <Link to="/admin/catalogos" className={linkCls(location.pathname.startsWith("/admin/catalogos"))}>
-            <Library className="w-5 h-5 flex-shrink-0" />
-            <Label>Catálogos</Label>
-          </Link>
-
-
-          {/* 4. Productos */}
-          <Link to="/admin/catalogo" className={linkCls(location.pathname === "/admin/catalogo" || location.pathname.startsWith("/admin/productos"))}>
-            <ShoppingBag className="w-5 h-5 flex-shrink-0" />
-            <Label>Productos</Label>
-          </Link>
-
-          {/* 5. Inventario */}
-          <Link to="/admin/inventario" className={linkCls(location.pathname.startsWith("/admin/inventario"))}>
+          {/* 3. Inventario */}
+          <Link
+            to="/admin/inventario"
+            className={linkCls(
+              location.pathname.startsWith("/admin/inventario"),
+            )}
+          >
             <Package className="w-5 h-5 flex-shrink-0" />
             <Label>Inventario</Label>
           </Link>
 
+          {/* 4. Productos */}
+          <Link
+            to="/admin/catalogo"
+            className={linkCls(
+              location.pathname === "/admin/catalogo" ||
+                location.pathname.startsWith("/admin/productos"),
+            )}
+          >
+            <ShoppingBag className="w-5 h-5 flex-shrink-0" />
+            <Label>Productos</Label>
+          </Link>
+
+          {/* 5. Catálogos */}
+          <Link
+            to="/admin/catalogos"
+            className={linkCls(
+              location.pathname.startsWith("/admin/catalogos"),
+            )}
+          >
+            <Library className="w-5 h-5 flex-shrink-0" />
+            <Label>Catálogos</Label>
+          </Link>
 
           {/* 6. Promociones */}
-          <Link to="/admin/promociones" className={linkCls(location.pathname.startsWith("/admin/promociones"))}>
+          <Link
+            to="/admin/promociones"
+            className={linkCls(
+              location.pathname.startsWith("/admin/promociones"),
+            )}
+          >
             <Tag className="w-5 h-5 flex-shrink-0" />
             <Label>Promociones</Label>
           </Link>
 
+          {/* 2. Pedidos */}
+          <Link
+            to="/admin/pedidos"
+            className={linkCls(location.pathname.startsWith("/admin/pedidos"))}
+          >
+            <ShoppingCart className="w-5 h-5 flex-shrink-0" />
+            <Label>Pedidos</Label>
+          </Link>
+
           {/* 7. Usuarios */}
-          <Link to="/admin/usuarios" className={linkCls(isActive("/admin/usuarios"))}>
+          <Link
+            to="/admin/usuarios"
+            className={linkCls(isActive("/admin/usuarios"))}
+          >
             <Users className="w-5 h-5 flex-shrink-0" />
             <Label>Usuarios</Label>
           </Link>
 
           {/* 8. Reportes */}
-          <Link to="/admin/reportes" className={linkCls(isActive("/admin/reportes"))}>
+          <Link
+            to="/admin/reportes"
+            className={linkCls(isActive("/admin/reportes"))}
+          >
             <BarChart3 className="w-5 h-5 flex-shrink-0" />
             <Label>Reportes</Label>
           </Link>
@@ -180,7 +222,10 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           </Link>
 
           {/* 10. Configuración */}
-          <Link to="/admin/configuracion" className={linkCls(isActive("/admin/configuracion"))}>
+          <Link
+            to="/admin/configuracion"
+            className={linkCls(isActive("/admin/configuracion"))}
+          >
             <Settings className="w-5 h-5 flex-shrink-0" />
             <Label>Configuración</Label>
           </Link>
@@ -189,12 +234,24 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           <div className="py-3">
             <AnimatePresence initial={false} mode="wait">
               {isSidebarOpen ? (
-                <motion.p key="label" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
-                  className="px-3 text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                <motion.p
+                  key="label"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="px-3 text-[10px] font-bold text-white/40 uppercase tracking-widest"
+                >
                   Sistema
                 </motion.p>
               ) : (
-                <motion.div key="line" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="border-t border-white/10 mx-2" />
+                <motion.div
+                  key="line"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="border-t border-white/10 mx-2"
+                />
               )}
             </AnimatePresence>
           </div>
@@ -204,21 +261,37 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <button
               onClick={() => setIsTechOpsOpen((v) => !v)}
               className={`w-full flex items-center rounded-xl text-sm font-medium transition-colors duration-150 py-2.5 ${
-                isSidebarOpen ? "px-3 gap-3 justify-between" : "justify-center px-0"
+                isSidebarOpen
+                  ? "px-3 gap-3 justify-between"
+                  : "justify-center px-0"
               } ${
                 isTechActive || isTechOpsOpen
                   ? "text-white bg-white/10"
                   : "text-slate-200 hover:bg-white/10 hover:text-white"
               }`}
             >
-              <div className={`flex items-center ${isSidebarOpen ? "gap-3" : ""}`}>
+              <div
+                className={`flex items-center ${isSidebarOpen ? "gap-3" : ""}`}
+              >
                 <Wrench className="w-5 h-5 flex-shrink-0" />
                 <Label>Operación técnica</Label>
               </div>
               <AnimatePresence initial={false}>
                 {isSidebarOpen && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                    <motion.div animate={{ rotate: isTechOpsOpen ? 180 : 0 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <motion.div
+                      animate={{ rotate: isTechOpsOpen ? 180 : 0 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 25,
+                      }}
+                    >
                       <ChevronDown className="w-4 h-4" />
                     </motion.div>
                   </motion.div>
@@ -228,13 +301,20 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <AnimatePresence initial={false}>
               {isTechOpsOpen && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                   className="overflow-hidden"
                 >
-                  <div className={`mt-1 space-y-0.5 ${isSidebarOpen ? "ml-4 pl-2 border-l-2 border-white/20" : ""}`}>
+                  <div
+                    className={`mt-1 space-y-0.5 ${isSidebarOpen ? "ml-4 pl-2 border-l-2 border-white/20" : ""}`}
+                  >
                     {TECH_OPS_ITEMS.map(({ to, icon: Icon, label }) => (
-                      <Link key={to} to={to} title={!isSidebarOpen ? label : undefined}
+                      <Link
+                        key={to}
+                        to={to}
+                        title={!isSidebarOpen ? label : undefined}
                         className={`flex items-center rounded-lg text-xs font-semibold transition-colors duration-150 py-2 ${
                           isSidebarOpen ? "px-3 gap-3" : "justify-center px-0"
                         } ${isActive(to) ? "text-white bg-white/20" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
@@ -242,7 +322,13 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
                         <Icon className="w-4 h-4 flex-shrink-0" />
                         <AnimatePresence initial={false}>
                           {isSidebarOpen && (
-                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="whitespace-nowrap">
+                            <motion.span
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.15 }}
+                              className="whitespace-nowrap"
+                            >
                               {label}
                             </motion.span>
                           )}
@@ -275,12 +361,20 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
               isSidebarOpen ? "gap-3" : "justify-center"
             }`}
           >
-            <motion.div animate={{ rotate: isSidebarOpen ? 0 : 180 }} transition={{ type: "spring", stiffness: 260, damping: 22 }}>
+            <motion.div
+              animate={{ rotate: isSidebarOpen ? 0 : 180 }}
+              transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            >
               <PanelLeftClose className="w-6 h-6 flex-shrink-0" />
             </motion.div>
             <AnimatePresence initial={false}>
               {isSidebarOpen && (
-                <motion.span initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} className="text-xs font-bold uppercase tracking-wider">
+                <motion.span
+                  initial={{ opacity: 0, x: -5 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -5 }}
+                  className="text-xs font-bold uppercase tracking-wider"
+                >
                   Contraer Menú
                 </motion.span>
               )}

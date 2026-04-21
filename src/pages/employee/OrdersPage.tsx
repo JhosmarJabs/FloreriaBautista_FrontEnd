@@ -127,92 +127,79 @@ export default function OrdersPage() {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <div className="relative">
-          <div className="w-16 h-16 border-4 border-emerald-100 dark:border-emerald-900/30 border-t-emerald-500 rounded-full animate-spin"></div>
-          <ShoppingBag className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-emerald-500 w-6 h-6" />
+          <div className="w-16 h-16 border-4 border-slate-100 dark:border-white/5 border-t-[#1e3a5f] rounded-full animate-spin"></div>
+          <ShoppingBag className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[#1e3a5f] w-6 h-6" />
         </div>
-        <p className="text-slate-500 dark:text-slate-400 font-medium animate-pulse">Cargando pedidos...</p>
+        <p className="text-slate-500 dark:text-slate-400 font-serif italic animate-pulse">Sincronizando bitácora...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full space-y-8 max-w-7xl mx-auto">
+    <div className="w-full h-full space-y-6 max-w-[1500px] mx-auto px-4 py-2">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
         <div>
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm uppercase tracking-wider mb-2">
-            <Package className="w-4 h-4" />
-            <span>Gestión de Logística</span>
-          </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-            Pedidos <span className="text-emerald-500">Recientes</span>
+          <h1 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tight">
+            Gestión de <span className="text-[#eab308] italic">Pedidos</span>
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xl">
-            Administra y realiza el seguimiento de todos los pedidos de la florería en tiempo real.
-          </p>
+          <p className="text-slate-500 text-xs mt-1 font-medium italic">"Seguimiento y control operativo."</p>
         </div>
         
         <div className="flex items-center gap-3">
           <button 
             onClick={loadData}
-            className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-            title="Actualizar"
+            className="p-2.5 bg-white border border-slate-100 rounded-xl text-[#1e3a5f] hover:bg-slate-50 transition-colors shadow-sm"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-4 h-4" />
           </button>
-          <div className="h-10 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden md:block"></div>
-          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 px-4 py-2 rounded-xl border border-emerald-100 dark:border-emerald-800">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-bold">Sistema Activo</span>
+          <div className="flex items-center gap-2 bg-blue-50 text-[#1e3a5f] px-4 py-2 rounded-xl border border-blue-100 shadow-sm">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-widest">En Línea</span>
           </div>
         </div>
       </div>
 
-      {/* KPI Stats - Standardized Pattern */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         {[
-          { label: 'Total Pedidos', value: stats.total, trend: 'Sincronizado', icon: <ShoppingBag />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' },
-          { label: 'Pendientes', value: stats.pending, trend: 'Por atender', icon: <Clock3 />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' },
-          { label: 'En Ruta', value: stats.shipped, trend: 'Logística activa', icon: <Truck />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-100 dark:border-indigo-500/20' },
-          { label: 'Entregados', value: stats.delivered, trend: 'Completados', icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
+          { label: 'Total', value: stats.total, icon: <ShoppingBag />, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+          { label: 'Pendientes', value: stats.pending, icon: <Clock3 />, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+          { label: 'En Ruta', value: stats.shipped, icon: <Truck />, color: 'text-[#1e3a5f]', bg: 'bg-slate-100', border: 'border-slate-200' },
+          { label: 'Entregados', value: stats.delivered, icon: <CheckCircle2 />, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
         ].map((s, i) => (
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
+            transition={{ delay: i * 0.05 }}
             key={i}
-            className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5 transition-all group`}
+            className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-6 group shadow-sm`}
           >
-            <div className="relative z-10 flex flex-col justify-between h-full">
-              <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
-              <div className="mt-2 text-2xl font-black text-slate-800 dark:text-slate-100">{s.value}</div>
-              <p className={`text-xs mt-1.5 font-medium ${s.color} opacity-80`}>{s.trend}</p>
+            <div className="relative z-10">
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
+              <div className="mt-1 text-xl font-serif font-bold text-[#1e3a5f] leading-none">{s.value}</div>
             </div>
-            {React.cloneElement(s.icon as React.ReactElement, {
-              className: `absolute -bottom-4 -right-4 w-24 h-24 ${s.color} opacity-10 group-hover:scale-110 transition-transform`,
-              strokeWidth: 3
-            })}
           </motion.div>
         ))}
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:flex-row gap-4 transition-colors">
+      <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-md p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col lg:flex-row gap-4 transition-colors">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
           <input 
             type="text"
-            placeholder="Buscar por ID de pedido o nombre de cliente..."
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors"
+            placeholder="Buscar por folio o nombre de cliente..."
+            className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f] text-[#1e3a5f] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors text-sm font-medium"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <div className="relative">
-            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+            <Filter className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
             <select 
-              className="pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm font-bold text-slate-700 dark:text-slate-300 appearance-none cursor-pointer min-w-[180px] transition-colors"
+              className="pl-12 pr-12 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f] text-[10px] font-black uppercase tracking-[0.2em] text-[#1e3a5f] dark:text-slate-300 appearance-none cursor-pointer min-w-[200px] transition-colors shadow-inner"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -227,105 +214,108 @@ export default function OrdersPage() {
       </div>
 
       {/* Orders List/Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <AnimatePresence mode="popLayout">
           {filteredOrders.map((order, idx) => (
             <motion.div
               layout
               key={order.id}
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              exit={{ opacity: 0, scale: 0.98 }}
               transition={{ delay: idx * 0.05 }}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all group flex flex-col overflow-hidden"
+              className="bg-white/95 dark:bg-slate-800/40 backdrop-blur-xl rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-2xl hover:border-blue-500/20 transition-all group flex flex-col overflow-hidden relative"
             >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-1000" />
+              
               {/* Card Header */}
-              <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="p-4 border-b border-slate-50 dark:border-white/5 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/20">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                    {order.id.slice(0, 2).toUpperCase()}
+                  <div className="w-9 h-9 rounded-xl bg-[#1e3a5f] dark:bg-blue-600 flex items-center justify-center text-white font-serif font-bold text-base shadow-lg shadow-blue-900/20">
+                    {order.id.slice(0, 1).toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">ID: {order.id}</p>
-                    <p className="text-sm font-bold text-slate-900 dark:text-slate-200">{new Date(order.date || Date.now()).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}</p>
+                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">FOLIO: {order.id}</p>
+                    <p className="text-sm font-bold text-[#1e3a5f] dark:text-white mt-0.5">{new Date(order.date || Date.now()).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })}</p>
                   </div>
                 </div>
-                <div className={`px-3 py-1 rounded-full border ${getStatusColor(order.status)} text-[10px] font-black uppercase tracking-tighter`}>
+                <div className={`px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${getStatusColor(order.status)}`}>
+                  <div className="w-1.5 h-1.5 rounded-full bg-current" />
                   {getStatusLabel(order.status)}
                 </div>
               </div>
 
               {/* Card Body */}
-              <div className="p-5 flex-1 space-y-4">
+              <div className="p-4 flex-1 space-y-4 relative z-10">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    <h3 className="text-lg font-bold text-[#1e3a5f] dark:text-white group-hover:text-blue-600 transition-colors leading-tight">
                       {getCustomerName(order.customerId)}
                     </h3>
-                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-sm mt-1">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span className="truncate max-w-[150px]">Calle Reforma 123...</span>
+                    <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest mt-2 leading-none">
+                      <MapPin className="w-3.5 h-3.5 text-[#eab308]" />
+                      <span className="truncate max-w-[180px]">Calle Reforma, Distrito Centro</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Total</p>
-                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">${order.total.toFixed(2)}</p>
+                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Inversión</p>
+                    <p className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-blue-400 leading-none mt-1">${order.total.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Items Preview */}
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl p-4 flex items-center gap-4 overflow-x-auto custom-scrollbar border border-slate-100 dark:border-white/5">
                   {order.items.map((item: any, i: number) => (
-                    <div key={i} className="relative flex-shrink-0">
+                    <div key={i} className="relative flex-shrink-0 group/item transition-transform hover:scale-110">
                       <img 
-                        src={item.image || `https://picsum.photos/seed/${item.id}/100/100`} 
+                        src={item.image || `https://picsum.photos/seed/${item.id}/150/150`} 
                         alt={item.name}
-                        className="w-12 h-12 rounded-lg object-cover border border-white dark:border-slate-800 shadow-sm"
+                        className="w-16 h-16 rounded-2xl object-cover border-2 border-white dark:border-slate-800 shadow-sm"
                       />
-                      <span className="absolute -top-1 -right-1 bg-slate-900 dark:bg-emerald-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                      <span className="absolute -top-2 -right-2 bg-[#eab308] text-[#1e3a5f] text-[10px] font-black w-6 h-6 rounded-xl flex items-center justify-center shadow-lg border-2 border-white dark:border-slate-800">
                         {item.quantity}
                       </span>
                     </div>
                   ))}
                   {order.items.length > 3 && (
-                    <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 text-xs font-bold border border-white dark:border-slate-800">
+                    <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xs font-black border-2 border-dashed border-slate-200 dark:border-white/5">
                       +{order.items.length - 3}
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between text-sm pt-2">
-                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                    <Clock className="w-4 h-4" />
-                    <span>Entrega: <span className="text-slate-900 dark:text-slate-200 font-bold">14:30 PM</span></span>
+                <div className="flex items-center justify-between text-[10px] pt-2 font-black uppercase tracking-[0.2em]">
+                  <div className="flex items-center gap-2 text-slate-400 border-r border-slate-100 dark:border-white/5 pr-4">
+                    <Clock className="w-4 h-4 text-[#eab308]" />
+                    <span>ENTREGA: <span className="text-[#1e3a5f] dark:text-white">HOY</span></span>
                   </div>
-                  <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Pagado</span>
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 pl-4">
+                    <div className="w-1.5 h-1.5 rounded-full bg-current shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <span>Líquidado</span>
                   </div>
                 </div>
               </div>
 
               {/* Card Footer */}
-              <div className="p-4 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-100 dark:border-slate-700 flex gap-3 transition-colors">
+              <div className="p-3 bg-slate-50/50 dark:bg-slate-900/40 border-t border-slate-50 dark:border-white/5 flex gap-3 transition-colors">
                 <Link 
                   to={`/empleado/pedidos/${order.id}`}
-                  className="flex-1 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-center flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-[#1e3a5f] dark:text-slate-300 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1e3a5f] hover:text-white transition-all text-center flex items-center justify-center gap-2 shadow-sm"
                 >
-                  Detalles
-                  <ArrowRight className="w-3 h-3" />
+                  Documentación
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
                 <button 
                   onClick={() => handleStatusChange(order.id, order.status)}
                   disabled={updatingStatus === order.id}
-                  className="flex-1 py-2.5 bg-emerald-600 dark:bg-emerald-700 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all shadow-sm shadow-emerald-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {updatingStatus === order.id ? (
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2 size={16} className="animate-spin" />
                   ) : (
-                    <RefreshCw size={14} />
+                    <RefreshCw size={16} className="group-hover:rotate-180 transition-transform duration-700" />
                   )}
-                  {updatingStatus === order.id ? '...' : 'Estado'}
+                  {updatingStatus === order.id ? 'SINC...' : 'FLUJO'}
                 </button>
               </div>
             </motion.div>
@@ -338,43 +328,47 @@ export default function OrdersPage() {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2rem] transition-colors"
+          className="flex flex-col items-center justify-center py-20 px-4 text-center bg-white/50 dark:bg-slate-800/30 backdrop-blur-md border-2 border-dashed border-slate-100 dark:border-white/5 rounded-[4rem] transition-colors"
         >
-          <div className="w-24 h-24 bg-slate-50 dark:bg-slate-900/50 rounded-full flex items-center justify-center mb-6 relative">
-            <Search className="w-10 h-10 text-slate-300 dark:text-slate-600" />
+          <div className="w-28 h-28 bg-white dark:bg-slate-900 rounded-[2.5rem] flex items-center justify-center mb-8 relative shadow-2xl">
+            <Search className="w-12 h-12 text-[#1e3a5f]/20" />
             <motion.div 
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-4 border-white dark:border-slate-800"
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+              transition={{ repeat: Infinity, duration: 3 }}
+              className="absolute -top-2 -right-2 w-8 h-8 bg-[#eab308] rounded-full border-4 border-white dark:border-slate-800 shadow-lg"
             />
           </div>
-          <h3 className="text-2xl font-display font-bold text-slate-900 dark:text-white">No se encontraron pedidos</h3>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-xs mx-auto">
-            No hay resultados para "{searchTerm}" con el filtro seleccionado.
+          <h3 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white">Sin Coincidencias</h3>
+          <p className="text-slate-500 mt-3 max-w-xs mx-auto font-medium italic">
+            "No encontramos el folio o cliente que buscas."
           </p>
           <button 
             onClick={() => { setSearchTerm(''); setStatusFilter('Todos'); }}
-            className="mt-8 px-8 py-3 bg-emerald-600 dark:bg-emerald-700 text-white font-black uppercase tracking-widest text-xs rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100 dark:shadow-none"
+            className="mt-10 px-10 py-4 bg-[#1e3a5f] dark:bg-blue-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-2xl shadow-blue-900/20"
           >
-            Ver todos los pedidos
+            Restaurar Bitácora
           </button>
         </motion.div>
       )}
 
-      {/* Footer Info */}
-      <div className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-widest gap-4 transition-colors">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-            <span>Sincronizado</span>
+      {/* Corporate Footer */}
+      <footer className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-slate-100 dark:border-white/5 text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] gap-6 transition-colors">
+        <div className="flex items-center gap-10">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
+            <span>Bitácora Sincronizada</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span>{filteredOrders.length} Resultados</span>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 bg-[#eab308] rounded-full shadow-lg shadow-amber-500/50"></div>
+            <span>{filteredOrders.length} Registros Cargados</span>
           </div>
         </div>
-        <p>© 2024 Florería Bautista • Panel Logístico</p>
-      </div>
+        <div className="flex items-center gap-3">
+            <span>© 2024 FB</span>
+            <div className="w-1.5 h-1.5 bg-slate-200 rounded-full" />
+            <span className="text-[#1e3a5f] dark:text-blue-400/40">Logística Central</span>
+        </div>
+      </footer>
     </div>
   );
 }

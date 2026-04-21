@@ -19,9 +19,22 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-icons': ['lucide-react', 'react-icons'],
+            'vendor-utils': ['axios', 'dotenv', 'motion'],
+            'vendor-excel-pdf': ['xlsx', 'jspdf', 'jspdf-autotable'],
+          },
+        },
+      },
+      chunkSizeWarningLimit: 1000,
+    },
     server: {
       host: '0.0.0.0',
-      port: 5173,
+      port: 3000,
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: {
         usePolling: true,

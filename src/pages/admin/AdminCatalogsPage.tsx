@@ -25,7 +25,7 @@ interface CatalogItem {
 }
 
 const DUMMY_CATALOGS: CatalogItem[] = [
-  { id: '1', nombre: 'San Valentín Premium 2026', descripcion: 'Colección de rosas rojas y arreglos gigantes para enamorados.', temporada: 'Febrero', numProductos: 24, estado: 'ACTIVO', fechaInicio: '2026-02-01', fechaFin: '2026-02-15' },
+  { id: '1', nombre: 'San Valentín Premium 2026', descripcion: 'Catálogo de rosas rojas y arreglos gigantes para enamorados.', temporada: 'Febrero', numProductos: 24, estado: 'ACTIVO', fechaInicio: '2026-02-01', fechaFin: '2026-02-15' },
   { id: '2', nombre: 'Día de las Madres - Edición Especial', descripcion: 'Arreglos con tulipanes y flores exóticas.', temporada: 'Mayo', numProductos: 15, estado: 'PROGRAMADO', fechaInicio: '2026-05-01', fechaFin: '2026-05-12' },
   { id: '3', nombre: 'Otoño Dorado', descripcion: 'Arreglos en tonos terracota, naranja y amarillo.', temporada: 'Otoño', numProductos: 10, estado: 'INACTIVO' },
 ];
@@ -46,11 +46,7 @@ export default function AdminCatalogsPage() {
   return (
     <div className="w-full flex flex-col gap-5">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
-        <span className="hover:text-amber-600 dark:hover:text-amber-500 cursor-pointer transition-colors" onClick={() => navigate('/dashboard')}>Dashboard</span>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-slate-700 dark:text-slate-300">Catálogos & Temporadas</span>
-      </nav>
+
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -59,8 +55,8 @@ export default function AdminCatalogsPage() {
             <Library className="w-5 h-5 text-amber-600 dark:text-amber-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Gestión de Catálogos</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Agrupa productos por épocas, colecciones o temporadas</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Gestión de Catálogos (Festividades)</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Agrupa productos por épocas, festividades o temporadas</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -81,9 +77,9 @@ export default function AdminCatalogsPage() {
       {/* KPI Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Colecciones Activas', value: '1', trend: '+1 reciente', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' },
-          { label: 'Total Productos Listados', value: '49', trend: 'En distintas colecciones', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10', border: 'border-indigo-100 dark:border-indigo-500/20' },
-          { label: 'Próxima Temporada', value: 'Día de Madres', trend: 'Inicia en 42 días', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20' },
+          { label: 'Catálogos Activos', value: '1', trend: '+1 reciente', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40' },
+          { label: 'Total Productos Listados', value: '49', trend: 'En distintos catálogos', color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40' },
+          { label: 'Próxima Temporada', value: 'Día de Madres', trend: 'Inicia en 25 días', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40' },
         ].map(({ label, value, trend, color, bg, border }) => (
           <div key={label} className={`relative overflow-hidden rounded-2xl border ${border} ${bg} p-5`}>
             <div className="relative z-10">
@@ -104,7 +100,7 @@ export default function AdminCatalogsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
-            placeholder="Buscar colección o época..."
+            placeholder="Buscar catálogo o época de festividad..."
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 text-slate-800 dark:text-slate-200 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"

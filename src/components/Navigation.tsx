@@ -8,13 +8,22 @@ export default function Navigation() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     } else {
       setUser(null);
     }
   }, [location.pathname]);
+
+  const getUserDashboard = () => {
+    if (!user) return "/dashboard";
+    const roles: string[] = (user?.roles ?? (user?.role ? [user.role] : []))
+      .map((r: string) => r.toLowerCase());
+    if (roles.some(r => ['administrador', 'admin'].includes(r))) return "/admin/dashboard";
+    if (roles.some(r => ['empleado', 'staff'].includes(r))) return "/empleado/dashboard";
+    return "/dashboard";
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('user');
@@ -34,7 +43,7 @@ export default function Navigation() {
         {/* Desktop Menu */}
         <div className="hidden lg:flex items-center gap-8 font-semibold text-sm uppercase tracking-wide">
           <Link className="nav-link" to="/">Inicio</Link>
-          {user && <Link className="nav-link" to="/dashboard">Panel</Link>}
+          {user && <Link className="nav-link" to={getUserDashboard()}>Panel</Link>}
           <Link className="nav-link" to="/catalogo">Catálogo</Link>
           <Link className="nav-link" to="/testimonios">Testimonios</Link>
           <Link className="nav-link" to="/nosotros">Nosotros</Link>

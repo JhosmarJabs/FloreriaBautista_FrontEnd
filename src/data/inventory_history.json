@@ -1,0 +1,52 @@
+{
+  "_meta": {
+    "producto": "Rosas Rojas Premium (A)",
+    "unidad": "tallos",
+    "nota": "Solo datos reales confirmados. Los registros futuros son calculados por el motor de decrecimiento exponencial del dashboard."
+  },
+  "products_history": {
+    "Rosas Rojas Premium (A)": {
+      "diario": [
+        { "date": "2026-04-06", "stock": 144, "nota": "Reabasto S1 (144 u)" },
+        { "date": "2026-04-07", "stock": 129 },
+        { "date": "2026-04-08", "stock": 114 },
+        { "date": "2026-04-09", "stock": 99  },
+        { "date": "2026-04-10", "stock": 84  },
+        { "date": "2026-04-11", "stock": 60  },
+        { "date": "2026-04-12", "stock": 39,  "nota": "Ventas: 105 | Merma descartada: 39" },
+        { "date": "2026-04-13", "stock": 144, "nota": "Reabasto S2 (144 u)" },
+        { "date": "2026-04-14", "stock": 126 },
+        { "date": "2026-04-15", "stock": 108 },
+        { "date": "2026-04-16", "stock": 90  },
+        { "date": "2026-04-17", "stock": 68  },
+        { "date": "2026-04-18", "stock": 44  },
+        { "date": "2026-04-19", "stock": 20,  "nota": "Ventas: 124 | Merma descartada: 20" },
+        { "date": "2026-04-20", "stock": 143, "nota": "Reabasto S3 basado en predicción (143 u)" },
+        { "date": "2026-04-21", "stock": 122, "nota": "Último dato real" }
+      ],
+      "semanal": [
+        { "label": "Sem 1 - Ene",  "week": "2026-W01", "consumed": 88,  "restock": 88,  "merma": 0 },
+        { "label": "Sem 2 - Ene",  "week": "2026-W02", "consumed": 91,  "restock": 91,  "merma": 0 },
+        { "label": "Sem 3 - Ene",  "week": "2026-W03", "consumed": 95,  "restock": 95,  "merma": 0 },
+        { "label": "Sem 4 - Ene",  "week": "2026-W04", "consumed": 88,  "restock": 88,  "merma": 0 },
+        { "label": "Sem 1 - Feb",  "week": "2026-W05", "consumed": 97,  "restock": 97,  "merma": 0 },
+        { "label": "Sem 2 - Feb",  "week": "2026-W06", "consumed": 102, "restock": 102, "merma": 0 },
+        { "label": "Sem 3 - Feb",  "week": "2026-W07", "consumed": 98,  "restock": 98,  "merma": 0 },
+        { "label": "Sem 4 - Feb",  "week": "2026-W08", "consumed": 105, "restock": 105, "merma": 0 },
+        { "label": "Sem 1 - Mar",  "week": "2026-W09", "consumed": 110, "restock": 110, "merma": 0 },
+        { "label": "Sem 2 - Mar",  "week": "2026-W10", "consumed": 107, "restock": 107, "merma": 0 },
+        { "label": "Sem 3 - Mar",  "week": "2026-W11", "consumed": 112, "restock": 112, "merma": 0 },
+        { "label": "Sem 4 - Mar",  "week": "2026-W12", "consumed": 118, "restock": 118, "merma": 0 },
+        { "label": "Sem 1 - Abr",  "week": "2026-W14", "consumed": 105, "restock": 144, "merma": 39 },
+        { "label": "Sem 2 - Abr",  "week": "2026-W15", "consumed": 124, "restock": 144, "merma": 20 },
+        { "label": "Sem 3 - Abr",  "week": "2026-W16", "consumed": 21,  "restock": 143, "merma": 0, "nota": "En curso - Compra predictiva de 143 u" }
+      ],
+      "mensual": [
+        { "month": "2026-01", "label": "Enero 2026",   "totalConsumed": 362, "avgWeekly": 90.5,  "totalRestock": 362 },
+        { "month": "2026-02", "label": "Febrero 2026", "totalConsumed": 402, "avgWeekly": 100.5, "totalRestock": 402 },
+        { "month": "2026-03", "label": "Marzo 2026",   "totalConsumed": 447, "avgWeekly": 111.75,"totalRestock": 447 },
+        { "month": "2026-04", "label": "Abril 2026",   "totalConsumed": 250, "avgWeekly": 83.3,  "totalRestock": 431, "nota": "En curso" }
+      ]
+    }
+  }
+}

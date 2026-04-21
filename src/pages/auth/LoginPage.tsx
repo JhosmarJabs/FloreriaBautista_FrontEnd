@@ -51,7 +51,7 @@ export default function LoginPage() {
       if (roles.includes("administrador") || roles.includes("admin")) {
         navigate("/admin/dashboard");
       } else if (roles.includes("empleado") || roles.includes("staff")) {
-        navigate("/dashboard");
+        navigate("/empleado/dashboard");
       } else {
         navigate("/");
       }

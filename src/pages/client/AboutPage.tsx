@@ -37,7 +37,7 @@ export default function AboutPage() {
           </p>
           <div className="pt-4">
             <Link to="/catalogo" className="inline-flex bg-brand-deep text-white px-8 py-4 rounded-xl font-bold items-center gap-2 hover:bg-opacity-90 transition-colors">
-              Explorar Colecciones
+              Explorar Catálogos
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -253,7 +253,7 @@ export default function AboutPage() {
         <div className="bg-brand-deep rounded-3xl p-10 flex flex-col justify-center items-center text-center space-y-6 text-white shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/10 rounded-full -mr-16 -mt-16"></div>
           <h3 className="text-3xl font-serif font-bold">¿Listo para regalar belleza?</h3>
-          <p className="text-slate-300 text-lg">Explora nuestra colección curada de temporada y encuentra el detalle perfecto.</p>
+          <p className="text-slate-300 text-lg">Explora nuestros catálogos curados de temporada y encuentra el detalle perfecto.</p>
           <Link to="/catalogo" className="inline-block bg-[#D4AF37] text-brand-deep px-10 py-4 rounded-xl font-bold text-lg hover:scale-105 transition-transform shadow-lg">
             Ver catálogo completo
           </Link>

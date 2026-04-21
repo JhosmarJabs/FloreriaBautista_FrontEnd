@@ -20,6 +20,15 @@ const ESTADO_DOT: Record<string, string> = {
   ACTIVO: 'bg-emerald-500', INACTIVO: 'bg-slate-400', BORRADOR: 'bg-amber-400',
 };
 
+const TIPO_MAP: Record<string, string> = {
+  'ARREGLO_FLORAL': 'Arreglo Floral',
+  'RAMO':          'Ramo',
+  'FLORES_CORTE':  'Flores de Corte',
+  'PLANTA':        'Planta',
+  'INSUMOS':       'Insumos',
+  'ACCESORIOS':    'Accesorios',
+};
+
 export default function AdminProductsListPage() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
@@ -64,11 +73,7 @@ export default function AdminProductsListPage() {
     <div className="w-full flex flex-col gap-5">
 
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium">
-        <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer" onClick={() => navigate('/dashboard')}>Dashboard</span>
-        <ChevronRight className="w-3 h-3" />
-        <span className="text-slate-700 dark:text-slate-300">Productos</span>
-      </nav>
+
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -112,9 +117,9 @@ export default function AdminProductsListPage() {
       {/* KPI Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Total productos', value: loading ? '—' : String(total), icon: <ShoppingBag />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/10', border: 'border-blue-100 dark:border-blue-700/50', trend: 'registrados' },
-          { label: 'Activos', value: loading ? '—' : String(products.filter(p => p.estado === 'ACTIVO').length), icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-100 dark:border-emerald-700/50', trend: 'en catálogo' },
-          { label: 'Borradores', value: loading ? '—' : String(products.filter(p => p.estado === 'BORRADOR').length), icon: <AlertTriangle />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-100 dark:border-amber-700/50', trend: 'por publicar' },
+          { label: 'Total productos', value: loading ? '—' : String(total), icon: <ShoppingBag />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
+          { label: 'Activos', value: loading ? '—' : String(products.filter(p => p.estado === 'ACTIVO').length), icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'en catálogo' },
+          { label: 'Borradores', value: loading ? '—' : String(products.filter(p => p.estado === 'BORRADOR').length), icon: <AlertTriangle />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por publicar' },
         ].map((s, i) => (
           <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">
@@ -228,7 +233,7 @@ export default function AdminProductsListPage() {
                         </td>
                         <td className="px-5 py-3.5">
                           <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-full text-[10px] font-black uppercase tracking-wider">
-                            {p.tipo}
+                            {TIPO_MAP[p.tipo] ?? p.tipo}
                           </span>
                         </td>
                         <td className="px-5 py-3.5">
@@ -273,7 +278,7 @@ export default function AdminProductsListPage() {
                       </div>
                     </div>
                     <div className="p-5">
-                      <p className="text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-[0.2em] mb-1">{p.tipo}</p>
+                      <p className="text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-[0.2em] mb-1">{TIPO_MAP[p.tipo] ?? p.tipo}</p>
                       <h3 className="font-bold text-slate-900 dark:text-white text-base leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate mb-4">{p.nombre}</h3>
                       
                       <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">

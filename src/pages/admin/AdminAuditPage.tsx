@@ -215,10 +215,7 @@ export default function AdminAuditPage() {
       <FadeIn>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <ShieldAlert className="w-4 h-4 text-rose-500" />
-              <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Seguridad Informática</span>
-            </div>
+
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Libro de Auditoría</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Historial completo e inmutable de operaciones del administrador</p>
           </div>
@@ -237,10 +234,10 @@ export default function AdminAuditPage() {
       {/* Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Eventos registrados', value: total, icon: <Activity />, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-500/10', border: 'border-slate-100 dark:border-slate-500/20', trend: 'Total logs' },
-          { label: 'Acciones críticas', value: logs.filter(l => l.accion === 'ELIMINAR').length, icon: <ShieldAlert />, color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10', border: 'border-rose-100 dark:border-rose-500/20', trend: 'Eliminaciones' },
-          { label: 'Operaciones BD', value: total, icon: <Database />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20', trend: 'Transacciones' },
-          { label: 'Session OK', value: 'ACTIVO', icon: <Lock />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', trend: 'Seguridad' },
+          { label: 'Eventos registrados', value: total, icon: <Activity />, color: 'text-slate-700 dark:text-slate-300', bg: 'bg-slate-100/70 dark:bg-slate-500/20', border: 'border-slate-200 dark:border-slate-500/40', trend: 'Total logs' },
+          { label: 'Acciones críticas', value: logs.filter(l => l.accion === 'ELIMINAR').length, icon: <ShieldAlert />, color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40', trend: 'Eliminaciones' },
+          { label: 'Operaciones BD', value: total, icon: <Database />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'Transacciones' },
+          { label: 'Session OK', value: 'ACTIVO', icon: <Lock />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'Seguridad' },
         ].map((s, idx) => (
           <motion.div key={idx} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
             className={`relative overflow-hidden bg-white dark:bg-slate-800 border ${s.border} rounded-3xl p-4 h-24 group transition-all hover:shadow-lg`}>
