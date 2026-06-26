@@ -642,7 +642,35 @@ export const AdminService = {
     const res = await fetch(`${API_BASE}/catalogos`, {
       headers: await authHeaders(),
     });
-    if (!res.ok) throw new Error('Error al obtener catálogos de festividades');
+    if (!res.ok) throw new Error('Error al obtener catálogos');
+    return res.json();
+  },
+
+  getCatalogoById: async (id: string): Promise<SingleResponse<any>> => {
+    const res = await fetch(`${API_BASE}/catalogos/${id}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener catálogo');
+    return res.json();
+  },
+
+  createCatalog: async (body: any): Promise<SingleResponse<any>> => {
+    const res = await fetch(`${API_BASE}/catalogos`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('Error al crear catálogo');
+    return res.json();
+  },
+
+  updateCatalog: async (id: string, body: any): Promise<SingleResponse<any>> => {
+    const res = await fetch(`${API_BASE}/catalogos/${id}`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error('Error al actualizar catálogo');
     return res.json();
   },
 };

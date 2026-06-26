@@ -22,15 +22,9 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-icons': ['lucide-react', 'react-icons'],
-            'vendor-utils': ['axios', 'dotenv', 'motion'],
-            'vendor-excel-pdf': ['xlsx', 'jspdf', 'jspdf-autotable'],
-          },
         },
       },
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 500,
     },
     server: {
       host: '0.0.0.0',

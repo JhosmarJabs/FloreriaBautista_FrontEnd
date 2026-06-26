@@ -1,0 +1,76 @@
+{
+  "supplies": [
+    {
+      "id": "ins-001",
+      "nombre": "Rosa Roja Exportación",
+      "categoria": "Flores",
+      "unidad": "Tallos",
+      "stock_actual": 450,
+      "ventas_7d": 1240,
+      "costo_unitario": 12.5,
+      "uso_en_recetas": 15,
+      "rotacion": 85,
+      "tendencia": "Alta"
+    },
+    {
+      "id": "ins-002",
+      "nombre": "Tulipán Holandés Mixto",
+      "categoria": "Flores",
+      "unidad": "Tallos",
+      "stock_actual": 120,
+      "ventas_7d": 380,
+      "costo_unitario": 28.0,
+      "uso_en_recetas": 8,
+      "rotacion": 62,
+      "tendencia": "Estable"
+    },
+    {
+      "id": "ins-003",
+      "nombre": "Caja Madera Premium L",
+      "categoria": "Bases",
+      "unidad": "Piezas",
+      "stock_actual": 45,
+      "ventas_7d": 115,
+      "costo_unitario": 85.0,
+      "uso_en_recetas": 12,
+      "rotacion": 78,
+      "tendencia": "Alta"
+    },
+    {
+      "id": "ins-004",
+      "nombre": "Cinta Decorativa Oro 50m",
+      "categoria": "Accesorios",
+      "unidad": "Rollos",
+      "stock_actual": 12,
+      "ventas_7d": 42,
+      "costo_unitario": 45.0,
+      "uso_en_recetas": 45,
+      "rotacion": 92,
+      "tendencia": "Crítica"
+    },
+    {
+      "id": "ins-005",
+      "nombre": "Espuma Floral Oasis",
+      "categoria": "Material Base",
+      "unidad": "Piezas",
+      "stock_actual": 200,
+      "ventas_7d": 560,
+      "costo_unitario": 18.5,
+      "uso_en_recetas": 95,
+      "rotacion": 95,
+      "tendencia": "Alta"
+    },
+    {
+      "id": "ins-006",
+      "nombre": "Papel Coreano Negro",
+      "categoria": "Envoltura",
+      "unidad": "Pliegos",
+      "stock_actual": 300,
+      "ventas_7d": 180,
+      "costo_unitario": 4.5,
+      "uso_en_recetas": 25,
+      "rotacion": 35,
+      "tendencia": "Baja"
+    }
+  ]
+}

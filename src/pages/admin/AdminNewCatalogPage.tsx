@@ -59,37 +59,61 @@ export default function AdminNewCatalogPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState('');
 
-  // Búsqueda de productos
+  // Búsqueda de productos y listado general
   const [busquedaProd, setBusquedaProd] = useState('');
-  const [productosDisponibles, setProductosDisponibles] = useState<any[]>([]);
+  const [productos, setProductos] = useState<any[]>([]);
   const [loadingProds, setLoadingProds] = useState(false);
 
   useEffect(() => {
     if (isEdit && id) {
-      // Simular carga o conectar a servicio real cuando esté listo
-      // Por ahora mantenemos el estado vacío o cargamos dummy
-      setLoading(false);
+      const fetchCatalog = async () => {
+        setLoading(true);
+        try {
+          const res = await AdminService.getCatalogoById(id);
+          const cat = res.data;
+          setForm({
+            nombre: cat.nombre || '',
+            descripcion: cat.descripcion || '',
+            temporada: cat.temporada || '',
+            fechaInicio: cat.fechaInicio ? cat.fechaInicio.split('T')[0] : '',
+            fechaFin: cat.fechaFin ? cat.fechaFin.split('T')[0] : '',
+            estado: cat.estado === 'ACTIVA' ? 'ACTIVO' : (cat.estado === 'INACTIVA' ? 'INACTIVO' : 'PROGRAMADO'),
+            imagenUrl: cat.imagenUrl || '',
+            productosIds: cat.productCatalogos ? cat.productCatalogos.map((pc: any) => pc.productId) : [],
+          });
+        } catch (error) {
+          console.error("Error al cargar catálogo:", error);
+          showToast('Error al cargar el catálogo', 'error');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchCatalog();
     }
   }, [id, isEdit]);
 
   useEffect(() => {
-    if (busquedaProd.length >= 2) {
-      const fetchProds = async () => {
-        setLoadingProds(true);
-        try {
-          const res = await AdminService.getAdminProducts({ busqueda: busquedaProd, size: 5 });
-          setProductosDisponibles(res.data.items);
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setLoadingProds(false);
-        }
-      };
-      fetchProds();
-    } else {
-      setProductosDisponibles([]);
-    }
-  }, [busquedaProd]);
+    const fetchProds = async () => {
+      setLoadingProds(true);
+      try {
+        const res = await AdminService.getAdminProducts({ size: 150 });
+        setProductos(res.data.items || []);
+      } catch (error) {
+        console.error("Error al obtener productos:", error);
+      } finally {
+        setLoadingProds(false);
+      }
+    };
+    fetchProds();
+  }, []);
+
+  const productosDisponibles = React.useMemo(() => {
+    if (busquedaProd.length < 2) return [];
+    return productos.filter(p => 
+      p.nombre.toLowerCase().includes(busquedaProd.toLowerCase()) &&
+      !form.productosIds.includes(p.id)
+    );
+  }, [productos, busquedaProd, form.productosIds]);
 
   const handleSubmit = async () => {
     if (!form.nombre.trim()) {
@@ -116,13 +140,28 @@ export default function AdminNewCatalogPage() {
     }
 
     try {
-      // Aquí iría el AdminService.createCatalog o updateCatalog
-      console.log('Guardando catálogo:', { ...form, imagenUrl: finalImageUrl });
-      
-      setSuccess(true);
-      showToast(isEdit ? 'Catálogo actualizado' : 'Catálogo creado con éxito', 'success');
-      setTimeout(() => navigate('/admin/catalogos'), 1500);
+      const payload = {
+        nombre: form.nombre,
+        descripcion: form.descripcion,
+        estado: form.estado === 'ACTIVO' ? 'ACTIVA' : (form.estado === 'PROGRAMADO' ? 'PROGRAMADA' : 'INACTIVA'),
+        activo: form.estado === 'ACTIVO',
+        imagenUrl: finalImageUrl,
+        productCatalogos: form.productosIds.map(pid => ({ productId: pid }))
+      };
+
+      if (isEdit && id) {
+        await AdminService.updateCatalog(id, payload);
+        setSuccess(true);
+        showToast('Catálogo actualizado con éxito', 'success');
+        setTimeout(() => navigate('/admin/catalogos'), 1500);
+      } else {
+        await AdminService.createCatalog(payload);
+        setSuccess(true);
+        showToast('Catálogo creado con éxito', 'success');
+        setTimeout(() => navigate('/admin/catalogos'), 1500);
+      }
     } catch (err: any) {
+      console.error(err);
       showToast('Error al guardar el catálogo', 'error');
     } finally {
       setSaving(false);
@@ -137,7 +176,6 @@ export default function AdminNewCatalogPage() {
       }));
     }
     setBusquedaProd('');
-    setProductosDisponibles([]);
   };
 
   const removeProduct = (prodId: string) => {
@@ -321,18 +359,36 @@ export default function AdminNewCatalogPage() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {form.productosIds.map(pid => (
-                      <div key={pid} className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 group">
-                        <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate flex-1">Producto ID: {pid.slice(-6)}</span>
-                        <button 
-                          onClick={() => removeProduct(pid)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                    {form.productosIds.map(pid => {
+                      const prod = productos.find(p => p.id === pid);
+                      return (
+                        <div key={pid} className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 group">
+                          {prod?.imagenUrl ? (
+                            <img src={prod.imagenUrl} className="w-8 h-8 rounded-lg object-cover flex-shrink-0" alt="" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex-shrink-0 flex items-center justify-center">
+                              <Library className="w-4 h-4 text-slate-400" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate block">
+                              {prod ? prod.nombre : `Producto ID: ${pid.slice(-6)}`}
+                            </span>
+                            {prod && (
+                              <span className="text-[10px] text-slate-400 font-semibold block">
+                                ${prod.precioBase}
+                              </span>
+                            )}
+                          </div>
+                          <button 
+                            onClick={() => removeProduct(pid)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
