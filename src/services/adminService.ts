@@ -21,6 +21,9 @@ import {
   SchedulerConfigResponse,
   AdminCategory,
   AdminCatalogo,
+  InventoryKpis,
+  ProductKpis,
+  CatalogKpis,
 } from '../types';
 
 const API_BASE = '/api/admin';
@@ -243,6 +246,30 @@ export const AdminService = {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error('Error al obtener inventario');
+    return res.json();
+  },
+
+  getAdminInventoryKpis: async (): Promise<SingleResponse<InventoryKpis>> => {
+    const res = await fetch(`${API_BASE}/inventory/kpis`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener KPIs de inventario');
+    return res.json();
+  },
+
+  getAdminProductsKpis: async (): Promise<SingleResponse<ProductKpis>> => {
+    const res = await fetch(`${API_BASE}/products/kpis`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener KPIs de productos');
+    return res.json();
+  },
+
+  getAdminCatalogsKpis: async (): Promise<SingleResponse<CatalogKpis>> => {
+    const res = await fetch(`${API_BASE}/catalogos/kpis`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener KPIs de catálogos');
     return res.json();
   },
 

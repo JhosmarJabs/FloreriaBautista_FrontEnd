@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
-import { ImportProductsResult, InventoryItem } from '../../types';
+import { ImportProductsResult, InventoryItem, InventoryKpis, SingleResponse } from '../../types';
 import { FadeIn, ScaleIn, AnimatedButton } from '../../components/Animations';
 import ImportModal from '../../components/ImportModal';
 import { useToast } from '../../hooks/useToast';
@@ -25,6 +25,7 @@ export default function AdminInventoryPage() {
   const [invTotalPags, setInvTotalPags]     = useState(1);
   const [invPage, setInvPage]               = useState(1);
   const [loading, setLoading]               = useState(false);
+  const [kpis, setKpis]                     = useState<InventoryKpis | null>(null);
   const [viewMode, setViewMode]             = useState<'table' | 'grid'>('table');
   const [invBusqueda, setInvBusqueda]       = useState('');
   const [invSucursal, setInvSucursal]       = useState('');
@@ -40,6 +41,15 @@ export default function AdminInventoryPage() {
   // ── Carga ────────────────────────────────────────────────────────────────────
   const loadInventory = useCallback(async () => {
     setLoading(true);
+    const kpisPromise = AdminService.getAdminInventoryKpis()
+      .then(res => {
+        if (res && res.success) {
+          setKpis(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Error al cargar KPIs de inventario:', err);
+      });
     try {
       const res = await AdminService.getAdminInventory({
         busqueda:   invBusqueda  || undefined,
@@ -74,6 +84,7 @@ export default function AdminInventoryPage() {
     } finally {
       setLoading(false);
     }
+    await kpisPromise;
   }, [invBusqueda, invSucursal, invBajoMin, invPage, invCategoria, showToast, sortConfig]);
 
   useEffect(() => { loadInventory(); }, [loadInventory]);
@@ -190,10 +201,10 @@ export default function AdminInventoryPage() {
       {/* ── KPI Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total registros', value: loading ? '—' : String(invTotal), icon: <TrendingUp />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'en inventario' },
-          { label: 'Bajo mínimo', value: loading ? '—' : String(inventory.filter(i => i.bajoMinimo).length), icon: <AlertTriangle />, color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40', trend: 'requieren reposición' },
-          { label: 'Suma al costo', value: loading ? '—' : String(inventory.filter(i => i.sumaAlCosto).length), icon: <ArrowUpRight />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'afectan costo base' },
-          { label: 'Sucursales', value: loading ? '—' : String(new Set(inventory.map(i => i.sucursal)).size), icon: <Boxes />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'con insumos activos' },
+          { label: 'Total registros', value: loading || !kpis ? '—' : String(kpis.totalRegistros), icon: <TrendingUp />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'en inventario' },
+          { label: 'Bajo mínimo', value: loading || !kpis ? '—' : String(kpis.bajoMinimo), icon: <AlertTriangle />, color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40', trend: 'requieren reposición' },
+          { label: 'Suma al costo', value: loading || !kpis ? '—' : String(kpis.sumaAlCosto), icon: <ArrowUpRight />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'afectan costo base' },
+          { label: 'Sucursales', value: loading || !kpis ? '—' : String(kpis.sucursales), icon: <Boxes />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'con insumos activos' },
         ].map((s, i) => (
           <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">

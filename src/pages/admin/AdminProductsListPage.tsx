@@ -6,7 +6,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
-import { Product } from '../../types';
+import { Product, ProductKpis } from '../../types';
 
 const ESTADOS = ['', 'ACTIVO', 'INACTIVO', 'BORRADOR'];
 const PAGE_SIZE = 20;
@@ -32,6 +32,7 @@ const TIPO_MAP: Record<string, string> = {
 export default function AdminProductsListPage() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [kpis, setKpis] = useState<ProductKpis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,15 +49,19 @@ export default function AdminProductsListPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await AdminService.getAdminProducts({
-        busqueda: busqueda || undefined,
-        estado: estado || undefined,
-        page,
-        size: PAGE_SIZE,
-      });
+      const [res, kpisRes] = await Promise.all([
+        AdminService.getAdminProducts({
+          busqueda: busqueda || undefined,
+          estado: estado || undefined,
+          page,
+          size: PAGE_SIZE,
+        }),
+        AdminService.getAdminProductsKpis()
+      ]);
       setProducts(res.data.items);
       setTotal(res.data.total);
       setTotalPages(res.data.totalPaginas || 1);
+      setKpis(kpisRes.data);
     } catch (err: any) {
       setError(err.message || 'Error al cargar productos');
     } finally {
@@ -117,9 +122,9 @@ export default function AdminProductsListPage() {
       {/* KPI Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Total productos', value: loading ? '—' : String(total), icon: <ShoppingBag />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
-          { label: 'Activos', value: loading ? '—' : String(products.filter(p => p.estado === 'ACTIVO').length), icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'en catálogo' },
-          { label: 'Borradores', value: loading ? '—' : String(products.filter(p => p.estado === 'BORRADOR').length), icon: <AlertTriangle />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por publicar' },
+          { label: 'Total productos', value: loading || !kpis ? '—' : String(kpis.totalProductos), icon: <ShoppingBag />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
+          { label: 'Activos', value: loading || !kpis ? '—' : String(kpis.activos), icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'en catálogo' },
+          { label: 'Borradores', value: loading || !kpis ? '—' : String(kpis.borradores), icon: <AlertTriangle />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por publicar' },
         ].map((s, i) => (
           <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">

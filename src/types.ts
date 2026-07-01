@@ -320,3 +320,24 @@ export interface AdminCatalogo {
   estado: string;
   imagenUrl: string | null;
 }
+
+export interface InventoryKpis {
+  totalRegistros: number;
+  bajoMinimo: number;
+  sumaAlCosto: number;
+  sucursales: number;
+}
+
+export interface ProductKpis {
+  totalProductos: number;
+  activos: number;
+  borradores: number;
+}
+
+export interface CatalogKpis {
+  catalogosActivos: number;
+  totalProductosListados: number;
+  totalCatalogos: number;
+}
+
+

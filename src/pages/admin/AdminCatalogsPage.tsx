@@ -13,19 +13,21 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
-import { AdminCatalogo } from '../../types';
+import { AdminCatalogo, CatalogKpis } from '../../types';
 
 interface ExtendedCatalogItem extends AdminCatalogo {
   temporada?: string;
   numProductos?: number;
   fechaInicio?: string;
   fechaFin?: string;
+  productCatalogos?: any[];
 }
 
 export default function AdminCatalogsPage() {
   const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState('');
   const [catalogs, setCatalogs] = useState<ExtendedCatalogItem[]>([]);
+  const [kpis, setKpis] = useState<CatalogKpis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,8 +35,12 @@ export default function AdminCatalogsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await AdminService.getCatalogos();
+      const [res, kpisRes] = await Promise.all([
+        AdminService.getCatalogos(),
+        AdminService.getAdminCatalogsKpis()
+      ]);
       setCatalogs(res.data || []);
+      setKpis(kpisRes.data);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Error al obtener catálogos');
@@ -99,9 +105,9 @@ export default function AdminCatalogsPage() {
       {/* KPI Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Catálogos Activos', value: String(catalogs.filter(c => c.estado === 'ACTIVO').length), trend: 'Visibles en tienda', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40' },
-          { label: 'Total Productos Listados', value: String(catalogs.reduce((acc, c) => acc + (c.numProductos || 0), 0)), trend: 'En distintos catálogos', color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40' },
-          { label: 'Total Catálogos', value: String(catalogs.length), trend: 'Registrados en total', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40' },
+          { label: 'Catálogos Activos', value: loading || !kpis ? '—' : String(kpis.catalogosActivos), trend: 'Visibles en tienda', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40' },
+          { label: 'Total Productos Listados', value: loading || !kpis ? '—' : String(kpis.totalProductosListados), trend: 'En distintos catálogos', color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40' },
+          { label: 'Total Catálogos', value: loading || !kpis ? '—' : String(kpis.totalCatalogos), trend: 'Registrados en total', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40' },
         ].map(({ label, value, trend, color, bg, border }) => (
           <div key={label} className={`relative overflow-hidden rounded-2xl border ${border} ${bg} p-5`}>
             <div className="relative z-10">
@@ -197,7 +203,7 @@ export default function AdminCatalogsPage() {
                 <div className="flex items-center justify-between text-xs pt-4 border-t border-slate-100 dark:border-slate-700">
                   <div className="flex flex-col gap-1">
                     <span className="text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap">
-                      {catalog.numProductos || 0} productos
+                      {catalog.productCatalogos?.length || 0} productos
                     </span>
                     {catalog.fechaInicio && (
                       <span className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
