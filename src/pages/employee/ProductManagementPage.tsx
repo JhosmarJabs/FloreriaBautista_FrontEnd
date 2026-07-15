@@ -19,6 +19,7 @@ import { FadeIn } from '../../components/Animations';
 const TIPOS = [
   { value: 'ARREGLO_FLORAL', label: 'Arreglo Floral' },
   { value: 'RAMO', label: 'Ramo' },
+  { value: 'RAMO EXPRESS', label: 'Ramo Express' },
   { value: 'FLORES_CORTE', label: 'Flores de Corte' },
   { value: 'PLANTA', label: 'Planta' },
   { value: 'INSUMOS', label: 'Insumos' },

@@ -3,20 +3,28 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronRight, RefreshCw, AlertCircle, ShoppingCart, User,
   Calendar, MapPin, CreditCard, Package, ChevronDown, CheckCircle,
-  Clock, Truck, X,
+  Clock, Truck, X, ArrowLeft,
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
 
+// Estos son los estados reales que maneja el backend (ver Transiciones en OrderService.cs)
 const ESTADOS_FLUJO = [
-  { key: 'PENDIENTE',      label: 'Pendiente',      color: 'bg-amber-400',   text: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10'   },
-  { key: 'CONFIRMADO',     label: 'Confirmado',     color: 'bg-blue-400',    text: 'text-blue-700 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-500/10'    },
-  { key: 'EN_PREPARACION', label: 'En preparación', color: 'bg-purple-400',  text: 'text-purple-700 dark:text-purple-400',  bg: 'bg-purple-50 dark:bg-purple-500/10'  },
-  { key: 'LISTO',          label: 'Listo',          color: 'bg-teal-400',    text: 'text-teal-700 dark:text-teal-400',    bg: 'bg-teal-50 dark:bg-teal-500/10'    },
-  { key: 'EN_CAMINO',      label: 'En camino',      color: 'bg-indigo-400',  text: 'text-indigo-700 dark:text-indigo-400',  bg: 'bg-indigo-50 dark:bg-indigo-500/10'  },
-  { key: 'ENTREGADO',      label: 'Entregado',      color: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+  { key: 'PENDIENTE_VALIDACION', label: 'Pendiente',      color: 'bg-amber-400',   text: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10'   },
+  { key: 'EN_PREPARACION',       label: 'En preparación', color: 'bg-purple-400',  text: 'text-purple-700 dark:text-purple-400',  bg: 'bg-purple-50 dark:bg-purple-500/10'  },
+  { key: 'EN_RUTA',              label: 'En camino',      color: 'bg-indigo-400',  text: 'text-indigo-700 dark:text-indigo-400',  bg: 'bg-indigo-50 dark:bg-indigo-500/10'  },
+  { key: 'ENTREGADO',            label: 'Entregado',      color: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
 ];
 const ESTADO_CANCELADO = { key: 'CANCELADO', label: 'Cancelado', color: 'bg-red-400', text: 'text-red-700 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' };
+const ESTADO_NO_COMPLETADO = { key: 'NO_COMPLETADO', label: 'No completado', color: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/30' };
+
+// Siguiente estado permitido segun la maquina de estados del backend
+const SIGUIENTE_ESTADO: Record<string, string | null> = {
+  PENDIENTE_VALIDACION: 'EN_PREPARACION',
+  EN_PREPARACION:        'EN_RUTA',
+  EN_RUTA:               'ENTREGADO',
+  ENTREGADO:             null,
+};
 
 function formatDate(iso: string) {
   if (!iso) return '—';
@@ -90,25 +98,37 @@ export default function AdminOrderDetailPage() {
     </div>
   );
 
-  const currentEstado = [...ESTADOS_FLUJO, ESTADO_CANCELADO].find(e => e.key === order.estadoPedido);
+  const currentEstado = [...ESTADOS_FLUJO, ESTADO_CANCELADO, ESTADO_NO_COMPLETADO].find(e => e.key === order.estadoPedido);
   const currentIdx = ESTADOS_FLUJO.findIndex(e => e.key === order.estadoPedido);
   const isCancelled = order.estadoPedido === 'CANCELADO';
+  const isNoCompletado = order.estadoPedido === 'NO_COMPLETADO';
+  const siguienteEstado = SIGUIENTE_ESTADO[order.estadoPedido] ?? null;
+  const siguienteLabel = ESTADOS_FLUJO.find(e => e.key === siguienteEstado)?.label;
 
   return (
     <div className="flex flex-col gap-5">
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <nav className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">
-            <span className="hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer transition-colors" onClick={() => navigate('/admin/pedidos')}>Pedidos</span>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-slate-700 dark:text-slate-300">Detalle de Pedido</span>
-          </nav>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-            <ShoppingCart className="w-6 h-6 text-emerald-500" />
-            Pedido #{id?.slice(0, 8).toUpperCase()}
-          </h1>
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => navigate('/admin/pedidos')}
+            title="Regresar a pedidos"
+            className="mt-1 flex items-center justify-center w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <nav className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">
+              <span className="hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer transition-colors" onClick={() => navigate('/admin/pedidos')}>Pedidos</span>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-slate-700 dark:text-slate-300">Detalle de Pedido</span>
+            </nav>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+              <ShoppingCart className="w-6 h-6 text-emerald-500" />
+              Pedido #{id?.slice(0, 8).toUpperCase()}
+            </h1>
+          </div>
         </div>
 
         {/* Status change */}
@@ -151,8 +171,8 @@ export default function AdminOrderDetailPage() {
                   <div className="border-t border-slate-100 dark:border-slate-700 mt-1 pt-1">
                     <button
                       onClick={() => handleStatusChange('CANCELADO')}
-                      disabled={isCancelled}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${isCancelled ? 'bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-600 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 hover:font-bold'}`}
+                      disabled={isCancelled || order.estadoPedido === 'ENTREGADO'}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${(isCancelled || order.estadoPedido === 'ENTREGADO') ? 'bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-600 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 hover:font-bold'}`}
                     >
                       <span className="w-2 h-2 rounded-full bg-red-400" />
                       Cancelar pedido
@@ -166,8 +186,8 @@ export default function AdminOrderDetailPage() {
         </div>
       </div>
 
-      {/* Progress bar (not cancelled) */}
-      {!isCancelled && (
+      {/* Progress bar (not cancelled / not archived as no-completado) */}
+      {!isCancelled && !isNoCompletado && (
         <div className={sec}>
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4">Seguimiento del pedido</p>
           <div className="flex items-center gap-0">
@@ -201,6 +221,17 @@ export default function AdminOrderDetailPage() {
           <div>
             <p className="text-sm font-black text-red-800 dark:text-red-400">Pedido cancelado</p>
             <p className="text-xs text-red-600 dark:text-red-500">Este pedido fue cancelado y no se procesará.</p>
+          </div>
+        </div>
+      )}
+
+      {/* No-completado banner (archivado sin seguimiento) */}
+      {isNoCompletado && (
+        <div className="flex items-center gap-3 p-4 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl">
+          <Clock className="w-5 h-5 text-slate-400 shrink-0" />
+          <div>
+            <p className="text-sm font-black text-slate-700 dark:text-slate-300">Pedido no completado</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Se archivó automáticamente: su fecha de entrega pasó sin que se le diera seguimiento.</p>
           </div>
         </div>
       )}
@@ -259,12 +290,12 @@ export default function AdminOrderDetailPage() {
                 <span className={lbl}>Fecha de entrega</span>
                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{formatDate(order.fechaEntrega)}</p>
               </div>
-              {order.direccionEntrega && (
+              {order.direccion && (
                 <div className="col-span-2">
                   <span className={lbl}>Dirección</span>
                   <p className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" />
-                    {order.direccionEntrega}
+                    {`${order.direccion.calle}, ${order.direccion.colonia}, ${order.direccion.municipio}, ${order.direccion.estado}`}
                   </p>
                 </div>
               )}
@@ -355,24 +386,21 @@ export default function AdminOrderDetailPage() {
           {/* Quick actions */}
           <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl p-4 space-y-2">
             <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Acciones rápidas</p>
-            {[
-              { label: 'Marcar como Confirmado', estado: 'CONFIRMADO', icon: CheckCircle, color: 'text-blue-600 hover:bg-blue-50' },
-              { label: 'Marcar como Listo', estado: 'LISTO', icon: CheckCircle, color: 'text-teal-600 hover:bg-teal-50' },
-              { label: 'Marcar como Entregado', estado: 'ENTREGADO', icon: Truck, color: 'text-emerald-600 hover:bg-emerald-50' },
-            ].map(({ label, estado, icon: Icon, color }) => (
+            {siguienteEstado ? (
               <button
-                key={estado}
-                onClick={() => handleStatusChange(estado)}
-                disabled={updating || order.estadoPedido === estado || isCancelled}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg border border-slate-100 dark:border-slate-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${color} dark:bg-slate-900/40`}
+                onClick={() => handleStatusChange(siguienteEstado)}
+                disabled={updating || isCancelled || isNoCompletado}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg border border-slate-100 dark:border-slate-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-emerald-600 hover:bg-emerald-50 dark:bg-slate-900/40"
               >
-                <Icon className="w-3.5 h-3.5" /> {label}
+                <Truck className="w-3.5 h-3.5" /> Marcar como {siguienteLabel}
               </button>
-            ))}
+            ) : (
+              <p className="text-xs text-slate-400 dark:text-slate-500 px-1">Este pedido no tiene más avances disponibles.</p>
+            )}
             <div className="border-t border-slate-100 dark:border-slate-700 pt-2">
               <button
                 onClick={() => handleStatusChange('CANCELADO')}
-                disabled={updating || isCancelled}
+                disabled={updating || isCancelled || order.estadoPedido === 'ENTREGADO'}
                 className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg border border-red-100 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/60 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <X className="w-3.5 h-3.5" /> Cancelar pedido

@@ -682,11 +682,71 @@ export default function ReportsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setStats(MOCK_GENERAL_STATS);
-        setWeeklySales(generateDynamicWeeklySales());
-        setTopCustomers(MOCK_TOP_CUSTOMERS_PRO);
-        setTopProducts(MOCK_TOP_PRODUCTS_PRO);
-        setInventoryAlerts(MOCK_INVENTORY_ALERTS_PRO);
+        const [dashboardRes, topProductsRes, topCustomersRes] = await Promise.allSettled([
+          AdminService.getDashboardStats(),
+          AdminService.getTopProducts(5),
+          AdminService.getTopCustomers(5),
+        ]);
+
+        if (dashboardRes.status === 'fulfilled' && dashboardRes.value.success) {
+          const d = dashboardRes.value.data;
+          setStats({
+            totalSales: d.totalSales,
+            orderCount: d.orderCount,
+            averageTicket: d.averageTicket,
+            newCustomers: d.newCustomers,
+          });
+
+          const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+          const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+          const monthly: any[] = d.monthlySales ?? [];
+          const ultimos7 = monthly.slice(-7);
+          setWeeklySales(ultimos7.map((s, i) => {
+            const fecha = new Date(s.fecha);
+            const prevTotal = i > 0 ? ultimos7[i - 1].total : s.total;
+            const growth = prevTotal > 0 ? (((s.total - prevTotal) / prevTotal) * 100).toFixed(1) : '0.0';
+            return {
+              day: days[fecha.getDay()],
+              date: `${fecha.getDate()} ${months[fecha.getMonth()]}`,
+              fullDate: fecha.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' }),
+              total: s.total,
+              orders: s.pedidos,
+              growth,
+            };
+          }));
+
+          setInventoryAlerts((d.criticalInventory ?? []).map((a: any) => ({
+            id: a.itemId,
+            name: a.nombre,
+            stock: a.stockActual,
+            stock_minimo: a.stockMinimo,
+          })));
+        } else {
+          setStats(MOCK_GENERAL_STATS);
+          setWeeklySales(generateDynamicWeeklySales());
+          setInventoryAlerts(MOCK_INVENTORY_ALERTS_PRO);
+        }
+
+        if (topProductsRes.status === 'fulfilled' && topProductsRes.value.success && topProductsRes.value.data.length > 0) {
+          setTopProducts(topProductsRes.value.data.map((p: any) => ({
+            name: p.nombre,
+            sales: p.vendidos,
+            total: p.ingresos,
+          })));
+        } else {
+          setTopProducts(MOCK_TOP_PRODUCTS_PRO);
+        }
+
+        if (topCustomersRes.status === 'fulfilled' && topCustomersRes.value.success && topCustomersRes.value.data.length > 0) {
+          setTopCustomers(topCustomersRes.value.data.map((c: any) => ({
+            name: c.nombre,
+            total: c.totalGastado,
+            status: c.totalGastado >= 20000 ? 'VIP Gold' : c.totalGastado >= 5000 ? 'Frecuente' : 'Cliente',
+          })));
+        } else {
+          setTopCustomers(MOCK_TOP_CUSTOMERS_PRO);
+        }
+
         setInventoryStats(DataService.getInventoryStats());
 
         // Obtener todos los insumos de la base de datos
@@ -699,11 +759,16 @@ export default function ReportsPage() {
         }
       } catch (err) {
         console.error("Error al cargar reportes:", err);
+        setStats(MOCK_GENERAL_STATS);
+        setWeeklySales(generateDynamicWeeklySales());
+        setTopCustomers(MOCK_TOP_CUSTOMERS_PRO);
+        setTopProducts(MOCK_TOP_PRODUCTS_PRO);
+        setInventoryAlerts(MOCK_INVENTORY_ALERTS_PRO);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -939,7 +1004,13 @@ export default function ReportsPage() {
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Existencia: <span className="text-rose-600">{item.stock}</span> / {item.stock_minimo}</p>
                            </div>
                         </div>
-                        <button className="px-4 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-500 hover:text-white transition-all">Ordenar</button>
+                        <button
+                          onClick={() => navigate(`/admin/inventario/editar/${item.id}`)}
+                          disabled={!item.id}
+                          className="px-4 py-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-500 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Ordenar
+                        </button>
                      </div>
                    ))}
                    <div className="p-6 text-center">

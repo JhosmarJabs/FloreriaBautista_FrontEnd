@@ -1,182 +1,168 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  ShoppingBasket, 
-  Search, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  CreditCard, 
-  Banknote, 
-  CheckCircle2, 
-  UserPlus,
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  ShoppingBasket,
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  Loader2,
+  User,
+  DollarSign,
+  AlertTriangle,
+  RefreshCw,
+  Settings,
   Sparkles,
   Leaf,
   Gift,
-  PlusCircle,
-  Loader2,
-  User,
-  ShoppingCart,
-  ChevronRight,
-  DollarSign,
-  TrendingUp,
-  Clock,
-  Settings,
   Heart,
-  Calendar
+  Calendar,
+  Layout,
+  ShoppingBag,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DataService, Order, OrderItem, Product } from '../../services/dataService';
+import { AdminService } from '../../services/adminService';
+import { Product, QuickSaleTemplate, QuickSaleTemplateItem } from '../../types';
 import { useToast } from '../../hooks/useToast';
 
-/* ── Mapeo de Iconos Reales ─────────────────────────────── */
-const ICON_MAP: Record<string, any> = {
-  Sparkles: Sparkles,
-  Leaf: Leaf,
-  Gift: Gift,
-  Heart: Heart,
-  Calendar: Calendar
+const ICON_MAP: Record<string, any> = { Sparkles, Leaf, Gift, Heart, Calendar, Layout, ShoppingBag };
+const COLOR_MAP: Record<string, string> = {
+  emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  rose:    'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  amber:   'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  blue:    'bg-blue-50 dark:bg-blue-500/10 text-[#1e3a5f] dark:text-blue-400',
+  indigo:  'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+  slate:   'bg-slate-50 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400',
 };
 
-const DEFAULT_TEMPLATES = [
-  {
-    id: 'basic',
-    name: 'Plantilla Básica',
-    description: 'Productos más vendidos en mostrador',
-    icon: 'Sparkles',
-    items: [
-      { id: 'rb40', name: 'Ramos básicos', price: 40, icon: 'Leaf', color: 'blue' },
-      { id: 'rr60', name: 'Ramos de rosas', price: 60, icon: 'Heart', color: 'rose' },
-      { id: 'rg60', name: 'Ramo de gerberas', price: 60, icon: 'Sparkles', color: 'amber' },
-      { id: 'rl70', name: 'Ramo de lirios', price: 70, icon: 'Leaf', color: 'blue' },
-      { id: 'rer',  name: 'Ramo especial rosas', price: 120, icon: 'Heart', color: 'rose', isSpecial: true },
-      { id: 'reg',  name: 'Ramo especial gerberas', price: 120, icon: 'Sparkles', color: 'amber', isSpecial: true },
-    ]
-  },
-  {
-    id: 'may10',
-    name: '10 de Mayo',
-    description: 'Especial para el día de las madres',
-    icon: 'Heart',
-    items: [
-      { id: 'm1', name: 'Arreglo Madre Superior', price: 450, icon: 'Heart', color: 'rose' },
-      { id: 'm2', name: 'Canasta de Flores Mixtas', price: 350, icon: 'Leaf', color: 'blue' },
-    ]
-  }
-];
+interface CartItem {
+  id: string;
+  nombre: string;
+  precio: number;
+  cantidad: number;
+}
 
 export default function QuickSalePage() {
-  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<any[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
+  const [templates, setTemplates] = useState<QuickSaleTemplate[]>([]);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [search, setSearch] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { showToast } = useToast();
-  const [user, setUser] = useState<any>(null);
 
-  // Template States
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [activeTemplate, setActiveTemplate] = useState<any>(null);
-
-  useEffect(() => {
-    const allProducts = DataService.getProducts();
-    setProducts(allProducts);
-    
-    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const productsRes = await AdminService.getProducts({ size: 500 });
+      setProducts(productsRes.data.items);
+    } catch (err: any) {
+      setError(err.message || 'Error al cargar el catálogo');
+      setLoading(false);
+      return;
     }
+    setLoading(false);
 
-    // Load templates
-    const saved = localStorage.getItem('POS_TEMPLATES');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setTemplates(parsed);
-      setActiveTemplate(parsed[0]);
-    } else {
-      // Iniciar con valores por defecto si no hay nada guardado
-      setTemplates(DEFAULT_TEMPLATES);
-      setActiveTemplate(DEFAULT_TEMPLATES[0]);
-      localStorage.setItem('POS_TEMPLATES', JSON.stringify(DEFAULT_TEMPLATES));
+    // Las plantillas son un complemento (accesos rápidos); si fallan no deben
+    // tumbar la Venta Rápida — el catálogo y la búsqueda siguen funcionando.
+    try {
+      const templatesRes = await AdminService.getQuickSaleTemplates();
+      const loadedTemplates = templatesRes.data || [];
+      setTemplates(loadedTemplates);
+      setActiveTemplateId(prev => {
+        if (prev && loadedTemplates.some(t => t.id === prev)) return prev;
+        return loadedTemplates[0]?.id ?? null;
+      });
+    } catch (err) {
+      console.error('Error loading quick sale templates:', err);
+      setTemplates([]);
     }
-  }, []);
+  };
 
-  const addToCart = (item: any) => {
+  useEffect(() => { load(); }, []);
+
+  const activeTemplate = useMemo(
+    () => templates.find(t => t.id === activeTemplateId) ?? null,
+    [templates, activeTemplateId]
+  );
+
+  const resultadosBusqueda = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.trim().toLowerCase();
+    return products.filter(p => p.nombre.toLowerCase().includes(q)).slice(0, 12);
+  }, [products, search]);
+
+  const addItemToCart = (id: string, nombre: string, precio: number) => {
     setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
+      const existing = prev.find(i => i.id === id);
       if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => i.id === id ? { ...i, cantidad: i.cantidad + 1 } : i);
       }
-      return [...prev, { ...item, quantity: 1, image: item.image || '' }];
+      return [...prev, { id, nombre, precio, cantidad: 1 }];
     });
   };
 
+  const addToCart = (product: Product) => addItemToCart(product.id, product.nombre, product.precioBase);
+  const addTemplateItemToCart = (item: QuickSaleTemplateItem) => addItemToCart(item.productId, item.nombre, item.precio);
+
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => prev.map(item => {
-      if (item.id === id) {
-        return { ...item, quantity: Math.max(0, item.quantity + delta) };
-      }
+      if (item.id === id) return { ...item, cantidad: Math.max(0, item.cantidad + delta) };
       return item;
-    }).filter(item => item.quantity > 0));
+    }).filter(item => item.cantidad > 0));
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
-  };
+  const removeFromCart = (id: string) => setCart(prev => prev.filter(item => item.id !== id));
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const tax = subtotal * 0.16;
-  const total = subtotal + tax;
+  const total = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
-
     setIsProcessing(true);
-    try {      const orderItems: OrderItem[] = cart.map(item => ({
-        productId: item.id,
-        productName: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        image: item.image || ''
-      }));
-
-      const newOrder: Order = {
-        id: `ORD-${Date.now()}`,
-        customerId: 'customer-anonymous',
-        items: orderItems,
-        total: total,
-        status: 'delivered',
-        paymentMethod: paymentMethod,
-        paymentStatus: 'paid',
-        createdAt: new Date().toISOString()
-      };
-
-      await DataService.addOrder(newOrder); 
-
-      await DataService.addAuditLog({
-        action: 'quick_sale',
-        details: `Venta rápida registrada por $${total.toFixed(2)}`,
-        userId: user?.id || 'staff-1'
+    try {
+      const hoy = new Date().toISOString().slice(0, 10);
+      await AdminService.createPhysicalOrder({
+        nombreCliente: 'Cliente Mostrador',
+        fechaEntrega: hoy,
+        tipoPedido: 'INSTANTANEO',
+        notas: 'Venta rápida de mostrador',
+        items: cart.map(item => ({ productId: item.id, cantidad: item.cantidad })),
       });
-
       showToast('Venta registrada con éxito', 'success');
       setCart([]);
-    } catch (error) {
-      showToast('Error al procesar la venta', 'error');
+    } catch (err: any) {
+      showToast(err.message || 'Error al procesar la venta', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const renderIcon = (iconName: string, className: string = "w-6 h-6") => {
-    const Icon = ICON_MAP[iconName] || ShoppingBasket;
-    return <Icon className={className} />;
-  };
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <Loader2 className="w-10 h-10 text-[#1e3a5f] animate-spin" />
+        <p className="text-slate-500 dark:text-slate-400 font-serif italic animate-pulse">Cargando catálogo...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <AlertTriangle className="w-12 h-12 text-rose-500" />
+        <p className="text-slate-500 dark:text-slate-400 font-bold">{error}</p>
+        <button onClick={load} className="px-6 py-2 bg-[#1e3a5f] text-white font-bold rounded-xl">Cargar de nuevo</button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col gap-6 font-sans overflow-hidden px-4 md:px-2">
-      {/* ── HEADER NAVIGATION ── */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
+      {/* HEADER */}
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10 shrink-0">
         <div className="space-y-1">
           <h1 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tight leading-none">
             Venta <span className="text-[#eab308] italic">Rápida</span>
@@ -185,108 +171,94 @@ export default function QuickSalePage() {
             "Eficacia en cada transacción, belleza en cada entrega."
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Link to="/empleado/venta-rapida/config" className="p-2.5 bg-white border border-slate-100 rounded-xl text-[#1e3a5f] hover:bg-slate-50 transition-colors shadow-sm" title="Configurar plantillas">
+            <Settings className="w-4 h-4" />
+          </Link>
+          <button onClick={load} className="p-2.5 bg-white border border-slate-100 rounded-xl text-[#1e3a5f] hover:bg-slate-50 transition-colors shadow-sm">
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
       </header>
 
-      {/* ── TOP BAR: STATS & SELECTION ── */}
-      <div className="grid grid-cols-12 gap-3 shrink-0">
-        <div className="col-span-12 lg:col-span-8 flex flex-col sm:flex-row items-center gap-3 bg-white/80 dark:bg-slate-800/40 backdrop-blur-md p-3 rounded-xl border border-slate-100 dark:border-white/5 transition-colors shadow-sm">
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="flex size-1 rounded-full bg-[#1e3a5f] animate-pulse" />
-                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] leading-none">POS Active</span>
-                </div>
-                <h2 className="text-lg font-serif font-bold text-[#1e3a5f] dark:text-white truncate uppercase italic leading-none">{activeTemplate?.name}</h2>
-            </div>
-            
-            <div className="flex items-center gap-1.5 p-1 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-white/5">
-               {templates.map(t => (
-                 <button 
-                    key={t.id}
-                    onClick={() => setActiveTemplate(t)}
-                    className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                      activeTemplate?.id === t.id 
-                      ? 'bg-[#1e3a5f] text-white shadow-lg' 
-                      : 'text-slate-400 hover:text-[#1e3a5f]'
-                    }`}
-                 >
-                   {t.name.split(' ')[1] || t.name}
-                 </button>
-               ))}
-               <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
-               <button 
-                  onClick={() => navigate('/empleado/venta-rapida/config')}
-                  className="p-1.5 text-slate-400 hover:text-amber-500 transition-colors"
-                  title="Configuración"
-               >
-                 <Settings className="w-4 h-4" />
-               </button>
-            </div>
-        </div>
-
-        <div className="col-span-12 lg:col-span-4 flex items-center justify-between gap-3 px-4 py-2 bg-white/50 dark:bg-slate-800/20 backdrop-blur-sm rounded-xl border border-slate-100 dark:border-white/5 transition-colors">
-            <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-blue-600">
-                    <ShoppingBasket className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Ventas</p>
-                    <p className="text-sm font-bold text-[#1e3a5f] dark:text-white leading-none mt-1">12</p>
-                </div>
-            </div>
-            <div className="w-px h-6 bg-slate-100 dark:border-white/5" />
-            <div className="flex items-center gap-2 text-right">
-                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg text-emerald-600">
-                    <DollarSign className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-none">Caja</p>
-                    <p className="text-sm font-bold text-[#1e3a5f] dark:text-white leading-none mt-1">$4,250</p>
-                </div>
-            </div>
-        </div>
+      {/* Search */}
+      <div className="relative shrink-0">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+        <input
+          type="text"
+          placeholder="Buscar cualquier producto del catálogo..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-11 pr-4 py-3 bg-white/80 dark:bg-slate-800/40 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-medium text-[#1e3a5f] dark:text-white outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 transition-all"
+        />
       </div>
+
+      {/* Template tabs */}
+      {!search.trim() && templates.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
+          {templates.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTemplateId(t.id)}
+              className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                activeTemplateId === t.id
+                  ? 'bg-[#1e3a5f] text-white shadow-lg'
+                  : 'bg-white/70 dark:bg-slate-800/40 text-slate-400 border border-slate-100 dark:border-white/5 hover:text-[#1e3a5f]'
+              }`}
+            >
+              {t.nombre}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-12 gap-6 flex-1 overflow-hidden min-h-0">
         <main className="col-span-12 lg:col-span-8 flex flex-col overflow-hidden min-h-0">
-          <section className="flex-1 bg-white/95 dark:bg-[#0b1624]/60 backdrop-blur-md rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 p-6 flex flex-col transition-colors overflow-hidden">
-            <div className="flex-1 pr-1">
-              <AnimatePresence mode="wait">
-                <motion.div 
-                  key={activeTemplate?.id}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5"
-                >
-                  {activeTemplate?.items.map((item) => (
-                    <motion.button
-                      key={item.id}
-                      whileHover={{ scale: 1.05, y: -4 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => addToCart(item)}
-                      className="group relative flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-800 transition-all text-center"
-                    >
-                      <div className={`p-4 rounded-2xl bg-${item.color}-50 dark:bg-${item.color}-500/10 text-${item.color}-600 dark:text-${item.color}-400 mb-4 shadow-sm transition-transform group-hover:scale-110`}>
-                        {renderIcon(item.icon, "w-8 h-8")}
-                      </div>
-                      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest leading-none h-6 flex items-center justify-center w-full">{item.name}</span>
-                      <span className="text-base font-black text-[#1e3a5f] dark:text-[#eab308] mt-3 italic">${item.price}</span>
-                    </motion.button>
+          <section className="flex-1 bg-white/95 dark:bg-[#0b1624]/60 backdrop-blur-md rounded-2xl shadow-sm border border-slate-100 dark:border-white/5 p-6 flex flex-col transition-colors overflow-y-auto">
+            {search.trim() ? (
+              <>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Resultados de búsqueda</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {resultadosBusqueda.map(p => (
+                    <ProductoBoton key={p.id} producto={p} onClick={() => addToCart(p)} />
                   ))}
-                </motion.div>
-              </AnimatePresence>
-            </div>
+                  {resultadosBusqueda.length === 0 && (
+                    <p className="col-span-full text-center text-slate-400 text-sm py-10">Sin resultados para "{search}".</p>
+                  )}
+                </div>
+              </>
+            ) : templates.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-16 gap-4">
+                <ShoppingBag className="w-12 h-12 text-slate-200 dark:text-slate-700" />
+                <p className="text-slate-400 dark:text-slate-500 text-sm font-bold">Aún no hay plantillas de venta rápida configuradas.</p>
+                <Link to="/empleado/venta-rapida/config" className="px-5 py-2.5 bg-[#1e3a5f] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all">
+                  Configurar plantillas
+                </Link>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{activeTemplate?.nombre}</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {activeTemplate?.items.map(item => (
+                    <TemplateItemBoton key={item.id} item={item} onClick={() => addTemplateItemToCart(item)} />
+                  ))}
+                </div>
+                {activeTemplate?.items.length === 0 && (
+                  <p className="text-center text-slate-400 text-sm py-10">Esta plantilla todavía no tiene botones configurados.</p>
+                )}
+              </>
+            )}
           </section>
         </main>
 
         <aside className="col-span-12 lg:col-span-4 flex flex-col overflow-hidden">
           <div className="flex-1 bg-[#1e3a5f] dark:bg-[#0b131c] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative border border-[#1e3a5f]/20">
             <div className="p-4 border-b border-white/5 bg-black/10 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                    <ShoppingBasket className="w-4 h-4 text-[#eab308]" />
-                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Detalle de Venta</h3>
-                </div>
-                <span className="text-[9px] font-black text-white/40 bg-white/5 px-2 py-0.5 rounded-full">{cart.reduce((a, b) => a + b.quantity, 0)} items</span>
+              <div className="flex items-center gap-2">
+                <ShoppingBasket className="w-4 h-4 text-[#eab308]" />
+                <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Detalle de Venta</h3>
+              </div>
+              <span className="text-[9px] font-black text-white/40 bg-white/5 px-2 py-0.5 rounded-full">{cart.reduce((a, b) => a + b.cantidad, 0)} items</span>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar-white">
@@ -300,36 +272,21 @@ export default function QuickSalePage() {
                     key={item.id}
                     className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 group hover:bg-white/10 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg bg-${item.color}-500/20 text-${item.color}-400`}>
-                        {renderIcon(item.icon, "w-4 h-4")}
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-white uppercase tracking-tight leading-none">{item.name}</p>
-                        <p className="text-[11px] font-serif font-bold text-[#eab308] mt-1">${item.price.toFixed(2)}</p>
-                      </div>
+                    <div>
+                      <p className="text-[10px] font-black text-white uppercase tracking-tight leading-none">{item.nombre}</p>
+                      <p className="text-[11px] font-serif font-bold text-[#eab308] mt-1">${item.precio.toFixed(2)}</p>
                     </div>
-                    
                     <div className="flex items-center gap-3">
                       <div className="flex items-center bg-black/20 rounded-lg p-0.5 border border-white/5">
-                        <button 
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 rounded-md transition-all"
-                        >
+                        <button onClick={() => updateQuantity(item.id, -1)} className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 rounded-md transition-all">
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-6 text-center text-xs font-black text-white">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 rounded-md transition-all"
-                        >
+                        <span className="w-6 text-center text-xs font-black text-white">{item.cantidad}</span>
+                        <button onClick={() => updateQuantity(item.id, 1)} className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 rounded-md transition-all">
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
-                      <button 
-                        onClick={() => removeFromCart(item.id)}
-                        className="p-1.5 text-white/20 hover:text-rose-400 transition-colors"
-                      >
+                      <button onClick={() => removeFromCart(item.id)} className="p-1.5 text-white/20 hover:text-rose-400 transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -345,9 +302,10 @@ export default function QuickSalePage() {
             </div>
 
             <div className="p-6 bg-slate-50/80 dark:bg-slate-900/60 border-t border-slate-100 dark:border-white/5 shrink-0">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
-                <span className="text-xs font-bold text-slate-800 dark:text-white">${subtotal.toFixed(2)}</span>
+              <div className="flex justify-between items-center gap-2 mb-3 text-white/60">
+                <User className="w-3.5 h-3.5" />
+                <span className="text-[9px] font-black uppercase tracking-widest flex-1">Cliente Mostrador</span>
+                <DollarSign className="w-3.5 h-3.5" />
               </div>
               <div className="flex justify-between items-end pt-3 border-t border-slate-200 dark:border-white/5">
                 <span className="text-[8px] font-black text-[#1e3a5f] dark:text-blue-400 uppercase tracking-[0.3em] mb-1">Total a Liquidar</span>
@@ -357,34 +315,55 @@ export default function QuickSalePage() {
           </div>
 
           {/* Checkout Controls */}
-          <section className="bg-[#1e3a5f] dark:bg-blue-600 p-4 rounded-3xl shadow-2xl shadow-blue-900/30 flex flex-col gap-3 shrink-0 transition-all overflow-hidden relative group">
+          <section className="bg-[#1e3a5f] dark:bg-blue-600 p-4 rounded-3xl shadow-2xl shadow-blue-900/30 flex flex-col gap-3 shrink-0 transition-all overflow-hidden relative group mt-3">
             <div className="absolute inset-0 bg-white/5 pointer-events-none" />
-            <div className="flex items-center gap-2 px-1 relative z-10">
-                <button 
-                  onClick={() => setPaymentMethod('cash')}
-                  className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${paymentMethod === 'cash' ? 'bg-white text-[#1e3a5f] border-white shadow-lg' : 'bg-white/10 text-white/50 border-transparent hover:bg-white/20'}`}
-                >
-                  Efectivo
-                </button>
-                <button 
-                  onClick={() => setPaymentMethod('card')}
-                  className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border ${paymentMethod === 'card' ? 'bg-white text-[#1e3a5f] border-white shadow-lg' : 'bg-white/10 text-white/50 border-transparent hover:bg-white/20'}`}
-                >
-                  Tarjeta
-                </button>
-            </div>
-
-            <button 
-              onClick={handleCheckout} 
+            <button
+              onClick={handleCheckout}
               disabled={cart.length === 0 || isProcessing}
-              className="w-full bg-white hover:bg-[#eab308] text-[#1e3a5f] font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] transition-all active:scale-[0.98] disabled:opacity-40 shadow-xl"
+              className="w-full bg-white hover:bg-[#eab308] text-[#1e3a5f] font-black py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] transition-all active:scale-[0.98] disabled:opacity-40 shadow-xl relative z-10"
             >
-              {isProcessing ? <Loader2 className="animate-spin" size={14} /> : (paymentMethod === 'cash' ? <Banknote size={14} /> : <CreditCard size={14} />)}
+              {isProcessing ? <Loader2 className="animate-spin" size={14} /> : <ShoppingBasket size={14} />}
               {isProcessing ? 'Sincronizando...' : 'Confirmar Venta'}
             </button>
           </section>
         </aside>
       </div>
     </div>
+  );
+}
+
+function ProductoBoton({ producto, onClick }: { producto: Product; onClick: () => void }) {
+  return (
+    <motion.button
+      whileHover={{ scale: 1.05, y: -4 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className="group relative flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-800 transition-all text-center"
+    >
+      <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 mb-4 shadow-sm transition-transform group-hover:scale-110">
+        <ShoppingBasket className="w-8 h-8" />
+      </div>
+      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest leading-none h-6 flex items-center justify-center w-full">{producto.nombre}</span>
+      <span className="text-base font-black text-[#1e3a5f] dark:text-[#eab308] mt-3 italic">${producto.precioBase}</span>
+    </motion.button>
+  );
+}
+
+function TemplateItemBoton({ item, onClick }: { item: QuickSaleTemplateItem; onClick: () => void }) {
+  const Icon = ICON_MAP[item.icono] || Sparkles;
+  const colorCls = COLOR_MAP[item.color] || COLOR_MAP.blue;
+  return (
+    <motion.button
+      whileHover={{ scale: 1.05, y: -4 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className="group relative flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-800 transition-all text-center"
+    >
+      <div className={`p-4 rounded-2xl ${colorCls} mb-4 shadow-sm transition-transform group-hover:scale-110`}>
+        <Icon className="w-8 h-8" />
+      </div>
+      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest leading-none h-6 flex items-center justify-center w-full">{item.nombre}</span>
+      <span className="text-base font-black text-[#1e3a5f] dark:text-[#eab308] mt-3 italic">${item.precio}</span>
+    </motion.button>
   );
 }

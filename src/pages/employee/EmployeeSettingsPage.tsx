@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Settings,
   Monitor,
   Bell,
   Shield,
@@ -19,7 +18,6 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FadeIn } from '../../components/Animations';
 
 const inputClass =
   'w-full px-5 py-4 text-sm border border-slate-200 dark:border-white/5 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#1e3a5f]/10 focus:border-[#1e3a5f] bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-300 dark:placeholder-slate-600 transition-all font-bold';
@@ -105,19 +103,14 @@ export default function EmployeeSettingsPage() {
     <div className="max-w-[1500px] mx-auto space-y-8 pb-20 p-4 md:p-2">
 
       {/* ── Header ─────────────────────────────────── */}
-      <FadeIn>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white dark:bg-slate-800/80 p-6 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-white/5 transition-colors relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[80px] -mr-32 -mt-32 pointer-events-none" />
-            
-            <div className="flex flex-col gap-3 relative z-10">
-              <h1 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tight">Perfil & <span className="text-[#eab308] italic">Ajustes</span></h1>
-              <p className="text-slate-400 dark:text-slate-500 text-[11px] font-medium max-w-sm italic leading-none">"Configura tu entorno de trabajo para florecer en cada jornada."</p>
-            </div>
-            <div className="p-5 bg-[#1e3a5f] text-white rounded-2xl shadow-xl shadow-blue-900/10 relative z-10 group-hover:rotate-12 transition-all duration-700">
-                <Settings className="w-6 h-6" />
-            </div>
-          </div>
-      </FadeIn>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tight leading-none">
+            Perfil & <span className="text-[#eab308] italic">Ajustes</span>
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium italic leading-none">"Configura tu entorno de trabajo para florecer en cada jornada."</p>
+        </div>
+      </div>
 
       {/* ── Layout ─────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

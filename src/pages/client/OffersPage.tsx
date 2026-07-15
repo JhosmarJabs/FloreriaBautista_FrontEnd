@@ -462,43 +462,6 @@ export default function OffersPage() {
           </motion.div>
         )}
 
-        {/* Newsletter with Futuristic Glow */}
-        <motion.section 
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-24 relative group"
-        >
-          <div className="absolute inset-0 bg-brand-deep rounded-[3rem] blur-2xl opacity-20 group-hover:opacity-30 transition-opacity" />
-          <div className="relative bg-brand-deep rounded-[3rem] p-10 md:p-20 text-white flex flex-col md:flex-row items-center justify-between gap-12 overflow-hidden shadow-2xl">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none">
-              <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-            </div>
-
-            <div className="text-center md:text-left relative z-10">
-              <h2 className="text-4xl md:text-5xl font-serif mb-4 font-black tracking-tight">¿Buscas algo <span className="text-brand-coral italic">personalizado</span>?</h2>
-              <p className="text-blue-100 text-lg opacity-80 max-w-md">Suscríbete a nuestro boletín y obtén un <span className="text-brand-coral font-black">10% adicional</span> en tu primera compra.</p>
-            </div>
-            
-            <div className="w-full md:w-auto flex flex-col sm:flex-row gap-4 relative z-10">
-              <div className="relative">
-                <input 
-                  className="px-8 py-5 rounded-2xl text-brand-deep w-full md:w-96 focus:ring-4 focus:ring-brand-coral/30 outline-none border-none font-bold placeholder:text-slate-400" 
-                  placeholder="Tu correo electrónico" 
-                  type="email"
-                />
-              </div>
-              <motion.button 
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-brand-coral text-white px-10 py-5 rounded-2xl font-black hover:bg-white hover:text-brand-coral transition-all shadow-xl shadow-black/20"
-              >
-                Suscribirme
-              </motion.button>
-            </div>
-          </div>
-        </motion.section>
       </main>
     </div>
   );

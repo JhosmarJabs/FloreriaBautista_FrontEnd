@@ -3,26 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Search, RefreshCw, AlertTriangle, ChevronRight,
   ChevronLeft, Filter, X, Eye, Calendar, Clock, LayoutGrid, List,
-  User as UserIcon, Tag, MapPin, ReceiptText
+  User as UserIcon, Tag, MapPin, ReceiptText, Archive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { FadeIn, StaggerContainer, AnimatedButton } from '../../components/Animations';
 
+// Estos son los estados reales que usa el backend (ver Transiciones en Backend/Services/OrderService.cs)
 const ESTADOS = [
-  '', 'PENDIENTE', 'CONFIRMADO', 'EN_PREPARACION', 'LISTO', 'EN_CAMINO', 'ENTREGADO', 'CANCELADO',
+  '', 'PENDIENTE_VALIDACION', 'EN_PREPARACION', 'EN_RUTA', 'ENTREGADO', 'CANCELADO', 'PENDIENTE_ANULACION', 'NO_COMPLETADO',
 ];
 const PAGE_SIZE = 20;
 
 const ESTADO_STYLE: Record<string, { bg: string; text: string; dot: string; label: string; border: string }> = {
-  PENDIENTE:       { bg: 'bg-amber-50 dark:bg-amber-500/10',   text: 'text-amber-700 dark:text-amber-400',   dot: 'bg-amber-400',   label: 'Pendiente', border: 'border-amber-100 dark:border-amber-500/20' },
-  CONFIRMADO:      { bg: 'bg-blue-50 dark:bg-blue-500/10',    text: 'text-blue-700 dark:text-blue-400',    dot: 'bg-blue-400',    label: 'Confirmado', border: 'border-blue-100 dark:border-blue-500/20' },
-  EN_PREPARACION:  { bg: 'bg-purple-50 dark:bg-purple-500/10',  text: 'text-purple-700 dark:text-purple-400',  dot: 'bg-purple-400',  label: 'En preparación', border: 'border-purple-100 dark:border-purple-500/20' },
-  LISTO:           { bg: 'bg-teal-50 dark:bg-teal-500/10',    text: 'text-teal-700 dark:text-teal-400',    dot: 'bg-teal-400',    label: 'Listo', border: 'border-teal-100 dark:border-teal-500/20' },
-  EN_CAMINO:       { bg: 'bg-indigo-50 dark:bg-indigo-500/10',  text: 'text-indigo-700 dark:text-indigo-400',  dot: 'bg-indigo-400',  label: 'En camino', border: 'border-indigo-100 dark:border-indigo-500/20' },
-  ENTREGADO:       { bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Entregado', border: 'border-emerald-100 dark:border-emerald-500/20' },
-  CANCELADO:       { bg: 'bg-red-50 dark:bg-red-500/10',     text: 'text-red-700 dark:text-red-400',     dot: 'bg-red-400',     label: 'Cancelado', border: 'border-red-100 dark:border-red-500/20' },
+  PENDIENTE_VALIDACION: { bg: 'bg-amber-50 dark:bg-amber-500/10',   text: 'text-amber-700 dark:text-amber-400',   dot: 'bg-amber-400',   label: 'Pendiente', border: 'border-amber-100 dark:border-amber-500/20' },
+  EN_PREPARACION:       { bg: 'bg-purple-50 dark:bg-purple-500/10',  text: 'text-purple-700 dark:text-purple-400',  dot: 'bg-purple-400',  label: 'En preparación', border: 'border-purple-100 dark:border-purple-500/20' },
+  EN_RUTA:              { bg: 'bg-indigo-50 dark:bg-indigo-500/10',  text: 'text-indigo-700 dark:text-indigo-400',  dot: 'bg-indigo-400',  label: 'En camino', border: 'border-indigo-100 dark:border-indigo-500/20' },
+  ENTREGADO:            { bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Entregado', border: 'border-emerald-100 dark:border-emerald-500/20' },
+  CANCELADO:            { bg: 'bg-red-50 dark:bg-red-500/10',     text: 'text-red-700 dark:text-red-400',     dot: 'bg-red-400',     label: 'Cancelado', border: 'border-red-100 dark:border-red-500/20' },
+  PENDIENTE_ANULACION:  { bg: 'bg-orange-50 dark:bg-orange-500/10', text: 'text-orange-700 dark:text-orange-400', dot: 'bg-orange-400', label: 'Pend. anulación', border: 'border-orange-100 dark:border-orange-500/20' },
+  NO_COMPLETADO:        { bg: 'bg-slate-100 dark:bg-slate-700/30', text: 'text-slate-600 dark:text-slate-400', dot: 'bg-slate-400',   label: 'No completado', border: 'border-slate-200 dark:border-slate-600/40' },
 };
 
 function formatDate(iso: string) {
@@ -43,6 +44,7 @@ export default function AdminOrdersListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [verArchivo, setVerArchivo] = useState(false);
 
   const [estado, setEstado] = useState('');
   const [desde, setDesde] = useState('');
@@ -51,6 +53,10 @@ export default function AdminOrdersListPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  // Recaudación bruta que calcula el backend sobre TODOS los filtrados. Si el
+  // backend aún no la envía (undefined), el card cae a sumar los pedidos
+  // cargados, para no mostrar $0 falso.
+  const [sumaTotal, setSumaTotal] = useState<number | undefined>(undefined);
 
   const activeFilters = [estado, desde, hasta, busqueda].filter(Boolean).length;
 
@@ -64,6 +70,7 @@ export default function AdminOrdersListPage() {
         hasta: hasta || undefined,
         page,
         size: PAGE_SIZE,
+        archivado: verArchivo,
       });
       let items = res.data.items;
       if (busqueda.trim()) {
@@ -72,20 +79,21 @@ export default function AdminOrdersListPage() {
       }
       setOrders(items);
       setTotal(res.data.total);
+      setSumaTotal(res.data.sumaTotal);
       setTotalPages(res.data.totalPaginas || 1);
     } catch (err: any) {
       setError(err.message || 'Error al cargar pedidos');
     } finally {
       setLoading(false);
     }
-  }, [estado, desde, hasta, busqueda, page]);
+  }, [estado, desde, hasta, busqueda, page, verArchivo]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [estado, desde, hasta, busqueda]);
+  useEffect(() => { setPage(1); }, [estado, desde, hasta, busqueda, verArchivo]);
 
   const clearFilters = () => { setEstado(''); setDesde(''); setHasta(''); setBusqueda(''); setPage(1); };
 
-  const pendientes = orders.filter(o => o.estadoPedido === 'PENDIENTE').length;
+  const pendientes = orders.filter(o => o.estadoPedido === 'PENDIENTE_VALIDACION').length;
   const entregados = orders.filter(o => o.estadoPedido === 'ENTREGADO').length;
 
   return (
@@ -102,19 +110,39 @@ export default function AdminOrdersListPage() {
               <ShoppingCart className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Ventas y Pedidos</h1>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                {verArchivo ? 'Archivo de Pedidos' : 'Ventas y Pedidos'}
+              </h1>
               <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                {loading ? 'Consultando historial...' : `${total} registros encontrados`}
               </p>
             </div>
           </div>
-          <AnimatedButton onClick={load} disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </AnimatedButton>
+          <div className="flex items-center gap-3">
+            <AnimatedButton onClick={() => setVerArchivo(v => !v)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all border ${
+                verArchivo
+                  ? 'bg-slate-800 dark:bg-slate-600 text-white border-slate-800 dark:border-slate-600'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}>
+              <Archive className="w-4 h-4" />
+              {verArchivo ? 'Ver Pedidos Activos' : 'Ver Archivo'}
+            </AnimatedButton>
+            <AnimatedButton onClick={load} disabled={loading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Actualizar
+            </AnimatedButton>
+          </div>
         </div>
       </FadeIn>
+
+      {verArchivo && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-bold text-slate-500 dark:text-slate-400">
+          <Archive className="w-4 h-4 shrink-0" />
+          Pedidos atrasados que ya pasaron su fecha de entrega. Los que no tuvieron seguimiento se marcan como "No completado" automáticamente.
+        </div>
+      )}
 
       {/* KPI Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -122,7 +150,7 @@ export default function AdminOrdersListPage() {
           { label: 'Total pedidos', value: total, icon: <ReceiptText />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
           { label: 'Pendientes', value: pendientes, icon: <Clock />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por procesar' },
           { label: 'Entregados hoy', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'completados' },
-          { label: 'Recaudación bruta', value: `$${orders.reduce((acc, o) => acc + o.total, 0).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40', trend: 'últimos pedidos' },
+          { label: 'Recaudación bruta', value: `$${(sumaTotal ?? orders.reduce((acc, o) => acc + o.total, 0)).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40', trend: `${total} pedidos` },
         ].map((s, idx) => (
           <div key={idx} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">

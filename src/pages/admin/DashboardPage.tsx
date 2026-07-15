@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   TrendingUp, ShoppingCart, CreditCard, UserPlus, AlertTriangle,
   MoreVertical, ChevronRight, Download, Briefcase, UserCircle,
@@ -38,10 +38,11 @@ const statusDot: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [user, setUser]               = useState<any>(null);
   const [stats, setStats]             = useState<any>(null);
   const [alerts, setAlerts]           = useState<any[]>([]);
-  const [weeklySales, setWeeklySales] = useState<any[]>([]);
+  const [monthlySales, setMonthlySales] = useState<any[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [ordersError, setOrdersError]   = useState(false);
   const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'shipped'>('all');
@@ -77,20 +78,19 @@ export default function DashboardPage() {
           setStats(statsRes.data);
           setAlerts(statsRes.data.criticalInventory || []);
           
-          // Mapear ventas semanales para la gráfica
-          const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+          // Mapear ventas mensuales para la gráfica (últimos 30 días)
           const todayStr = new Date().toLocaleDateString();
-          
-          const mappedWeekly = statsRes.data.weeklySales.map((d: any) => {
+
+          const mappedMonthly = statsRes.data.monthlySales.map((d: any) => {
             const date = new Date(d.fecha);
             const isToday = date.toLocaleDateString() === todayStr;
             return {
-              day: isToday ? 'HOY' : days[date.getDay()],
+              day: isToday ? 'HOY' : String(date.getDate()),
               total: d.total,
               orders: d.pedidos
             };
           });
-          setWeeklySales(mappedWeekly);
+          setMonthlySales(mappedMonthly);
         }
         
         if (ordersRes.success) {
@@ -108,7 +108,7 @@ export default function DashboardPage() {
   }, []);
 
   const handleExportReport = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ stats, weeklySales }, null, 2));
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ stats, monthlySales }, null, 2));
     const a = document.createElement('a');
     a.setAttribute("href", dataStr);
     a.setAttribute("download", "reporte_mensual.json");
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                 <>
                   <AnimatePresence mode="popLayout">
                     {displayedAlerts.map((p) => (
-                      <motion.div key={p.id} layout
+                      <motion.div key={p.itemId} layout
                         initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }}
                         className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-all group">
                         <div className="flex items-start justify-between gap-3">
@@ -247,7 +247,10 @@ export default function DashboardPage() {
                               <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 shrink-0">{p.stockActual}/{p.stockMinimo}</span>
                             </div>
                           </div>
-                          <button className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold rounded-lg shadow-sm shadow-rose-600/20 transition-all shrink-0">
+                          <button
+                            onClick={() => navigate(`/admin/inventario/editar/${p.itemId}`)}
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold rounded-lg shadow-sm shadow-rose-600/20 transition-all shrink-0"
+                          >
                             Reabastecer
                           </button>
                         </div>
@@ -278,13 +281,13 @@ export default function DashboardPage() {
             </div>
           </FadeIn>
 
-          {/* Weekly Sales */}
+          {/* Monthly Sales */}
           <FadeIn delay={0.3} className="lg:col-span-2">
             <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-2xl p-6 h-full shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-base font-black text-slate-900 dark:text-white">Ventas Semanales</h2>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimos 7 días</p>
+                  <h2 className="text-base font-black text-slate-900 dark:text-white">Ventas Mensuales</h2>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimos 30 días</p>
                 </div>
                 <button className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
                   <Download className="w-3.5 h-3.5" />
@@ -292,9 +295,9 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="flex items-end justify-between gap-3 h-32">
-                {weeklySales.map((item, idx) => {
-                  const maxTotal = Math.max(...weeklySales.map(d => d.total));
+              <div className="flex items-end justify-between gap-1 h-32 overflow-x-auto">
+                {monthlySales.map((item, idx) => {
+                  const maxTotal = Math.max(...monthlySales.map(d => d.total));
                   const pct = maxTotal > 0 ? (item.total / maxTotal) * 100 : 5;
                   const isToday = item.day === 'HOY';
                   return (
@@ -353,17 +356,14 @@ export default function DashboardPage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-700/50">
-                    {['ID Pedido', 'Monto', 'Estado', 'Cliente', 'Fecha', ''].map((h, i) => (
-                      <th key={i} className={`px-6 py-2.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ${i === 5 ? 'text-right' : ''}`}>{h}</th>
+                    {['Monto', 'Estado', 'Cliente', 'Fecha', ''].map((h, i) => (
+                      <th key={i} className={`px-6 py-2.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ${i === 4 ? 'text-right' : ''}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                   {ordersError && (
                     <tr className="bg-rose-50/20 dark:bg-rose-900/10">
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-mono text-slate-400 dark:text-slate-600">********-****-****-****-************</span>
-                      </td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-black text-slate-300 dark:text-slate-600">N/A</span>
                       </td>
@@ -384,9 +384,6 @@ export default function DashboardPage() {
 
                   {!ordersError && filteredOrders.map((order, idx) => (
                     <tr key={idx} className="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors group">
-                      <td className="px-6 py-2.5">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">#{order.id}</span>
-                      </td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-black text-slate-900 dark:text-white">${order.total}</span>
                       </td>

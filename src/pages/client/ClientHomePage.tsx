@@ -1,55 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShoppingCart, ArrowRight, Sparkles, Package, MapPin } from 'lucide-react';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
+import { AdminService } from '../../services/adminService';
+import { Product } from '../../types';
 
 export default function ClientHomePage({ user }: { user?: any }) {
   const userName = user?.name || 'Carlos';
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [seasonalProducts, setSeasonalProducts] = useState<Product[]>([]);
 
-  const seasonalProducts = [
-    {
-      id: 'nov-1',
-      name: 'Amanecer Primaveral',
-      price: 45,
-      category: 'Novedad',
-      description: 'Mix de tulipanes, lirios y follaje verde intenso.',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCuJRj-eKLvW5rq6oR6TuNxGrlar4ppFGyUu1ON5MGuNZCeHhxwumbxBRxa2bQwZzEnApQrRCk-o5W2rHZvzn18TYg2LF8slSqb352y7Psw-5-LAiw1Wd283iuaf0m24zYGVUClj3vEfuC32MutzUC1VwzpfFNJzFegJHgcB6lgQiuzdsRCG8INX6qZ-Agbp1-Nequ2rVYWNkLTxvyT0gczgSl-nWsy9H326JtCM5SF2IePhg3cUG7QRzjThGVuvK72p1IGhD2DDQQt'
-    },
-    {
-      id: 'nov-2',
-      name: 'Elegancia Carmesí',
-      price: 62,
-      category: 'Clásico',
-      description: '12 Rosas rojas premium con tallo largo.',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAy8yMEBwvCMwBWcpEeP4pLJ_QKbgx5rda_S5cA3zyzkaui1FjmNz-Z2y3qBYRxB9bO1NuvgD0Va3Bt__Y46df5fCz4eGuVeGrOdIWa3CQftiCM0hKSdOSMvPKzU7wfcXAXzbzOBknNFk_sX2mx36lH3Prd-PHJd7e4ACHDidI0_NoKA6cC1KsH56BRFwX7_TtQbJ-oORKM6kRycx-uVGhi3T6cgsiPnK_MAOseXpxAEVxGbBjdM2GOidhE3OT_HswHKOkBHOvd0Bht'
-    },
-    {
-      id: 'nov-3',
-      name: 'Rayo de Sol',
-      price: 38,
-      category: 'Temporada',
-      description: 'Girasoles brillantes acompañados de margaritas blancas.',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-AYO9Mm4EgzL_xvSOa9Z5ktrYsFSKBLTMYzVM97F-zFTOnOsy2NbHlMryIkcuQFzekrk78Fss50kA-vD19WIcltw38Byxhvs-HyfqHgD9Fs2MuEUuV8RqYEhcNwb4vLWSwww397EY0WrNmn90wnYMTY94qTZKha__G0Sp7EyWGZYIt3IUK94CKxpRY55RD6gxojI1VLJQm8OyvUYakTZYMx5KbKeypDFkUAj5FRMfxXEyxiCVVkqbMADIwAGfbHy1WWQTR0TTRxsa'
-    }
-  ];
+  useEffect(() => {
+    const loadSeasonalProducts = async () => {
+      try {
+        const res = await AdminService.getProducts({ size: 10 });
+        setSeasonalProducts(res.data.items.slice(0, 5));
+      } catch {
+        setSeasonalProducts([]);
+      }
+    };
+    loadSeasonalProducts();
+  }, []);
 
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = (product: Product) => {
     if (user && (user.role === 'cliente' || user.role === 'customer')) {
       addToCart(product);
-      showToast(`${product.name} añadido al carrito`, 'success');
+      showToast(`${product.nombre} añadido al carrito`, 'success');
     } else {
       setIsLoginModalOpen(true);
     }
   };
 
   return (
-    <main className="max-w-7xl mx-auto pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+    <main className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       {/* Hero Section */}
       <FadeIn>
         <section className="py-6 lg:py-10">
@@ -147,6 +135,7 @@ export default function ClientHomePage({ user }: { user?: any }) {
       </section>
 
       {/* Seasonal News */}
+      {seasonalProducts.length > 0 && (
       <section className="py-12">
         <div className="flex items-center justify-between mb-12">
           <FadeIn delay={0.4}>
@@ -164,39 +153,40 @@ export default function ClientHomePage({ user }: { user?: any }) {
           </FadeIn>
         </div>
         
-        <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+        <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-10">
           {seasonalProducts.map((product) => (
             <ScaleIn key={product.id}>
               <GlassCard className="group h-full flex flex-col overflow-hidden border-slate-200/50 dark:border-slate-700/50 hover:shadow-2xl hover:shadow-brand-coral/5 transition-all duration-500">
                 <div className="relative aspect-[4/5] overflow-hidden">
-                  <motion.div 
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.6 }}
-                    className="absolute inset-0 bg-center bg-cover" 
-                    style={{ backgroundImage: `url('${product.image}')` }}
-                  />
+                  {product.imagenUrl ? (
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.6 }}
+                      className="absolute inset-0 bg-center bg-cover"
+                      style={{ backgroundImage: `url('${product.imagenUrl}')` }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <Package className="w-16 h-16 text-slate-300" />
+                    </div>
+                  )}
                   <div className="absolute top-6 left-0 bg-brand-coral text-white px-6 py-2 font-black text-[10px] uppercase tracking-[0.2em] rounded-r-full shadow-lg z-10">
                     Novedad
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-8">
-                    <p className="text-white text-sm font-medium leading-relaxed transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                      {product.description}
-                    </p>
-                  </div>
                 </div>
-                
+
                 <div className="p-8 flex flex-col flex-1">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <span className="text-[10px] font-black text-brand-deep uppercase tracking-widest mb-1 block opacity-70">
-                        {product.category}
+                        {product.tipo}
                       </span>
                       <h3 className="text-2xl font-bold text-brand-deep dark:text-white group-hover:text-brand-coral transition-colors duration-300">
-                        {product.name}
+                        {product.nombre}
                       </h3>
                     </div>
                     <div className="text-2xl font-black text-brand-deep dark:text-white">
-                      ${product.price}
+                      ${product.precioBase.toLocaleString()}
                     </div>
                   </div>
                   
@@ -220,6 +210,7 @@ export default function ClientHomePage({ user }: { user?: any }) {
           ))}
         </StaggerContainer>
       </section>
+      )}
 
       {/* Login Modal */}
       <AnimatePresence>

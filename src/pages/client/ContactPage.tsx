@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { MapPin, Phone, Mail, Send, MessageSquare } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
+import { CmsService } from '../../services/cmsService';
+import { SiteSettings } from '../../types';
 
 export default function ContactPage() {
   const { showToast } = useToast();
@@ -14,6 +16,11 @@ export default function ContactPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+
+  useEffect(() => {
+    CmsService.getSettings().then(setSettings).catch(() => { /* usa los valores por defecto del markup */ });
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -80,9 +87,7 @@ export default function ContactPage() {
                 <div>
                   <h4 className="font-bold text-slate-800 mb-1">Dirección</h4>
                   <p className="text-slate-600 text-sm leading-relaxed">
-                    Av. Principal S/N<br />
-                    Centro, Huitzitzilingo<br />
-                    Hidalgo, México
+                    {settings?.direccion || 'Av. Principal S/N, Centro, Huitzitzilingo, Hidalgo, México'}
                   </p>
                 </div>
               </div>
@@ -92,10 +97,9 @@ export default function ContactPage() {
                   <Phone className="text-brand-deep w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-800 mb-1">Teléfonos</h4>
+                  <h4 className="font-bold text-slate-800 mb-1">Teléfono</h4>
                   <p className="text-slate-600 text-sm">
-                    Principal: +52 (771) 000 0000<br />
-                    WhatsApp: +52 (771) 000 1111
+                    {settings?.telefono || '+52 (771) 000 0000'}
                   </p>
                 </div>
               </div>
@@ -107,8 +111,7 @@ export default function ContactPage() {
                 <div>
                   <h4 className="font-bold text-slate-800 mb-1">Correo Electrónico</h4>
                   <p className="text-slate-600 text-sm">
-                    hola@floreriabautista.com<br />
-                    eventos@floreriabautista.com
+                    {settings?.correo || 'hola@floreriabautista.com'}
                   </p>
                 </div>
               </div>
@@ -117,18 +120,19 @@ export default function ContactPage() {
               <div className="pt-4 border-t border-slate-100">
                 <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Horario de Atención</h4>
                 <ul className="space-y-2 text-sm text-slate-600">
-                  <li className="flex justify-between">
-                    <span>Lunes - Viernes</span>
-                    <span className="font-medium text-slate-800">8:00 AM - 8:00 PM</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>Sábados</span>
-                    <span className="font-medium text-slate-800">9:00 AM - 6:00 PM</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span>Domingos</span>
-                    <span className="font-medium text-slate-800">9:00 AM - 2:00 PM</span>
-                  </li>
+                  {(settings?.horarios ?? []).map(h => (
+                    <li key={h.dia} className="flex justify-between">
+                      <span>{h.dia}</span>
+                      <span className="font-medium text-slate-800">{h.cerrado ? 'Cerrado' : `${h.apertura} - ${h.cierre}`}</span>
+                    </li>
+                  ))}
+                  {(!settings || settings.horarios.length === 0) && (
+                    <>
+                      <li className="flex justify-between"><span>Lunes - Viernes</span><span className="font-medium text-slate-800">8:00 AM - 8:00 PM</span></li>
+                      <li className="flex justify-between"><span>Sábados</span><span className="font-medium text-slate-800">9:00 AM - 6:00 PM</span></li>
+                      <li className="flex justify-between"><span>Domingos</span><span className="font-medium text-slate-800">9:00 AM - 2:00 PM</span></li>
+                    </>
+                  )}
                 </ul>
               </div>
             </div>

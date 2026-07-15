@@ -65,8 +65,25 @@ export default function AdminNewPromotionPage() {
 
   useEffect(() => {
     if (isEdit && id) {
-      // Simular carga o conectar a servicio real
-      setLoading(false);
+      AdminService.getAdminPromotionById(id)
+        .then(res => {
+          const p = res.data;
+          setForm({
+            nombre: p.nombre,
+            codigo: p.codigo ?? '',
+            tipo: p.tipo,
+            valor: String(p.valor ?? ''),
+            minimoCompra: String(p.minimoCompra ?? '0'),
+            estado: p.estado,
+            fechaInicio: p.fechaInicio ? p.fechaInicio.slice(0, 10) : '',
+            fechaFin: p.fechaFin ? p.fechaFin.slice(0, 10) : '',
+            maxUsos: p.maxUsos != null ? String(p.maxUsos) : '',
+            aplicarAMuchos: p.aplicarATodaLaTienda,
+            productosIds: [],
+          });
+        })
+        .catch(err => showToast(err.message || 'No se pudo cargar la promoción', 'error'))
+        .finally(() => setLoading(false));
     }
   }, [id, isEdit]);
 
@@ -82,12 +99,30 @@ export default function AdminNewPromotionPage() {
 
     setSaving(true);
     try {
-      console.log('Guardando promoción:', form);
+      const body = {
+        nombre: form.nombre.trim(),
+        codigo: form.tipo === 'COMBO' ? null : form.codigo.trim(),
+        tipo: form.tipo,
+        valor: Number(form.valor) || 0,
+        minimoCompra: Number(form.minimoCompra) || 0,
+        estado: form.estado,
+        fechaInicio: form.fechaInicio || null,
+        fechaFin: form.fechaFin || null,
+        maxUsos: form.maxUsos ? Number(form.maxUsos) : null,
+        aplicarATodaLaTienda: form.aplicarAMuchos,
+      };
+
+      if (isEdit && id) {
+        await AdminService.updateAdminPromotion(id, body);
+      } else {
+        await AdminService.createAdminPromotion(body);
+      }
+
       setSuccess(true);
       showToast(isEdit ? 'Promoción actualizada' : 'Promoción creada con éxito', 'success');
       setTimeout(() => navigate('/admin/promociones'), 1500);
     } catch (err: any) {
-      showToast('Error al guardar la promoción', 'error');
+      showToast(err.message || 'Error al guardar la promoción', 'error');
     } finally {
       setSaving(false);
     }
@@ -99,6 +134,14 @@ export default function AdminNewPromotionPage() {
     for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
     setForm(prev => ({ ...prev, codigo: code }));
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20">
@@ -368,8 +411,36 @@ export default function AdminNewPromotionPage() {
             </AnimatePresence>
           </AnimatedButton>
 
-          {isEdit && (
-            <button className="w-full flex items-center justify-center gap-2 py-3 text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800/20 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all">
+          {isEdit && form.estado !== 'INACTIVO' && (
+            <button
+              onClick={async () => {
+                if (!id) return;
+                setSaving(true);
+                try {
+                  const body = {
+                    nombre: form.nombre.trim(),
+                    codigo: form.tipo === 'COMBO' ? null : form.codigo.trim(),
+                    tipo: form.tipo,
+                    valor: Number(form.valor) || 0,
+                    minimoCompra: Number(form.minimoCompra) || 0,
+                    estado: 'INACTIVO' as const,
+                    fechaInicio: form.fechaInicio || null,
+                    fechaFin: form.fechaFin || null,
+                    maxUsos: form.maxUsos ? Number(form.maxUsos) : null,
+                    aplicarATodaLaTienda: form.aplicarAMuchos,
+                  };
+                  await AdminService.updateAdminPromotion(id, body);
+                  setForm(prev => ({ ...prev, estado: 'INACTIVO' }));
+                  showToast('Promoción desactivada', 'success');
+                } catch (err: any) {
+                  showToast(err.message || 'Error al desactivar la promoción', 'error');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 py-3 text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800/20 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all disabled:opacity-60"
+            >
               <Trash2 className="w-3.5 h-3.5" /> Desactivar
             </button>
           )}

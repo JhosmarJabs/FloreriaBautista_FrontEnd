@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Settings, 
-  Trash2, 
-  Plus, 
-  Save, 
-  Calendar, 
-  Heart, 
-  Sparkles, 
-  Leaf, 
-  Gift, 
+import {
+  Settings,
+  Trash2,
+  Plus,
+  Save,
+  Calendar,
+  Heart,
+  Sparkles,
+  Leaf,
+  Gift,
   Layout,
   PlusCircle,
   ChevronRight,
@@ -23,20 +23,26 @@ import {
   Monitor,
   Smartphone,
   Layers,
-  Zap
+  Zap,
+  Search,
+  Loader2,
+  Link2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FadeIn, ScaleIn } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
+import { AdminService } from '../../services/adminService';
 
 /* ── Tipos ──────────────────────────────────────────────── */
+// El nombre y precio se resuelven siempre desde el producto real (backend);
+// aquí solo se cachean para mostrarlos mientras se edita, nunca se envían al guardar.
 type QuickItem = {
   id: string;
+  productId: string;
   name: string;
   price: number;
   icon: string;
   color: string;
-  isSpecial?: boolean;
 };
 
 type QuickTemplate = {
@@ -72,86 +78,97 @@ const renderIcon = (iconName: string, className = "w-5 h-5") => {
   return React.cloneElement(Icon as React.ReactElement, { className });
 };
 
+const newLocalItemId = () => `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const fromDto = (t: any): QuickTemplate => ({
+  id: t.id,
+  name: t.nombre,
+  description: t.descripcion ?? '',
+  icon: t.icono || 'Sparkles',
+  items: (t.items || []).map((i: any) => ({
+    id: i.id,
+    productId: i.productId,
+    name: i.nombre,
+    price: i.precio,
+    icon: i.icono || 'Sparkles',
+    color: i.color || 'blue',
+  })),
+});
+
 export default function QuickSaleTemplatesPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [templates, setTemplates] = useState<QuickTemplate[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<QuickTemplate | null>(null);
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  // Modal de productos del endpoint
+  const [showProductsModal, setShowProductsModal] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [searchProducts, setSearchProducts] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('POS_TEMPLATES');
-    if (saved) {
-      setTemplates(JSON.parse(saved));
-    } else {
-      // Plantilla por defecto si no hay nada
-      const defaultT: QuickTemplate = {
-        id: 'basic',
-        name: 'Plantilla Básica',
-        description: 'Ventas de mostrador estándar',
-        icon: 'Sparkles',
-        items: [
-          { id: '1', name: 'Ramos básicos', price: 40, icon: 'Leaf', color: 'blue' },
-          { id: '2', name: 'Ramos de rosas', price: 60, icon: 'Heart', color: 'rose' }
-        ]
-      };
-      setTemplates([defaultT]);
-      localStorage.setItem('POS_TEMPLATES', JSON.stringify([defaultT]));
-    }
+    loadTemplates();
   }, []);
 
-  const saveTemplatesToLocal = (newTemplates: QuickTemplate[]) => {
-    setTemplates(newTemplates);
-    localStorage.setItem('POS_TEMPLATES', JSON.stringify(newTemplates));
-  };
-
-  const handleCreateTemplate = () => {
-    const newTemplate: QuickTemplate = {
-      id: `t-${Date.now()}`,
-      name: 'Nueva Configuración',
-      description: 'Define botones rápidos para una temporada o evento.',
-      icon: 'Layout',
-      items: [
-        { id: `q-${Date.now()}`, name: 'Nuevo Producto', price: 100, icon: 'Sparkles', color: 'blue' }
-      ]
-    };
-    const updated = [...templates, newTemplate];
-    saveTemplatesToLocal(updated);
-    setEditingTemplate(newTemplate);
-    showToast('Nueva terminal de botones creada', 'success');
-  };
-
-  const handleDeleteTemplate = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm('¿Deseas eliminar permanentemente esta configuración?')) {
-      const updated = templates.filter(t => t.id !== id);
-      saveTemplatesToLocal(updated);
-      if (editingTemplate?.id === id) setEditingTemplate(null);
-      showToast('Configuración eliminada correctamente', 'info');
+  const loadTemplates = async () => {
+    setLoading(true);
+    try {
+      const response = await AdminService.getQuickSaleTemplates();
+      const mapped = (response.data || []).map(fromDto);
+      setTemplates(mapped);
+    } catch (error) {
+      console.error('Error loading quick sale templates:', error);
+      showToast('Error al cargar las plantillas', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateItem = (itemId: string, field: keyof QuickItem, value: any) => {
+  const handleCreateTemplate = async () => {
+    setCreating(true);
+    try {
+      const response = await AdminService.createQuickSaleTemplate({
+        nombre: 'Nueva Configuración',
+        descripcion: 'Define botones rápidos para una temporada o evento.',
+        icono: 'Layout',
+        items: [],
+      });
+      const created = fromDto(response.data);
+      setTemplates(prev => [...prev, created]);
+      setEditingTemplate(created);
+      showToast('Nueva terminal de botones creada', 'success');
+    } catch (error) {
+      console.error('Error creating template:', error);
+      showToast('Error al crear la plantilla', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('¿Deseas eliminar permanentemente esta configuración?')) return;
+    try {
+      await AdminService.deleteQuickSaleTemplate(id);
+      setTemplates(prev => prev.filter(t => t.id !== id));
+      if (editingTemplate?.id === id) setEditingTemplate(null);
+      showToast('Configuración eliminada correctamente', 'info');
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      showToast('Error al eliminar la plantilla', 'error');
+    }
+  };
+
+  const updateItem = (itemId: string, field: 'icon' | 'color', value: string) => {
     if (!editingTemplate) return;
-    const newItems = editingTemplate.items.map(item => 
+    const newItems = editingTemplate.items.map(item =>
       item.id === itemId ? { ...item, [field]: value } : item
     );
     setEditingTemplate({ ...editingTemplate, items: newItems });
-  };
-
-  const addItemToEdit = () => {
-    if (!editingTemplate) return;
-    const newItem: QuickItem = {
-      id: `q-${Date.now()}`,
-      name: 'Boton Rápido',
-      price: 0,
-      icon: 'Sparkles',
-      color: 'blue'
-    };
-    setEditingTemplate({ 
-      ...editingTemplate, 
-      items: [...editingTemplate.items, newItem] 
-    });
   };
 
   const removeItemFromEdit = (itemId: string) => {
@@ -162,12 +179,84 @@ export default function QuickSaleTemplatesPage() {
     });
   };
 
-  const saveEditChanges = () => {
+  const saveEditChanges = async () => {
     if (!editingTemplate) return;
-    const updated = templates.map(t => t.id === editingTemplate.id ? editingTemplate : t);
-    saveTemplatesToLocal(updated);
-    showToast('Terminal sincronizada con el punto de venta', 'success');
+    setSaving(true);
+    try {
+      const response = await AdminService.updateQuickSaleTemplate(editingTemplate.id, {
+        nombre: editingTemplate.name,
+        descripcion: editingTemplate.description,
+        icono: editingTemplate.icon,
+        items: editingTemplate.items.map(i => ({
+          productId: i.productId,
+          icono: i.icon,
+          color: i.color,
+        })),
+      });
+      const updated = fromDto(response.data);
+      setTemplates(prev => prev.map(t => t.id === updated.id ? updated : t));
+      setEditingTemplate(updated);
+      showToast('Terminal sincronizada con el punto de venta', 'success');
+    } catch (error) {
+      console.error('Error saving template:', error);
+      showToast('Error al guardar los cambios', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const loadProductsFromEndpoint = async () => {
+    setLoadingProducts(true);
+    try {
+      const response = await AdminService.getProducts({ size: 500 });
+      setProducts(response.data.items || []);
+    } catch (error) {
+      console.error('Error loading products:', error);
+      showToast('Error al cargar productos', 'error');
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const handleAddProductFromCatalog = (product: any) => {
+    if (!editingTemplate) return;
+
+    const newItem: QuickItem = {
+      id: newLocalItemId(),
+      productId: product.id,
+      name: product.nombre || product.name,
+      price: product.precioBase ?? product.precio ?? product.price ?? 0,
+      icon: 'Sparkles',
+      color: 'blue'
+    };
+
+    setEditingTemplate({
+      ...editingTemplate,
+      items: [...editingTemplate.items, newItem]
+    });
+
+    showToast(`${newItem.name} agregado a la plantilla`, 'success');
+  };
+
+  const filteredProducts = products.filter(p =>
+    (p.nombre || p.name || '').toLowerCase().includes(searchProducts.toLowerCase())
+  );
+
+  const handleOpenProductsModal = async () => {
+    setShowProductsModal(true);
+    if (products.length === 0) {
+      await loadProductsFromEndpoint();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <Loader2 className="w-10 h-10 text-[#1e3a5f] animate-spin" />
+        <p className="text-slate-500 dark:text-slate-400 font-serif italic animate-pulse">Cargando terminal...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-10 pb-32 relative">
@@ -181,9 +270,9 @@ export default function QuickSaleTemplatesPage() {
       <FadeIn>
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/70 dark:bg-slate-900/40 backdrop-blur-2xl p-6 rounded-[2rem] shadow-sm border border-white dark:border-white/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-transparent via-blue-500/5 to-[#eab308]/5 opacity-50 pointer-events-none" />
-          
+
           <div className="flex flex-col gap-3 relative z-10">
-            <button 
+            <button
               onClick={() => navigate('/empleado/venta-rapida')}
               className="group/back flex items-center gap-2 text-slate-400 hover:text-[#1e3a5f] dark:hover:text-amber-400 transition-all w-fit"
             >
@@ -196,22 +285,23 @@ export default function QuickSaleTemplatesPage() {
                 <h1 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter leading-none">
                   Gestión de <span className="italic text-[#eab308]">Terminal</span>
                 </h1>
-                <p className="text-slate-400 dark:text-slate-500 text-sm mt-2 font-medium italic max-w-lg leading-relaxed">Configuración de botonera rápida.</p>
+                <p className="text-slate-400 dark:text-slate-500 text-sm mt-2 font-medium italic max-w-lg leading-relaxed">Configuración de botonera rápida — compartida por todos los empleados.</p>
             </div>
           </div>
 
-          <button 
+          <button
             onClick={handleCreateTemplate}
-            className="relative z-10 flex items-center gap-4 px-6 py-4 bg-[#1e3a5f] dark:bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:scale-[1.03] active:scale-95 shadow-xl transition-all group overflow-hidden"
+            disabled={creating}
+            className="relative z-10 flex items-center gap-4 px-6 py-4 bg-[#1e3a5f] dark:bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:scale-[1.03] active:scale-95 shadow-xl transition-all group overflow-hidden disabled:opacity-50"
           >
-            <PlusCircle className="w-5 h-5" />
+            {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : <PlusCircle className="w-5 h-5" />}
             Añadir Plantilla
           </button>
         </header>
       </FadeIn>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10">
-        
+
         {/* ── SIDEBAR: MASTER LIST ── */}
         <aside className="lg:col-span-4 space-y-8">
           <div className="flex items-center justify-between px-6">
@@ -221,7 +311,7 @@ export default function QuickSaleTemplatesPage() {
               </div>
               <span className="text-[10px] font-black text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{templates.length}</span>
           </div>
-          
+
           <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
             {templates.map((t, idx) => (
               <motion.div
@@ -232,8 +322,8 @@ export default function QuickSaleTemplatesPage() {
                 transition={{ delay: idx * 0.1 }}
                 onClick={() => setEditingTemplate(t)}
                 className={`group p-6 cursor-pointer border-2 transition-all relative overflow-hidden rounded-2xl ${
-                  editingTemplate?.id === t.id 
-                  ? 'bg-white dark:bg-slate-800 border-[#1e3a5f] shadow-lg shadow-blue-950/5 scale-[1.01]' 
+                  editingTemplate?.id === t.id
+                  ? 'bg-white dark:bg-slate-800 border-[#1e3a5f] shadow-lg shadow-blue-950/5 scale-[1.01]'
                   : 'bg-white/40 dark:bg-slate-900/20 border-slate-50 dark:border-white/5 hover:bg-white'
                 }`}
               >
@@ -250,8 +340,8 @@ export default function QuickSaleTemplatesPage() {
                             <p className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">{t.items.length} Componentes</p>
                         </div>
                     </div>
-                    <button 
-                        onClick={(e) => handleDeleteTemplate(t.id, e)} 
+                    <button
+                        onClick={(e) => handleDeleteTemplate(t.id, e)}
                         className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                     >
                         <Trash2 className="w-4 h-4" />
@@ -278,9 +368,9 @@ export default function QuickSaleTemplatesPage() {
         <div className="lg:col-span-8 flex flex-col">
           <AnimatePresence mode="wait">
             {!editingTemplate ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.98 }} 
-                animate={{ opacity: 1, scale: 1 }} 
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 className="bg-white/40 dark:bg-white/5 backdrop-blur-xl p-32 rounded-[4rem] flex-1 flex flex-col items-center justify-center text-center border-4 border-dashed border-slate-50 dark:border-white/5 min-h-[600px]"
               >
@@ -293,50 +383,51 @@ export default function QuickSaleTemplatesPage() {
                 <p className="text-sm text-slate-400 dark:text-slate-600 font-medium italic max-w-sm mx-auto leading-relaxed">Selecciona una arquitectura del listado izquierdo para modificar sus parámetros y despliegue visual.</p>
               </motion.div>
             ) : (
-              <motion.div 
-                key={editingTemplate.id} 
-                initial={{ opacity: 0, scale: 0.99 }} 
-                animate={{ opacity: 1, scale: 1 }} 
+              <motion.div
+                key={editingTemplate.id}
+                initial={{ opacity: 0, scale: 0.99 }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.99 }}
                 className="bg-white dark:bg-slate-800/40 backdrop-blur-3xl rounded-[2.5rem] shadow-sm border border-white dark:border-white/5 overflow-hidden transition-all flex-1 flex flex-col"
               >
                 {/* Editor Header */}
                 <div className="p-8 md:p-10 border-b border-slate-50 dark:border-white/5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 bg-slate-50/50 dark:bg-slate-900/40 relative">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-[#1e3a5f]" />
-                  
+
                   <div className="flex-1 space-y-4 w-full">
                       <div className="flex items-center gap-4 w-full">
                           <div className="p-3 bg-white dark:bg-slate-900 rounded-xl text-[#eab308] shadow-md">
                             <Palette className="w-5 h-5" />
                           </div>
                           <div className="flex-1">
-                              <input 
-                                type="text" 
-                                value={editingTemplate.name} 
+                              <input
+                                type="text"
+                                value={editingTemplate.name}
                                 onChange={e => setEditingTemplate({...editingTemplate, name: e.target.value})}
                                 placeholder="Nombre de la Plantilla"
-                                className="bg-transparent border-none p-0 focus:ring-0 text-2xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tight w-full" 
+                                className="bg-transparent border-none p-0 focus:ring-0 text-2xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tight w-full"
                               />
                           </div>
                       </div>
                       <div className="flex items-center gap-3 px-1 w-full">
                           <Edit3 className="w-4 h-4 text-slate-400" />
-                          <input 
-                            type="text" 
-                            value={editingTemplate.description} 
+                          <input
+                            type="text"
+                            value={editingTemplate.description}
                             onChange={e => setEditingTemplate({...editingTemplate, description: e.target.value})}
                             placeholder="Descripción de la botonera..."
-                            className="bg-transparent border-none p-0 focus:ring-0 text-sm text-slate-500 dark:text-slate-400 font-medium italic w-full" 
+                            className="bg-transparent border-none p-0 focus:ring-0 text-sm text-slate-500 dark:text-slate-400 font-medium italic w-full"
                           />
                       </div>
                   </div>
-                  
-                  <button 
+
+                  <button
                     onClick={saveEditChanges}
-                    className="flex items-center justify-center gap-3 px-6 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all"
+                    disabled={saving}
+                    className="flex items-center justify-center gap-3 px-6 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all disabled:opacity-50"
                   >
-                    <Save className="w-4 h-4" />
-                    Guardar Cambios
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {saving ? 'Guardando...' : 'Guardar Cambios'}
                   </button>
                 </div>
 
@@ -350,11 +441,11 @@ export default function QuickSaleTemplatesPage() {
                         </div>
                         <p className="text-xs text-slate-500 italic">{editingTemplate.items.length} artículos</p>
                     </div>
-                    <button 
-                        onClick={addItemToEdit} 
-                        className="flex items-center gap-2 px-6 py-3 bg-blue-50 dark:bg-blue-500/10 text-[#1e3a5f] rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-[#1e3a5f] hover:text-white transition-all border border-blue-100 shadow-sm"
+                    <button
+                      onClick={handleOpenProductsModal}
+                      className="flex items-center gap-2 px-6 py-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 dark:border-emerald-500/20 shadow-sm"
                     >
-                      <Plus className="w-4 h-4" /> Nuevo Botón
+                      <Plus className="w-4 h-4" /> Nueva Acción
                     </button>
                   </div>
 
@@ -362,9 +453,9 @@ export default function QuickSaleTemplatesPage() {
                     {editingTemplate.items.map((item) => {
                        const colorData = COLOR_OPTIONS.find(c => c.id === item.color) || COLOR_OPTIONS[0];
                        return (
-                        <motion.div 
-                          key={item.id} 
-                          className={`group/card p-4 bg-white dark:bg-slate-900/60 shadow-sm border rounded-2xl transition-all flex flex-col lg:flex-row items-center gap-6 hover:shadow-xl ${hoveredItem === item.id ? 'border-blue-200' : 'border-slate-50 dark:border-white/5'}`}
+                        <motion.div
+                          key={item.id}
+                          className="group/card p-4 bg-white dark:bg-slate-900/60 shadow-sm border border-slate-50 dark:border-white/5 rounded-2xl transition-all flex flex-col lg:flex-row items-center gap-6 hover:shadow-xl"
                         >
                           {/* ── LIVE PREVIEW ── */}
                           <div className="flex-shrink-0">
@@ -380,8 +471,8 @@ export default function QuickSaleTemplatesPage() {
                             <div className="space-y-4">
                                 <div className="flex flex-wrap gap-1.5 bg-slate-50 dark:bg-slate-800 p-2 rounded-xl">
                                     {ICON_MAP_OPTIONS.map(opt => (
-                                        <button 
-                                            key={opt.id} 
+                                        <button
+                                            key={opt.id}
                                             onClick={() => updateItem(item.id, 'icon', opt.id)}
                                             className={`p-2 rounded-lg transition-all ${item.icon === opt.id ? 'bg-[#1e3a5f] text-white' : 'hover:bg-white text-slate-400'}`}
                                         >
@@ -389,24 +480,16 @@ export default function QuickSaleTemplatesPage() {
                                         </button>
                                     ))}
                                 </div>
-                                <input 
-                                    type="text" 
-                                    value={item.name} 
-                                    onChange={e => updateItem(item.id, 'name', e.target.value)}
-                                    placeholder="Nombre Botón"
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none px-4 py-3 rounded-xl text-xs font-bold dark:text-white uppercase tracking-tight" 
-                                />
+                                <div className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl flex items-center gap-2">
+                                    <Link2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span className="text-xs font-bold dark:text-white truncate">{item.name}</span>
+                                </div>
                             </div>
 
                             <div className="space-y-4">
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
-                                    <input 
-                                        type="number" 
-                                        value={item.price} 
-                                        onChange={e => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
-                                        className="w-full bg-slate-50 dark:bg-slate-800 border-none pl-10 pr-4 py-3 rounded-xl text-xs font-black dark:text-white" 
-                                    />
+                                <div className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl flex items-center justify-between">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio catálogo</span>
+                                    <span className="text-sm font-black text-slate-700 dark:text-white">${item.price.toFixed(2)}</span>
                                 </div>
                                 <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl h-[42px]">
                                     {COLOR_OPTIONS.map(color => (
@@ -421,16 +504,9 @@ export default function QuickSaleTemplatesPage() {
                           </div>
 
                           {/* ── CARD ACTIONS ── */}
-                          <div className="flex lg:flex-col items-center gap-2 lg:pl-4 lg:border-l border-slate-100 w-full lg:w-auto">
-                              <button 
-                                  onClick={() => updateItem(item.id, 'isSpecial', !item.isSpecial)}
-                                  className={`p-2 rounded-xl border transition-all ${item.isSpecial ? 'bg-amber-500 text-white' : 'bg-slate-50 text-slate-300'}`}
-                                  title="Especial"
-                              >
-                                  <Sparkles className="w-4 h-4" />
-                              </button>
-                              <button 
-                                onClick={() => removeItemFromEdit(item.id)} 
+                          <div className="flex lg:flex-col items-center gap-2 lg:pl-4 lg:border-l border-slate-100 dark:border-white/5 w-full lg:w-auto">
+                              <button
+                                onClick={() => removeItemFromEdit(item.id)}
                                 className="p-2 bg-rose-50 text-rose-200 hover:text-rose-500 rounded-xl transition-all"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -469,6 +545,96 @@ export default function QuickSaleTemplatesPage() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Modal Agregar Productos del Catálogo */}
+      <AnimatePresence>
+        {showProductsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowProductsModal(false)}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-white/5 w-full max-w-5xl max-h-[85vh] overflow-hidden flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/20 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-slate-800 dark:text-white">Agregar desde Catálogo</h2>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Selecciona productos para agregar a tu plantilla</p>
+                </div>
+                <button
+                  onClick={() => setShowProductsModal(false)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="p-4 border-b border-slate-100 dark:border-white/5">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar productos..."
+                    value={searchProducts}
+                    onChange={(e) => setSearchProducts(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  />
+                </div>
+              </div>
+
+              {/* Products Grid */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {loadingProducts ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                      <p className="text-slate-500">Cargando productos...</p>
+                    </div>
+                  </div>
+                ) : filteredProducts.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-slate-500">No se encontraron productos</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {filteredProducts.map((product) => (
+                      <motion.button
+                        key={product.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleAddProductFromCatalog(product)}
+                        className="p-4 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/10 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all text-left group"
+                      >
+                        <div className="w-full h-20 bg-slate-100 dark:bg-slate-800 rounded-lg mb-3 flex items-center justify-center">
+                          <ShoppingBag className="w-6 h-6 text-slate-400" />
+                        </div>
+                        <p className="text-sm font-black text-slate-800 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate">
+                          {product.nombre || product.name}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                          {product.descripcion || product.description || 'Sin descripción'}
+                        </p>
+                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-2">
+                          ${(product.precioBase ?? product.precio ?? product.price ?? 0).toFixed(2)}
+                        </p>
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -42,6 +42,9 @@ export default function Layout() {
     );
   }
   const hideNavAndFooter = ['/login', '/registro', '/recuperar-contrasena', '/restablecer-contrasena'].includes(location.pathname);
+  // Permite a un admin/empleado ver la tienda pública sin ser rebotado al dashboard
+  // (usado por el botón "Ver tienda" en /admin/cms)
+  const isPreview = new URLSearchParams(location.search).get('preview') === '1';
   const userRoles: string[] = (user?.roles ?? (user?.role ? [user.role] : []))
     .map((r: string) => r.toLowerCase());
   const isAdmin = userRoles.some(r => ['administrador', 'admin'].includes(r));
@@ -61,8 +64,24 @@ export default function Layout() {
       );
     }
 
-    if (location.pathname === '/' || location.pathname === '/dashboard') {
+    if (!isPreview && (location.pathname === '/' || location.pathname === '/dashboard')) {
       return <Navigate to={isAdmin ? "/admin/dashboard" : "/empleado/dashboard"} replace />;
+    }
+
+    if (isPreview && (location.pathname === '/' || location.pathname === '/dashboard')) {
+      return (
+        <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden min-h-screen flex flex-col">
+          <div className="sticky top-0 z-50 bg-slate-900 text-white text-xs font-bold text-center py-2 px-4">
+            Vista previa del sitio público — los cambios no publicados no se ven aquí.{' '}
+            <button onClick={() => window.close()} className="underline hover:text-slate-300">Cerrar</button>
+          </div>
+          <Navigation />
+          <div className="flex-grow">
+            <AnimatedRoutes />
+          </div>
+          <Footer />
+        </div>
+      );
     }
 
     return (

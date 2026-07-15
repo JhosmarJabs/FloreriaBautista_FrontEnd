@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ShoppingBasket, 
-  Clock, 
-  ChevronRight, 
-  PlusCircle, 
-  ClipboardList, 
+import {
+  ShoppingBasket,
+  Clock,
+  ChevronRight,
+  PlusCircle,
+  ClipboardList,
   RefreshCw,
   Lightbulb,
   Scan,
@@ -13,25 +13,35 @@ import {
   ArrowUpRight,
   Bell,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { DataService } from '../../services/dataService';
+import { AdminService } from '../../services/adminService';
 
 export default function EmployeeDashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
     try {
-      const allOrders = DataService.getOrders();
+      // Obtener pedidos del endpoint real
+      const ordersResponse = await AdminService.getAdminOrders({ size: 100 });
+      setOrders(ordersResponse.data.items || []);
+
+      // Obtener productos locales como respaldo
       const allProducts = DataService.getProducts();
-      setOrders(allOrders);
       setProducts(allProducts);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
+      // Respaldo: usar datos locales si el endpoint falla
+      const allOrders = DataService.getOrders();
+      setOrders(allOrders);
+      const allProducts = DataService.getProducts();
+      setProducts(allProducts);
     } finally {
       setLoading(false);
     }
@@ -77,11 +87,11 @@ export default function EmployeeDashboardPage() {
   }
 
   return (
-    <motion.main 
+    <motion.main
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 space-y-4"
+      className="w-full px-4 sm:px-6 py-4 space-y-4"
     >
       {/* ── Welcome Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
@@ -137,60 +147,62 @@ export default function EmployeeDashboardPage() {
 
       {/* ── Main Content: Bento Layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 relative z-10">
-        {/* Left Column: Priority Orders */}
+        {/* Left Column: Sales Report */}
         <section className="lg:col-span-8 space-y-4">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-8 bg-[#eab308] rounded-full shadow-lg shadow-amber-600/20"></div>
-              <h2 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white">Pedidos en Proceso</h2>
+              <h2 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white">Reporte Rápido de Ventas</h2>
             </div>
             <Link to="/empleado/pedidos" className="group flex items-center gap-2 text-[#1e3a5f] dark:text-blue-400 font-black text-[9px] uppercase tracking-widest hover:bg-[#1e3a5f] hover:text-white transition-all px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/50 backdrop-blur-md">
               Ver Todo
               <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
           </div>
-          
-          <div className="grid gap-3">
-            <AnimatePresence mode="popLayout">
-              {orders.slice(0, 6).map((order) => (
-                <motion.div 
-                  key={order.id}
-                  variants={itemVariants}
-                  className="bg-white/90 dark:bg-slate-800/40 backdrop-blur-xl p-3 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex flex-col sm:flex-row gap-4 items-center hover:shadow-xl hover:border-blue-500/20 transition-all group overflow-hidden relative"
-                >
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/5 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-1000" />
-                  
-                  <div className="size-12 rounded-xl bg-slate-50 dark:bg-slate-900 shrink-0 overflow-hidden relative shadow-inner">
-                    <img 
-                      src={order.items[0]?.image || `https://picsum.photos/seed/${order.id}/200/200`} 
-                      alt="Product" 
-                      className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-1000"
-                    />
-                    <div className="absolute inset-0 bg-[#1e3a5f]/5 dark:bg-black/20 group-hover:bg-transparent transition-colors"></div>
-                  </div>
-                  <div className="flex-grow space-y-2 w-full text-center sm:text-left relative z-10">
-                    <div className="flex flex-wrap items-center justify-center sm:justify-between gap-2">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">ID: {order.id}</span>
-                      <span className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5 ${
-                        order.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:border-amber-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-500/20'
-                      }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${order.status === 'pending' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-emerald-500'}`}></div>
-                        {order.status === 'pending' ? 'Pendiente' : 'Listo'}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-[#1e3a5f] dark:text-white group-hover:text-blue-600 transition-colors leading-tight uppercase">Pedido General</h3>
-                      <p className="text-slate-400 dark:text-slate-500 text-[9px] font-black uppercase tracking-widest mt-0.5">Cargo: <span className="text-[#1e3a5f] dark:text-blue-400 font-bold">${order.total.toFixed(2)}</span></p>
-                    </div>
-                  </div>
-                  <div className="shrink-0 w-full sm:w-auto relative z-10">
-                    <Link to={`/empleado/pedidos/${order.id}`} className="w-full sm:w-10 h-10 bg-[#1e3a5f] dark:bg-blue-600 text-white group-hover:bg-[#eab308] group-hover:text-[#1e3a5f] rounded-xl transition-all flex items-center justify-center shadow-lg shadow-blue-900/10 active:scale-90">
-                      <ChevronRight className="w-5 h-5" />
-                    </Link>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+
+          <div className="bg-white/90 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/20">
+                  <th className="px-6 py-4 text-left text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/6">Folio</th>
+                  <th className="px-6 py-4 text-left text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex-1">Producto</th>
+                  <th className="px-6 py-4 text-center text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/6">Cantidad</th>
+                  <th className="px-6 py-4 text-right text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/5">Total</th>
+                  <th className="px-6 py-4 text-center text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/4">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                <AnimatePresence mode="popLayout">
+                  {orders.slice(0, 10).map((order, idx) => (
+                    <motion.tr
+                      key={order.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors group"
+                    >
+                      <td className="px-6 py-4 text-[9px] font-black text-[#1e3a5f] dark:text-blue-400">{order.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-6 py-4 text-[9px] font-bold text-slate-700 dark:text-slate-300 truncate">
+                        {order.items && order.items.length > 0 ? order.items[0].name || 'Producto' : 'Producto'}
+                      </td>
+                      <td className="px-6 py-4 text-center text-[9px] font-bold text-slate-700 dark:text-slate-300">
+                        {order.items ? order.items.length : 0}
+                      </td>
+                      <td className="px-6 py-4 text-right text-[9px] font-black text-[#1e3a5f] dark:text-blue-400">${order.total.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-[0.15em] inline-flex items-center gap-1.5 whitespace-nowrap ${
+                          order.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:border-amber-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-500/20'
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${order.status === 'pending' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-emerald-500'}`}></div>
+                          {order.status === 'pending' ? 'Pendiente' : 'Listo'}
+                        </span>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -248,31 +260,83 @@ export default function EmployeeDashboardPage() {
             </div>
           </div>
 
-          {/* Smart Tip */}
-          <motion.div 
+          {/* Urgent Order - from API */}
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="p-6 bg-[#1e3a5f] dark:bg-blue-950/40 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl transition-all"
+            className="p-6 rounded-[2.5rem] relative overflow-hidden shadow-2xl transition-all text-white bg-[#1e3a5f] dark:bg-blue-950/40"
           >
-            <div className="absolute -right-8 -top-8 text-white/5 group-hover:rotate-12 transition-transform duration-1000">
-              <Lightbulb size={180} />
-            </div>
-            <div className="relative z-10 space-y-4">
-              <div className="flex items-center gap-3 text-[#eab308] font-black text-[9px] uppercase tracking-[0.3em]">
-                <div className="p-2 bg-[#eab308]/10 rounded-lg">
-                    <Lightbulb className="w-5 h-5" />
+            {!loading && orders.length === 0 ? (
+              <div className="relative z-10 space-y-4 text-center py-4">
+                <div className="flex justify-center mb-4">
+                  <div className="p-3 bg-[#eab308]/10 rounded-lg">
+                    <CheckCircle2 className="w-8 h-8 text-[#eab308]" />
+                  </div>
                 </div>
-                <span>Nota Operativa</span>
+                <div>
+                  <p className="text-[9px] font-black text-[#eab308] uppercase tracking-[0.3em]">✓ Sin Entregas Pendientes</p>
+                  <p className="text-2xl font-serif font-medium leading-tight mt-3">
+                    Hoy no tenemos entregas
+                  </p>
+                  <p className="text-[11px] font-bold mt-3 text-white/70">
+                    Completa tu turno sin compromisos de entrega.
+                  </p>
+                </div>
               </div>
-              <p className="text-xl font-serif font-medium leading-tight">
-                Reponer <span className="text-[#eab308] italic underline underline-offset-4">Girasoles</span> para turno vespertino.
-              </p>
-              <button className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-white transition-all flex items-center gap-2 bg-white/5 px-6 py-2.5 rounded-full border border-white/10">
-                Confirmado
-                <CheckCircle2 className="w-3.5 h-3.5" />
-              </button>
+            ) : (
+              (() => {
+                const urgentOrder = orders.reduce((closest, order) => {
+                  const orderDate = new Date(order.fechaEntrega || order.date || '2099-12-31').getTime();
+                  const closestDate = new Date(closest.fechaEntrega || closest.date || '2099-12-31').getTime();
+                  return orderDate < closestDate ? order : closest;
+                });
+                const daysUntilDelivery = Math.ceil((new Date(urgentOrder.fechaEntrega || urgentOrder.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                const isUrgent = daysUntilDelivery <= 1;
+
+                return (
+                  <div className="relative z-10 space-y-4">
+                    <div className={`flex items-center gap-3 font-black text-[9px] uppercase tracking-[0.3em] ${
+                      isUrgent ? 'text-rose-300' : 'text-[#eab308]'
+                    }`}>
+                      <div className={`p-2 rounded-lg ${
+                        isUrgent ? 'bg-rose-500/20' : 'bg-[#eab308]/10'
+                      }`}>
+                          <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <span>{isUrgent ? '⚠️ Entrega Urgente' : 'Próxima Entrega'}</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-widest text-white/80 mb-1">Folio: {urgentOrder.id.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-xl font-serif font-medium leading-tight">
+                        {urgentOrder.nombreCliente || 'Cliente'}
+                      </p>
+                      <p className="text-[11px] font-bold mt-2 text-white/70">
+                        {urgentOrder.items && urgentOrder.items.length > 0
+                          ? `${urgentOrder.items.map(i => i.name || 'Producto').join(', ')}`
+                          : 'Pedido General'}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/20">
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${
+                        isUrgent ? 'text-rose-200' : 'text-white/60'
+                      }`}>
+                        {daysUntilDelivery <= 0
+                          ? '🔴 HOY'
+                          : daysUntilDelivery === 1
+                          ? '⚠️ Mañana'
+                          : `En ${daysUntilDelivery} días`}
+                      </span>
+                      <span className="text-xl font-black text-[#eab308]">${urgentOrder.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+            <div className={`absolute -right-8 -top-8 opacity-5 group-hover:rotate-12 transition-transform duration-1000 text-blue-400`}>
+              <AlertTriangle size={180} />
             </div>
           </motion.div>
+
         </section>
       </div>
 

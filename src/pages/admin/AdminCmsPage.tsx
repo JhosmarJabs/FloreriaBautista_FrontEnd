@@ -1,32 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import {
   ChevronRight, Layout, Image, Type, Star, Tag, Clock, Phone,
-  Save, Eye, ToggleLeft, ToggleRight, AlertCircle, Megaphone,
+  Save, Eye, Megaphone, RefreshCw,
 } from 'lucide-react';
+import { AdminService } from '../../services/adminService';
+import { Horario } from '../../types';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-interface BannerConfig {
-  titulo: string;
-  subtitulo: string;
-  cta: string;
-  activo: boolean;
-}
-
-interface HorarioItem {
-  dia: string;
-  apertura: string;
-  cierre: string;
-  cerrado: boolean;
-}
+interface HorarioItem extends Horario {}
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
-const defaultBanners: BannerConfig[] = [
-  { titulo: 'Arreglos Florales con Amor', subtitulo: 'Entrega el mismo día en toda la ciudad', cta: 'Ver catálogo', activo: true },
-  { titulo: 'Bodas & Eventos Especiales', subtitulo: 'Decoración floral profesional para tu día especial', cta: 'Cotizar ahora', activo: false },
-  { titulo: 'Rosas Frescas Todos los Días', subtitulo: 'Flores de corte directo del campo a tu puerta', cta: 'Ordenar', activo: false },
-];
 
 const defaultHorarios: HorarioItem[] = DIAS.map((dia, i) => ({
   dia,
@@ -54,35 +37,64 @@ function SectionHeader({ icon: Icon, color, title, description }: {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 export default function AdminCmsPage() {
-  const navigate = useNavigate();
-
-  const [banners, setBanners] = useState<BannerConfig[]>(defaultBanners);
+  const [bannerTitulo, setBannerTitulo] = useState('');
+  const [bannerSubtitulo, setBannerSubtitulo] = useState('');
+  const [bannerCta, setBannerCta] = useState('Ver catálogo');
   const [horarios, setHorarios] = useState<HorarioItem[]>(defaultHorarios);
   const [nombreTienda, setNombreTienda] = useState('Florería Bautista');
-  const [telefono, setTelefono] = useState('+52 (55) 1234-5678');
-  const [direccion, setDireccion] = useState('Av. Principal #123, Col. Centro, CDMX');
-  const [correo, setCorreo] = useState('contacto@floreriabautista.com');
-  const [destacados, setDestacados] = useState<string[]>(['Rosas Rojas Premium', 'Arreglo de Bodas', 'Ramo de Novia']);
+  const [telefono, setTelefono] = useState('');
+  const [direccion, setDireccion] = useState('');
+  const [correo, setCorreo] = useState('');
+  const [destacados, setDestacados] = useState<string[]>([]);
+  const [anuncioTexto, setAnuncioTexto] = useState('🌸 Envío gratis en pedidos mayores a $500 MXN');
+  const [anuncioActivo, setAnuncioActivo] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const inp = 'w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all';
 
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await AdminService.getCms();
+      const s = res.data;
+      setNombreTienda(s.nombreTienda || 'Florería Bautista');
+      setTelefono(s.telefono || '');
+      setDireccion(s.direccion || '');
+      setCorreo(s.correo || '');
+      setBannerTitulo(s.bannerTitulo || '');
+      setBannerSubtitulo(s.bannerSubtitulo || '');
+      setBannerCta(s.bannerCta || 'Ver catálogo');
+      setHorarios(s.horarios && s.horarios.length > 0 ? s.horarios : defaultHorarios);
+      setDestacados(s.destacados ?? []);
+      setAnuncioTexto(s.anuncioTexto || '🌸 Envío gratis en pedidos mayores a $500 MXN');
+      setAnuncioActivo(s.anuncioActivo ?? false);
+    } catch {
+      // si falla, se quedan los valores por defecto para poder configurarlos desde cero
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save (no backend endpoint yet)
-    await new Promise(r => setTimeout(r, 900));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const toggleBanner = (i: number) => {
-    setBanners(prev => prev.map((b, idx) => ({ ...b, activo: idx === i })));
-  };
-
-  const updateBanner = (i: number, field: keyof BannerConfig, value: string) => {
-    setBanners(prev => prev.map((b, idx) => idx === i ? { ...b, [field]: value } : b));
+    try {
+      await AdminService.updateCms({
+        nombreTienda, telefono, direccion, correo,
+        bannerTitulo, bannerSubtitulo, bannerCta,
+        horarios, destacados: destacados.filter(d => d.trim()),
+        anuncioTexto, anuncioActivo,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {
+      // El usuario puede reintentar con el mismo botón
+    } finally {
+      setSaving(false);
+    }
   };
 
   const updateHorario = (i: number, field: keyof HorarioItem, value: any) => {
@@ -107,14 +119,21 @@ export default function AdminCmsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => window.open('/?preview=1', '_blank', 'noopener,noreferrer')}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-purple-600 bg-white dark:bg-slate-800 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-slate-200 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-500/50 px-3 py-2 rounded-xl transition-all"
           >
             <Eye className="w-3.5 h-3.5" /> Ver tienda
           </button>
           <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-purple-600 bg-white dark:bg-slate-800 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-slate-200 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-500/50 px-3 py-2 rounded-xl transition-all disabled:opacity-60"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Recargar
+          </button>
+          <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || loading}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-black shadow-lg shadow-purple-600/20 transition-all disabled:opacity-60"
           >
             <Save className="w-4 h-4" />
@@ -126,60 +145,36 @@ export default function AdminCmsPage() {
       {/* Save confirmation */}
       {saved && (
         <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-          <span className="font-black">✓</span> Cambios guardados correctamente
+          <span className="font-black">✓</span> Cambios guardados correctamente. Ya se reflejan en el sitio público.
         </div>
       )}
-
-      {/* API notice */}
-      <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl">
-        <AlertCircle className="w-4 h-4 text-amber-500 dark:text-amber-600 shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          <span className="font-bold">Nota de desarrollo:</span> Esta sección gestiona el contenido visual del sitio. La integración con el backend (endpoint <code className="bg-amber-100 dark:bg-amber-900/30 px-1 rounded">/api/admin/cms</code>) está pendiente de implementación en el servidor.
-        </p>
-      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
 
         {/* Left column */}
         <div className="xl:col-span-2 space-y-5">
 
-          {/* Banners del hero */}
+          {/* Banner del hero */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
             <SectionHeader
               icon={Image}
               color="bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20"
-              title="Banners del Hero"
-              description="El banner activo se muestra en la pantalla principal de la tienda"
+              title="Banner Principal (Hero)"
+              description="Se muestra en la pantalla principal de la tienda. Déjalo vacío para usar el texto por defecto."
             />
-            <div className="space-y-4">
-              {banners.map((banner, i) => (
-                <div key={i} className={`rounded-xl border p-4 transition-all ${banner.activo ? 'border-blue-200 dark:border-blue-500/50 bg-blue-50/50 dark:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/50'}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Banner {i + 1}</span>
-                    <button
-                      onClick={() => toggleBanner(i)}
-                      className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full transition-all ${banner.activo ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 hover:border-blue-200 hover:text-blue-500'}`}
-                    >
-                      {banner.activo ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
-                      {banner.activo ? 'Activo' : 'Inactivo'}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Título</label>
-                      <input type="text" value={banner.titulo} onChange={e => updateBanner(i, 'titulo', e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Subtítulo</label>
-                      <input type="text" value={banner.subtitulo} onChange={e => updateBanner(i, 'subtitulo', e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Texto del botón (CTA)</label>
-                      <input type="text" value={banner.cta} onChange={e => updateBanner(i, 'cta', e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all" />
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Título</label>
+                <input type="text" value={bannerTitulo} onChange={e => setBannerTitulo(e.target.value)} placeholder="Flores elegantes y coloridas para cada momento especial" className={inp} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Subtítulo</label>
+                <input type="text" value={bannerSubtitulo} onChange={e => setBannerSubtitulo(e.target.value)} placeholder="Llevamos la belleza de la naturaleza a tu puerta." className={inp} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Texto del botón (CTA)</label>
+                <input type="text" value={bannerCta} onChange={e => setBannerCta(e.target.value)} className={inp} />
+              </div>
             </div>
           </div>
 
@@ -291,14 +286,19 @@ export default function AdminCmsPage() {
             <div className="space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Texto del anuncio</label>
-                <input type="text" defaultValue="🌸 Envío gratis en pedidos mayores a $500 MXN" className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all" />
+                <input type="text" value={anuncioTexto} onChange={e => setAnuncioTexto(e.target.value)} className={inp} />
               </div>
-              <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 rounded-xl">
-                <div className="relative w-10 h-5 rounded-full bg-orange-400 cursor-pointer">
-                  <span className="absolute top-0.5 right-0.5 size-4 bg-white rounded-full shadow" />
+              <button
+                onClick={() => setAnuncioActivo(v => !v)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${anuncioActivo ? 'bg-orange-50 dark:bg-orange-500/10 border-orange-100 dark:border-orange-500/20' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700'}`}
+              >
+                <div className={`relative w-10 h-5 rounded-full transition-colors ${anuncioActivo ? 'bg-orange-400' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                  <span className={`absolute top-0.5 size-4 bg-white rounded-full shadow transition-all ${anuncioActivo ? 'right-0.5' : 'left-0.5'}`} />
                 </div>
-                <span className="text-xs font-bold text-orange-700 dark:text-orange-400">Anuncio activo</span>
-              </div>
+                <span className={`text-xs font-bold ${anuncioActivo ? 'text-orange-700 dark:text-orange-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                  {anuncioActivo ? 'Anuncio activo' : 'Anuncio inactivo'}
+                </span>
+              </button>
             </div>
           </div>
 
@@ -308,7 +308,7 @@ export default function AdminCmsPage() {
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Los cambios se reflejan en la tienda al guardar. Usa el botón <strong>"Ver tienda"</strong> para revisar el resultado antes de publicar.
             </p>
-            <button onClick={() => navigate('/')} className="mt-3 flex items-center gap-1.5 text-xs font-bold text-purple-600 hover:text-purple-700 transition-colors">
+            <button onClick={() => window.open('/?preview=1', '_blank', 'noopener,noreferrer')} className="mt-3 flex items-center gap-1.5 text-xs font-bold text-purple-600 hover:text-purple-700 transition-colors">
               <Eye className="w-3.5 h-3.5" /> Abrir vista previa
             </button>
           </div>

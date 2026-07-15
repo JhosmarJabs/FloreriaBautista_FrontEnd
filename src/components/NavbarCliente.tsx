@@ -183,9 +183,11 @@ export function NavbarCliente() {
                   <p className="text-xs font-black leading-none text-white group-hover:text-[#FBBF24] transition-colors">
                     {user?.nombre || user?.name || 'Usuario'}
                   </p>
-                  <p className="text-[10px] text-[#FBBF24]/80 font-bold tracking-wider uppercase mt-1">
-                    {user?.role === 'cliente' ? 'Cliente Oro' : user?.role || 'Invitado'}
-                  </p>
+                  {user?.role && (
+                    <p className="text-[10px] text-[#FBBF24]/80 font-bold tracking-wider uppercase mt-1">
+                      {user.role === 'cliente' ? 'Cliente Oro' : user.role}
+                    </p>
+                  )}
                 </div>
                 <div className="relative">
                   <img
@@ -343,7 +345,9 @@ export function NavbarCliente() {
                     />
                     <div>
                       <p className="font-black text-white">{user?.nombre || user?.name || 'Usuario'}</p>
-                      <p className="text-xs text-[#FBBF24] font-bold uppercase tracking-wider">{user?.role === 'cliente' ? 'Cliente Oro' : user?.role || 'Invitado'}</p>
+                      {user?.role && (
+                        <p className="text-xs text-[#FBBF24] font-bold uppercase tracking-wider">{user.role === 'cliente' ? 'Cliente Oro' : user.role}</p>
+                      )}
                     </div>
                   </div>
                   <div className="grid gap-2">

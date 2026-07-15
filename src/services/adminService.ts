@@ -21,6 +21,11 @@ import {
   SchedulerConfigResponse,
   AdminCategory,
   AdminCatalogo,
+  Promotion,
+  PromotionBody,
+  QuickSaleTemplate,
+  SaveQuickSaleTemplateBody,
+  SiteSettings,
   InventoryKpis,
   ProductKpis,
   CatalogKpis,
@@ -227,6 +232,29 @@ export const AdminService = {
     return res.json();
   },
 
+  // Catálogo para empleados (pedidos físicos): incluye productos SOLO_SUCURSAL
+  // que el listado público oculta. Requiere rol ADMIN o EMPLEADO.
+  getEmployeeProducts: async (params: {
+    busqueda?: string;
+    categoria?: string;
+    catalogo?: string;
+    page?: number;
+    size?: number;
+  } = {}): Promise<ApiResponse<Product>> => {
+    const query = new URLSearchParams();
+    if (params.busqueda !== undefined) query.set('busqueda', params.busqueda);
+    if (params.categoria !== undefined) query.set('categoria', params.categoria);
+    if (params.catalogo !== undefined) query.set('catalogo', params.catalogo);
+    if (params.page !== undefined) query.set('page', String(params.page));
+    if (params.size !== undefined) query.set('size', String(params.size));
+    const qs = query.toString();
+    const res = await fetch(`/api/employee/products${qs ? `?${qs}` : ''}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener productos');
+    return res.json();
+  },
+
   // ─── Inventario admin ────────────────────────────────────────
   getAdminInventory: async (params: {
     busqueda?: string;
@@ -313,6 +341,34 @@ export const AdminService = {
   getDashboardStats: async (): Promise<SingleResponse<any>> => {
     const res = await fetch(`${API_BASE}/reports/dashboard`, {
       method: 'GET',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  getSalesReport: async (desde?: string, hasta?: string): Promise<SingleResponse<any>> => {
+    const query = new URLSearchParams();
+    if (desde) query.set('desde', desde);
+    if (hasta) query.set('hasta', hasta);
+    const qs = query.toString();
+    const res = await fetch(`${API_BASE}/reports/sales${qs ? `?${qs}` : ''}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  getTopProducts: async (top = 10): Promise<SingleResponse<any[]>> => {
+    const res = await fetch(`${API_BASE}/reports/top-products?top=${top}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  getTopCustomers: async (top = 10): Promise<SingleResponse<any[]>> => {
+    const res = await fetch(`${API_BASE}/reports/top-customers?top=${top}`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -481,6 +537,7 @@ export const AdminService = {
     hasta?: string;
     page?: number;
     size?: number;
+    archivado?: boolean;
   } = {}): Promise<ApiResponse<Order>> => {
     const query = new URLSearchParams();
     if (params.estado !== undefined) query.set('estado', params.estado);
@@ -488,6 +545,7 @@ export const AdminService = {
     if (params.hasta !== undefined) query.set('hasta', params.hasta);
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
+    if (params.archivado !== undefined) query.set('archivado', String(params.archivado));
     const qs = query.toString();
     const res = await fetch(`${API_BASE}/orders${qs ? `?${qs}` : ''}`, {
       headers: await authHeaders(),
@@ -504,9 +562,43 @@ export const AdminService = {
     return res.json();
   },
 
+  createPhysicalOrder: async (body: {
+    nombreCliente: string;
+    telefono?: string;
+    fechaEntrega: string;
+    horaEntrega?: string | null;
+    tipoPedido: 'INSTANTANEO' | 'ANTICIPADO';
+    notas?: string;
+    direccion?: { calle: string; colonia: string; municipio: string; estado: string; cp?: string; referencias?: string };
+    items: { productId: string; cantidad: number; notas?: string }[];
+    montoPagado?: number;
+    metodoPago?: string;
+  }): Promise<SingleResponse<OrderDetail>> => {
+    // Nota: este endpoint vive en /api/orders (OrdersController), no en /api/admin/orders
+    const res = await fetch(`/api/orders/physical`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  // Registrar un pago (anticipo o liquidación) sobre un pedido ya existente
+  registerOrderPayment: async (orderId: string, body: { monto: number; metodo: string }): Promise<SingleResponse<OrderDetail>> => {
+    const res = await fetch(`/api/orders/${orderId}/payments`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
   updateAdminOrderStatus: async (orderId: string, nuevoEstado: string): Promise<SingleResponse<OrderDetail>> => {
-    const res = await fetch(`${API_BASE}/orders/${orderId}/estado`, {
-      method: 'PUT',
+    // Nota: este endpoint vive en /api/orders (OrdersController), no en /api/admin/orders
+    const res = await fetch(`/api/orders/${orderId}`, {
+      method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ nuevoEstado }),
     });
@@ -653,6 +745,109 @@ export const AdminService = {
       const errorText = await res.text();
       throw new Error(`Error ${res.status}: ${errorText}`);
     }
+    return res.json();
+  },
+
+  // ─── Promociones ──────────────────────────────────────────────
+  getAdminPromotions: async (): Promise<SingleResponse<Promotion[]>> => {
+    const res = await fetch(`${API_BASE}/promotions`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  getAdminPromotionById: async (id: string): Promise<SingleResponse<Promotion>> => {
+    const res = await fetch(`${API_BASE}/promotions/${id}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  createAdminPromotion: async (body: PromotionBody): Promise<SingleResponse<Promotion>> => {
+    const res = await fetch(`${API_BASE}/promotions`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  updateAdminPromotion: async (id: string, body: PromotionBody): Promise<SingleResponse<Promotion>> => {
+    const res = await fetch(`${API_BASE}/promotions/${id}`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  deleteAdminPromotion: async (id: string): Promise<SingleResponse<null>> => {
+    const res = await fetch(`${API_BASE}/promotions/${id}/eliminar`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  // ─── Plantillas de Venta Rápida (compartidas ADMIN + EMPLEADO) ──
+  getQuickSaleTemplates: async (): Promise<SingleResponse<QuickSaleTemplate[]>> => {
+    const res = await fetch('/api/quick-sale-templates', {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  createQuickSaleTemplate: async (body: SaveQuickSaleTemplateBody): Promise<SingleResponse<QuickSaleTemplate>> => {
+    const res = await fetch('/api/quick-sale-templates', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  updateQuickSaleTemplate: async (id: string, body: SaveQuickSaleTemplateBody): Promise<SingleResponse<QuickSaleTemplate>> => {
+    const res = await fetch(`/api/quick-sale-templates/${id}`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  deleteQuickSaleTemplate: async (id: string): Promise<SingleResponse<null>> => {
+    const res = await fetch(`/api/quick-sale-templates/${id}/eliminar`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  // ─── CMS ──────────────────────────────────────────────────────
+  getCms: async (): Promise<SingleResponse<SiteSettings>> => {
+    const res = await fetch(`${API_BASE}/cms`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  updateCms: async (body: SiteSettings): Promise<SingleResponse<SiteSettings>> => {
+    const res = await fetch(`${API_BASE}/cms`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },
 
