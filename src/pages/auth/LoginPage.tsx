@@ -1,6 +1,12 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle, Wrench } from "lucide-react";
+
+const DEV_ACCOUNTS = [
+  { label: "Admin", correo: "admin@gmail.com", contrasena: "J@bs1234" },
+  { label: "Empleado", correo: "empleado@gmail.com", contrasena: "J@bs1234" },
+  { label: "Cliente", correo: "Jabs@gmail.com", contrasena: "J@bs1234" },
+];
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -10,8 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performLogin = async (correoInput: string, contrasenaInput: string) => {
     setError("");
     setLoading(true);
 
@@ -19,7 +24,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ correo, contrasena }),
+        body: JSON.stringify({ correo: correoInput, contrasena: contrasenaInput }),
       });
 
       if (!res.ok) {
@@ -36,10 +41,7 @@ export default function LoginPage() {
       );
       if (payload.refreshToken)
         localStorage.setItem("refreshToken", payload.refreshToken);
-      localStorage.setItem(
-        "usuario",
-        JSON.stringify(payload.usuario ?? payload.user ?? payload),
-      );
+      const usuarioBase = payload.usuario ?? payload.user ?? payload;
 
       const roles: string[] = (
         payload.usuario?.roles ??
@@ -47,6 +49,13 @@ export default function LoginPage() {
         payload.roles ??
         []
       ).map((r: string) => r.toLowerCase());
+
+      // Guardar también `role` (string) para mantener consistencia con el registro
+      // y que las validaciones de rol (p. ej. añadir al carrito) funcionen.
+      localStorage.setItem(
+        "usuario",
+        JSON.stringify({ ...usuarioBase, role: roles[0] ?? "cliente" }),
+      );
 
       if (roles.includes("administrador") || roles.includes("admin")) {
         navigate("/admin/dashboard");
@@ -60,6 +69,17 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    performLogin(correo, contrasena);
+  };
+
+  const handleDevLogin = (correoDev: string, contrasenaDev: string) => {
+    setCorreo(correoDev);
+    setContrasena(contrasenaDev);
+    performLogin(correoDev, contrasenaDev);
   };
 
   return (
@@ -106,6 +126,29 @@ export default function LoginPage() {
               Inicia sesión para gestionar tus pedidos florales
             </p>
           </div>
+
+          {/* Botones de acceso rápido — SOLO en modo desarrollo */}
+          {import.meta.env.DEV && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 text-amber-700 text-xs font-black uppercase tracking-wider">
+                <Wrench className="w-4 h-4" />
+                Acceso rápido (solo dev)
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {DEV_ACCOUNTS.map((acc) => (
+                  <button
+                    key={acc.label}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleDevLogin(acc.correo, acc.contrasena)}
+                    className="py-2 px-2 bg-white border border-amber-300 rounded-lg text-xs font-bold text-amber-800 hover:bg-amber-100 transition-colors disabled:opacity-60"
+                  >
+                    {acc.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Error Message Alert */}
           {error && (

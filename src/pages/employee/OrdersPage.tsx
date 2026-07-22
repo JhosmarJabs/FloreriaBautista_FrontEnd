@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { useToast } from '../../hooks/useToast';
+import { parseApiDate } from '../../utils/date';
 
 // Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs)
 const ESTADO_STYLE: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -272,7 +273,7 @@ export default function OrdersPage() {
                       </h3>
                       <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest mt-2 leading-none">
                         <MapPin className="w-3.5 h-3.5 text-[#eab308]" />
-                        <span className="truncate max-w-[180px]">Entrega: {new Date(order.fechaEntrega).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span>
+                        <span className="truncate max-w-[180px]">Entrega: {parseApiDate(order.fechaEntrega)?.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span>
                       </div>
                     </div>
                     <div className="text-right">
@@ -284,7 +285,7 @@ export default function OrdersPage() {
                   <div className="flex items-center justify-between text-[10px] pt-2 font-black uppercase tracking-[0.2em]">
                     <div className="flex items-center gap-2 text-slate-400 border-r border-slate-100 dark:border-white/5 pr-4">
                       <Clock className="w-4 h-4 text-[#eab308]" />
-                      <span>ENTREGA: <span className="text-[#1e3a5f] dark:text-white">{new Date(order.fechaEntrega).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span></span>
+                      <span>ENTREGA: <span className="text-[#1e3a5f] dark:text-white">{parseApiDate(order.fechaEntrega)?.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span></span>
                     </div>
                   </div>
                 </div>

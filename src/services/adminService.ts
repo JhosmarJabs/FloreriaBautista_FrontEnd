@@ -50,18 +50,29 @@ const isJwtExpired = (token: string): boolean => {
   }
 };
 
+// Limpia la sesión y manda al login. Se usa window.location (no useNavigate)
+// porque este archivo no es un componente/hook de React.
+const redirectToLogin = () => {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  localStorage.removeItem('usuario');
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
+  }
+};
+
 const getToken = async (): Promise<string> => {
   // Usar el JWT real del usuario logueado si está disponible y no expirado
   const stored = localStorage.getItem('accessToken');
-  if (stored && !stored.startsWith('local-token-') && !isJwtExpired(stored)) {
-    return stored;
-  }
-
-  // Si el token expiró, limpiarlo del storage para forzar re-login
-  if (stored && !stored.startsWith('local-token-') && isJwtExpired(stored)) {
-    console.warn('[AdminService] Token JWT expirado. Se requiere re-autenticación.');
-    // Opcionalmente redirigir a login:
-    // window.location.href = '/login';
+  if (stored && !stored.startsWith('local-token-')) {
+    if (!isJwtExpired(stored)) {
+      return stored;
+    }
+    // El token de la sesión expiró: cerrar sesión y mandar al login en vez
+    // de dejar que cada pantalla truene con un "Error al cargar X" genérico.
+    console.warn('[AdminService] Token JWT expirado. Redirigiendo a /login.');
+    redirectToLogin();
+    throw new Error('Sesión expirada. Redirigiendo al inicio de sesión…');
   }
 
   const now = Date.now();
@@ -303,6 +314,15 @@ export const AdminService = {
 
   getAdminInventoryItemById: async (id: string): Promise<SingleResponse<InventoryItem>> => {
     const res = await fetch(`${API_BASE}/inventory/${id}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  // ─── Predicción de surtido (Modelos Predictivos — Propuesta 1) ─
+  getSupplyForecast: async (id: string): Promise<SingleResponse<any>> => {
+    const res = await fetch(`${API_BASE}/inventory/${id}/prediccion-surtido`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -868,6 +888,17 @@ export const AdminService = {
     return res.json();
   },
 
+  // Catálogos visibles para empleados (endpoint público /api/catalogos): para
+  // roles no-admin devuelve solo los catálogos activos. Usado por Venta Rápida
+  // para armar las plantillas a partir de catálogos. Devuelve un array plano.
+  getPublicCatalogos: async (): Promise<AdminCatalogo[]> => {
+    const res = await fetch('/api/catalogos', {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener catálogos');
+    return res.json();
+  },
+
   getCatalogoById: async (id: string): Promise<SingleResponse<any>> => {
     const res = await fetch(`${API_BASE}/catalogos/${id}`, {
       headers: await authHeaders(),
@@ -893,6 +924,42 @@ export const AdminService = {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error('Error al actualizar catálogo');
+    return res.json();
+  },
+
+  // ─── Recomendaciones (Modelos Predictivos — Propuesta 2) ───────
+  // Endpoint público (sin auth de admin) — reglas de asociación con fallback a más vendidos.
+  getRecommendedProducts: async (productIds: string[], top = 4): Promise<SingleResponse<any[]>> => {
+    const ids = productIds.filter(Boolean).join(',');
+    const res = await fetch(`/api/products/recomendados?ids=${encodeURIComponent(ids)}&top=${top}`);
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  recalcularReglasAsociacion: async (): Promise<SingleResponse<any>> => {
+    const res = await fetch(`${API_BASE}/analytics/reglas-asociacion/recalcular`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  // ─── Segmentación de clientes (Modelos Predictivos — Propuesta 3) ──
+  getCustomerSegments: async (): Promise<SingleResponse<any[]>> => {
+    const res = await fetch(`${API_BASE}/analytics/segmentos-clientes`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  recalcularSegmentosClientes: async (): Promise<SingleResponse<any>> => {
+    const res = await fetch(`${API_BASE}/analytics/segmentos-clientes/recalcular`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },
 };

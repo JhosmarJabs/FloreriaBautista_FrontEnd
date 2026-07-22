@@ -19,6 +19,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
+import { parseApiDate } from '../../utils/date';
+
+// Estados finales del backend: un pedido en cualquiera de estos ya no cuenta
+// como entrega pendiente (ver Backend/Services/OrderService.cs y OrdersPage).
+const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CANCELADO', 'NO_COMPLETADO'];
 
 export default function EmployeeDashboardPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -63,6 +68,14 @@ export default function EmployeeDashboardPage() {
       lowStockCount: lowStock
     };
   }, [orders, products]);
+
+  // Pedidos aun por atender: se excluyen los ya finalizados (entregados,
+  // cancelados o no completados) para que la tarjeta de "Entrega Urgente"
+  // no muestre pedidos que ya se entregaron.
+  const activeOrders = useMemo(
+    () => orders.filter(o => !ESTADOS_FINALIZADOS.includes(o.estadoPedido)),
+    [orders]
+  );
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -266,7 +279,7 @@ export default function EmployeeDashboardPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="p-6 rounded-[2.5rem] relative overflow-hidden shadow-2xl transition-all text-white bg-[#1e3a5f] dark:bg-blue-950/40"
           >
-            {!loading && orders.length === 0 ? (
+            {!loading && activeOrders.length === 0 ? (
               <div className="relative z-10 space-y-4 text-center py-4">
                 <div className="flex justify-center mb-4">
                   <div className="p-3 bg-[#eab308]/10 rounded-lg">
@@ -285,12 +298,18 @@ export default function EmployeeDashboardPage() {
               </div>
             ) : (
               (() => {
-                const urgentOrder = orders.reduce((closest, order) => {
-                  const orderDate = new Date(order.fechaEntrega || order.date || '2099-12-31').getTime();
-                  const closestDate = new Date(closest.fechaEntrega || closest.date || '2099-12-31').getTime();
-                  return orderDate < closestDate ? order : closest;
-                });
-                const daysUntilDelivery = Math.ceil((new Date(urgentOrder.fechaEntrega || urgentOrder.date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                // fechaEntrega es solo fecha: parsearla como fecha LOCAL para no
+                // correr un día por la conversión a UTC del navegador.
+                const deliveryTime = (o: any) =>
+                  (parseApiDate(o.fechaEntrega || o.date) ?? new Date('2099-12-31T00:00:00')).getTime();
+                const urgentOrder = activeOrders.reduce((closest, order) =>
+                  deliveryTime(order) < deliveryTime(closest) ? order : closest
+                );
+                // Diferencia en días de calendario (local) respecto a hoy.
+                const startOfToday = new Date();
+                startOfToday.setHours(0, 0, 0, 0);
+                const deliveryDate = parseApiDate(urgentOrder.fechaEntrega || urgentOrder.date) ?? startOfToday;
+                const daysUntilDelivery = Math.round((deliveryDate.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24));
                 const isUrgent = daysUntilDelivery <= 1;
 
                 return (

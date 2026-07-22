@@ -30,6 +30,8 @@ interface ImageUploaderProps {
   label?: string;
   /** Hint informativo */
   hint?: string;
+  /** Si es true, el módulo se muestra cuadrado (1:1) en vez de rectangular */
+  square?: boolean;
 }
 
 type LocalState = 'idle' | 'selected' | 'existing';
@@ -41,6 +43,7 @@ export default function ImageUploader({
   uploadedUrl,
   label = 'Imagen',
   hint,
+  square = false,
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -130,6 +133,7 @@ export default function ImageUploader({
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         className={`relative w-full rounded-2xl border-2 transition-all select-none overflow-hidden
+          ${square ? 'aspect-square' : ''}
           ${isUploading
             ? 'cursor-wait border-blue-200 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-900/20'
             : localState === 'idle' && !error
@@ -151,7 +155,7 @@ export default function ImageUploader({
           {localState === 'idle' && !error && (
             <motion.div key="idle"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center gap-3 py-10 px-6">
+              className={`flex flex-col items-center justify-center gap-3 py-10 px-6 ${square ? 'h-full' : ''}`}>
               <div className="size-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-500">
                 <ImageIcon className="w-7 h-7" />
               </div>
@@ -171,7 +175,7 @@ export default function ImageUploader({
           {error && (
             <motion.div key="error"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center gap-3 py-10 px-6">
+              className={`flex flex-col items-center justify-center gap-3 py-10 px-6 ${square ? 'h-full' : ''}`}>
               <div className="size-14 bg-rose-100 dark:bg-rose-900/40 rounded-2xl flex items-center justify-center text-rose-500 dark:text-rose-400">
                 <AlertCircle className="w-7 h-7" />
               </div>
@@ -187,7 +191,7 @@ export default function ImageUploader({
             <motion.div key="preview"
               initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="relative group">
-              <img src={showImage} alt="preview" className="w-full h-52 object-cover" />
+              <img src={showImage} alt="preview" className={`w-full object-cover ${square ? 'h-full' : 'h-52'}`} />
               {/* Overlay hover */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                 <div className="flex gap-2">
@@ -219,7 +223,7 @@ export default function ImageUploader({
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="relative">
               {showImage && (
-                <img src={showImage} alt="subiendo" className="w-full h-52 object-cover opacity-40 dark:opacity-20" />
+                <img src={showImage} alt="subiendo" className={`w-full object-cover opacity-40 dark:opacity-20 ${square ? 'h-full' : 'h-52'}`} />
               )}
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -236,7 +240,7 @@ export default function ImageUploader({
             <motion.div key="done"
               initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="relative group">
-              <img src={uploadedUrl} alt="subida" className="w-full h-52 object-cover" />
+              <img src={uploadedUrl} alt="subida" className={`w-full object-cover ${square ? 'h-full' : 'h-52'}`} />
               <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">
                 <CheckCircle2 className="w-3 h-3" />Subida correctamente a Cloudinary
               </div>

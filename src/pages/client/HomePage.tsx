@@ -7,6 +7,7 @@ import Testimonials from '../../components/Testimonials';
 import Shipping from '../../components/Shipping';
 import FAQ from '../../components/FAQ';
 import ClientHomePage from './ClientHomePage';
+import { esCliente } from '../../utils/auth';
 
 export default function HomePage() {
   const [user, setUser] = useState<any>(null);
@@ -24,7 +25,7 @@ export default function HomePage() {
     }
   }, []);
 
-  const isClient = user?.role === 'cliente' || user?.role === 'customer';
+  const isClient = esCliente(user);
 
   if (isClient) {
     return <ClientHomePage user={user} />;

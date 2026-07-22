@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, Star, Check, Lock, ShoppingCart, MessageCircle, Info, HelpCircle, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Star, Lock, ShoppingCart, MessageCircle, Info, HelpCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../hooks/useCart';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
+import { esCliente } from '../../utils/auth';
 
 export default function ProductPage({ user: initialUser }: { user?: any }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [selectedSize, setSelectedSize] = useState('premium');
   const { addToCart } = useCart();
   const [user, setUser] = useState<any>(initialUser);
   const [product, setProduct] = useState<any>(null);
@@ -28,40 +28,69 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
   }, [initialUser]);
 
   useEffect(() => {
-    const loadProduct = async () => {
-      setLoadingProduct(true);
-      try {
-        const res = await AdminService.getPublicProductById(id!);
-        const p = res.data;
-        setProduct(p);
-        setMainImage(p.imagenUrl || 'https://picsum.photos/seed/placeholder/400/400');
-      } catch {
-        // Fallback: intentar con endpoint admin
-        try {
-          const res = await AdminService.getAdminProductById(id!);
-          const p = res.data;
-          setProduct(p);
-          setMainImage(p.imagenUrl || 'https://picsum.photos/seed/placeholder/400/400');
-        } catch {
-          setProduct(null);
-        }
-      } finally {
-        setLoadingProduct(false);
-      }
-    };
+    // Carga los productos "También te podría gustar" reales: primero del mismo
+    // catálogo/colección que el admin escogió para este producto, luego de la
+    // misma categoría, y como último respaldo el listado público general.
+    const loadRelated = async (p: any) => {
+      const excluir = (items: any[]) =>
+        items.filter((it: any) => it.id !== id).slice(0, 4);
 
-    const loadRelated = async () => {
+      const catalogo = p?.catalogos?.[0];
+      const categoria = p?.categorias?.[0] || p?.tipo;
+
       try {
-        const res = await AdminService.getProducts({ size: 5 });
-        setRelatedProducts(res.data.items.filter((p: any) => p.id !== id).slice(0, 4));
+        // 1) Mismo catálogo (lo que el admin agrupó)
+        if (catalogo) {
+          const res = await AdminService.getProducts({ catalogo, size: 8 });
+          const rel = excluir(res.data.items);
+          if (rel.length > 0) {
+            setRelatedProducts(rel);
+            return;
+          }
+        }
+
+        // 2) Misma categoría
+        if (categoria) {
+          const res = await AdminService.getProducts({ categoria, size: 8 });
+          const rel = excluir(res.data.items);
+          if (rel.length > 0) {
+            setRelatedProducts(rel);
+            return;
+          }
+        }
+
+        // 3) Respaldo: listado público general
+        const res = await AdminService.getProducts({ size: 8 });
+        setRelatedProducts(excluir(res.data.items));
       } catch {
         setRelatedProducts([]);
       }
     };
 
+    const loadProduct = async () => {
+      setLoadingProduct(true);
+      let p: any = null;
+      try {
+        const res = await AdminService.getPublicProductById(id!);
+        p = res.data;
+      } catch {
+        // Fallback: intentar con endpoint admin
+        try {
+          const res = await AdminService.getAdminProductById(id!);
+          p = res.data;
+        } catch {
+          p = null;
+        }
+      }
+      setProduct(p);
+      if (p) setMainImage(p.imagenUrl || 'https://picsum.photos/seed/placeholder/400/400');
+      setLoadingProduct(false);
+      // Buscar relacionados una vez que conocemos el catálogo/categoría del producto
+      loadRelated(p);
+    };
+
     if (id) {
       loadProduct();
-      loadRelated();
     }
   }, [id]);
 
@@ -73,9 +102,9 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
   ];
 
   const handleAddToCart = (p: any) => {
-    if (user && (user.role === 'cliente' || user.role === 'customer')) {
+    if (esCliente(user)) {
       addToCart(p);
-      showToast(`${p.name} añadido al carrito`, 'success');
+      showToast(`${p.nombre} añadido al carrito`, 'success');
     } else {
       setIsLoginModalOpen(true);
     }
@@ -193,32 +222,6 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
 
             {/* Customization Form */}
             <div className="space-y-10">
-              {/* Size Selector */}
-              <div>
-                <label className="block text-xs font-black uppercase text-slate-400 mb-4 tracking-[0.2em]">Selecciona el tamaño</label>
-                <div className="grid grid-cols-3 gap-4">
-                  {['estandar', 'deluxe', 'premium'].map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`relative p-5 rounded-2xl text-center transition-all border-2 flex flex-col items-center justify-center gap-1 ${selectedSize === size ? 'border-brand-coral bg-brand-coral/5 shadow-lg shadow-brand-coral/5' : 'border-slate-200 dark:border-slate-800 hover:border-brand-coral/30'}`}
-                    >
-                      <div className={`text-[10px] font-black uppercase tracking-widest ${selectedSize === size ? 'text-brand-coral' : 'text-slate-400'}`}>
-                        {size}
-                      </div>
-                      <div className="text-lg font-black text-slate-900 dark:text-white">
-                        ${size === 'estandar' ? product.precioBase : size === 'deluxe' ? product.precioBase + 200 : product.precioBase + 350}
-                      </div>
-                      {selectedSize === size && (
-                        <motion.div layoutId="size-check" className="absolute -top-2 -right-2 w-6 h-6 bg-brand-coral rounded-full flex items-center justify-center text-white shadow-lg">
-                          <Check className="w-3 h-3 stroke-[4px]" />
-                        </motion.div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Extras & Message */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
@@ -405,38 +408,34 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
       <AnimatePresence>
         {isLoginModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" 
+              className="absolute inset-0 bg-[#1A3B5B]/60 backdrop-blur-md"
               onClick={() => setIsLoginModalOpen(false)}
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative bg-white dark:bg-slate-800 p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border border-white/10"
+              className="relative bg-white p-12 rounded-[3rem] shadow-[0_30px_100px_rgba(0,0,0,0.3)] max-w-md w-full text-center border border-white/20"
             >
-              <div className="w-20 h-20 bg-brand-coral/10 rounded-3xl flex items-center justify-center mx-auto mb-8">
-                <Lock className="w-10 h-10 text-brand-coral" />
+              <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-8">
+                <Lock className="w-10 h-10 text-[#1A3B5B]" />
               </div>
-              <h3 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">¡Inicia sesión para continuar!</h3>
-              <p className="text-slate-500 dark:text-slate-400 mb-10 text-lg">Para añadir productos a tu pedido necesitas tener una cuenta activa.</p>
+              <h3 className="text-3xl font-black text-[#1A3B5B] mb-4 leading-tight">¡Inicia sesión para continuar!</h3>
+              <p className="text-slate-500 font-medium mb-10 leading-relaxed">Para añadir productos a tu pedido necesitas tener una cuenta activa.</p>
               <div className="flex flex-col gap-4">
-                <Link to="/login">
-                  <AnimatedButton className="w-full bg-brand-coral text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-brand-coral/20">
-                    Iniciar sesión
-                  </AnimatedButton>
+                <Link to="/login" className="w-full bg-[#1A3B5B] text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:scale-[1.02] transition-transform">
+                  Iniciar sesión
                 </Link>
-                <Link to="/registro">
-                  <AnimatedButton className="w-full border-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white py-5 rounded-2xl font-bold text-lg hover:bg-slate-50 dark:hover:bg-slate-700">
-                    Crear cuenta
-                  </AnimatedButton>
+                <Link to="/registro" className="w-full border-2 border-[#1A3B5B] text-[#1A3B5B] py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-slate-50 transition-all">
+                  Crear cuenta
                 </Link>
               </div>
-              <button 
-                className="mt-8 text-slate-400 hover:text-brand-coral text-sm font-bold uppercase tracking-widest transition-colors"
+              <button
+                className="mt-8 text-slate-400 hover:text-[#1A3B5B] text-sm font-black uppercase tracking-widest transition-colors"
                 onClick={() => setIsLoginModalOpen(false)}
               >
                 Tal vez luego

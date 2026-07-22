@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
+import { parseApiDate } from '../../utils/date';
 
 // Estos son los estados reales que maneja el backend (ver Transiciones en OrderService.cs)
 const ESTADOS_FLUJO = [
@@ -27,8 +28,8 @@ const SIGUIENTE_ESTADO: Record<string, string | null> = {
 };
 
 function formatDate(iso: string) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const d = parseApiDate(iso);
+  return d ? d.toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '—';
 }
 
 function formatDateTime(iso: string) {

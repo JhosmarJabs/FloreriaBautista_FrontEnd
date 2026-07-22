@@ -252,55 +252,6 @@ function calcExponential(x0: number, k: number, t: number) {
   return x0 * Math.exp(k * t);
 }
 
-// ─── Datos Ficticios para Demostración (Provicional) ──────────────────────────
-const MOCK_GENERAL_STATS = {
-  totalSales: 12450.00,
-  orderCount: 124,
-  averageTicket: 100.40,
-  newCustomers: 12
-};
-
-const generateDynamicWeeklySales = () => {
-  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  const result = [];
-  const now = new Date();
-
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(now.getDate() - i);
-    result.push({
-      day: days[d.getDay()],
-      date: `${d.getDate()} ${months[d.getMonth()]}`,
-      fullDate: d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' }),
-      total: 800 + Math.random() * 1200,
-      orders: Math.floor(5 + Math.random() * 15),
-      growth: (Math.random() * 8).toFixed(1)
-    });
-  }
-  return result;
-};
-
-const MOCK_TOP_PRODUCTS_PRO = [
-  { name: 'Rosas Rojas Premium (A)', sales: 236, total: 27000 },
-  { name: 'Tulipanes de Holanda',     sales: 210, total: 18900 },
-  { name: 'Arreglo Girasol Gigante', sales: 110, total: 31000 },
-  { name: 'Orquídea Zen Blanca',     sales: 45, total: 36750 },
-  { name: 'Caja Sorpresa Mixta',     sales: 80, total: 22500 }
-];
-
-const MOCK_TOP_CUSTOMERS_PRO = [
-  { name: 'María Eugenia Ortiz', total: 12500, status: 'VIP Gold' },
-  { name: 'Corporativo San Angel', total: 42300, status: 'Empresarial' },
-  { name: 'Juan Carlos Méndez',  total: 8200,  status: 'Frecuente' },
-];
-
-const MOCK_INVENTORY_ALERTS_PRO = [
-  { name: 'Espuma Floral Oasis', stock: 5, stock_minimo: 50 },
-  { name: 'Cinta Decorativa Oro', stock: 2, stock_minimo: 20 },
-  { name: 'Papel Coreano Rosa',   stock: 8, stock_minimo: 30 }
-];
-
 // ─── Gráfica 5.1 — Promedio / Media / Moda ───────────────────────────────────
 function Chart51() {
   const maxVal = Math.max(...FLOWER_STATS.flatMap(f => [f.promedio, f.media, f.moda]));
@@ -666,6 +617,10 @@ function RecommendationsPanel() {
   )
 }
 
+// Formatea una tendencia porcentual real; null => sin periodo previo con datos
+const fmtTrend = (v: number | null, suffix = 'vs mes anterior'): string =>
+  v === null ? 'Sin datos del periodo previo' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}% ${suffix}`;
+
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const [stats, setStats]                     = useState<any>(null);
@@ -675,6 +630,7 @@ export default function ReportsPage() {
   const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([]);
   const [inventoryStats, setInventoryStats]   = useState<any>(null);
   const [realSupplies, setRealSupplies]     = useState<any[]>([]);
+  const [trends, setTrends]                   = useState<{ sales: number | null; orders: number | null; ticket: number | null }>({ sales: null, orders: null, ticket: null });
   const [loading, setLoading]                 = useState(true);
   const [activeTab, setActiveTab]             = useState<'general' | 'demanda' | 'insumos'>('general');
   const navigate = useNavigate();
@@ -682,11 +638,29 @@ export default function ReportsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dashboardRes, topProductsRes, topCustomersRes] = await Promise.allSettled([
+        // Rango del periodo anterior (30 días previos al periodo actual) para
+        // calcular tendencias reales contra el dashboard (que cubre los últimos 30 días).
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const toISO = (dt: Date) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+        const hoy = new Date();
+        const prevHasta = new Date(); prevHasta.setDate(hoy.getDate() - 30);
+        const prevDesde = new Date(); prevDesde.setDate(hoy.getDate() - 59);
+
+        const [dashboardRes, topProductsRes, topCustomersRes, prevSalesRes] = await Promise.allSettled([
           AdminService.getDashboardStats(),
           AdminService.getTopProducts(5),
           AdminService.getTopCustomers(5),
+          AdminService.getSalesReport(toISO(prevDesde), toISO(prevHasta)),
         ]);
+
+        const ZERO_STATS = { totalSales: 0, orderCount: 0, averageTicket: 0, newCustomers: 0 };
+
+        // Totales del periodo anterior; null si la API no los provee
+        const prev = (prevSalesRes.status === 'fulfilled' && prevSalesRes.value.success)
+          ? prevSalesRes.value.data
+          : null;
+        const pct = (cur: number, ant: number): number | null =>
+          ant > 0 ? ((cur - ant) / ant) * 100 : null;
 
         if (dashboardRes.status === 'fulfilled' && dashboardRes.value.success) {
           const d = dashboardRes.value.data;
@@ -695,6 +669,12 @@ export default function ReportsPage() {
             orderCount: d.orderCount,
             averageTicket: d.averageTicket,
             newCustomers: d.newCustomers,
+          });
+
+          setTrends({
+            sales:  prev ? pct(d.totalSales,   prev.totalVentas)   : null,
+            orders: prev ? pct(d.orderCount,    prev.totalPedidos)  : null,
+            ticket: prev ? pct(d.averageTicket, prev.promedioVenta) : null,
           });
 
           const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -722,9 +702,10 @@ export default function ReportsPage() {
             stock_minimo: a.stockMinimo,
           })));
         } else {
-          setStats(MOCK_GENERAL_STATS);
-          setWeeklySales(generateDynamicWeeklySales());
-          setInventoryAlerts(MOCK_INVENTORY_ALERTS_PRO);
+          setStats(ZERO_STATS);
+          setTrends({ sales: null, orders: null, ticket: null });
+          setWeeklySales([]);
+          setInventoryAlerts([]);
         }
 
         if (topProductsRes.status === 'fulfilled' && topProductsRes.value.success && topProductsRes.value.data.length > 0) {
@@ -734,7 +715,7 @@ export default function ReportsPage() {
             total: p.ingresos,
           })));
         } else {
-          setTopProducts(MOCK_TOP_PRODUCTS_PRO);
+          setTopProducts([]);
         }
 
         if (topCustomersRes.status === 'fulfilled' && topCustomersRes.value.success && topCustomersRes.value.data.length > 0) {
@@ -744,7 +725,7 @@ export default function ReportsPage() {
             status: c.totalGastado >= 20000 ? 'VIP Gold' : c.totalGastado >= 5000 ? 'Frecuente' : 'Cliente',
           })));
         } else {
-          setTopCustomers(MOCK_TOP_CUSTOMERS_PRO);
+          setTopCustomers([]);
         }
 
         setInventoryStats(DataService.getInventoryStats());
@@ -759,11 +740,12 @@ export default function ReportsPage() {
         }
       } catch (err) {
         console.error("Error al cargar reportes:", err);
-        setStats(MOCK_GENERAL_STATS);
-        setWeeklySales(generateDynamicWeeklySales());
-        setTopCustomers(MOCK_TOP_CUSTOMERS_PRO);
-        setTopProducts(MOCK_TOP_PRODUCTS_PRO);
-        setInventoryAlerts(MOCK_INVENTORY_ALERTS_PRO);
+        setStats({ totalSales: 0, orderCount: 0, averageTicket: 0, newCustomers: 0 });
+        setTrends({ sales: null, orders: null, ticket: null });
+        setWeeklySales([]);
+        setTopCustomers([]);
+        setTopProducts([]);
+        setInventoryAlerts([]);
       } finally {
         setLoading(false);
       }
@@ -824,10 +806,10 @@ export default function ReportsPage() {
             {/* KPI Grid Section */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Ingresos Totales', value: `$${stats?.totalSales.toLocaleString()}`, icon: <TrendingUp />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: '+12.5% vs mes anterior' },
-                { label: 'Pedidos Generados', value: stats?.orderCount, icon: <ShoppingBag />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: '+8.2% incremento' },
-                { label: 'Ticket Promedio', value: `$${stats?.averageTicket.toFixed(2)}`, icon: <PieChart />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: '-2.1% variación' },
-                { label: 'Nuevos Clientes', value: stats?.newCustomers, icon: <UserPlus />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', trend: '+15% nuevos prospectos' },
+                { label: 'Ingresos Totales', value: `$${stats?.totalSales.toLocaleString()}`, icon: <TrendingUp />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: fmtTrend(trends.sales) },
+                { label: 'Pedidos Generados', value: stats?.orderCount, icon: <ShoppingBag />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: fmtTrend(trends.orders) },
+                { label: 'Ticket Promedio', value: `$${stats?.averageTicket.toFixed(2)}`, icon: <PieChart />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: fmtTrend(trends.ticket) },
+                { label: 'Nuevos Clientes', value: stats?.newCustomers, icon: <UserPlus />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', trend: 'Últimos 30 días' },
               ].map((s, i) => (
                 <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
                   <div className="relative z-10 flex flex-col justify-between h-full">
@@ -867,16 +849,19 @@ export default function ReportsPage() {
                            <p className="text-xl font-black text-slate-900 dark:text-white">${(stats?.averageTicket || 0).toFixed(2)}</p>
                         </div>
                         <div className="space-y-4 mt-4">
-                           {weeklySales.slice(-3).reverse().map((d, i) => (
+                           {weeklySales.slice(-3).reverse().map((d, i) => {
+                             const g = parseFloat(d.growth);
+                             const up = g >= 0;
+                             return (
                              <div key={i} className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                                 <p className="text-[8px] font-black text-slate-400 uppercase">{d.day} {d.date}</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-slate-200 mt-0.5">${d.total.toFixed(0)}</p>
                                 <div className="flex items-center gap-1 mt-1">
-                                   <TrendingUp className="w-3 h-3 text-emerald-500" />
-                                   <span className="text-[8px] font-bold text-emerald-500">+{d.growth}%</span>
+                                   {up ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />}
+                                   <span className={`text-[8px] font-bold ${up ? 'text-emerald-500' : 'text-rose-500'}`}>{up ? '+' : ''}{d.growth}%</span>
                                 </div>
                              </div>
-                           ))}
+                           )})}
                         </div>
                      </div>
 

@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
 import { useToast } from '../../hooks/useToast';
+import { parseApiDate } from '../../utils/date';
 
 // Estados de una entrega dentro de la maquina de estados del backend
 // (ver Transiciones en Backend/Services/OrderService.cs)
@@ -47,7 +48,7 @@ function formatDireccion(d?: OrderDetail['direccion']): string {
 
 function formatHora(order: OrderDetail): string {
   const fecha = order.fechaEntrega
-    ? new Date(order.fechaEntrega).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
+    ? parseApiDate(order.fechaEntrega)!.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })
     : '';
   const hora = order.horaEntrega ? order.horaEntrega.slice(0, 5) : null;
   return hora ? `${fecha} · ${hora}` : (fecha || 'Sin horario definido');

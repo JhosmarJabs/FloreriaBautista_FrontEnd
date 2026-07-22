@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Clock, Heart, MapPin, Phone, Leaf, Award, Wrench } from 'lucide-react';
 import { motion } from 'motion/react';
+import { CmsService } from '../../services/cmsService';
+import { SiteSettings } from '../../types';
+import { groupHorarios } from '../../utils/horarios';
 
 export default function AboutPage() {
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+
+  useEffect(() => {
+    CmsService.getSettings().then(setSettings).catch(() => { /* usa los valores por defecto del markup */ });
+  }, []);
+
+  const horariosAgrupados = groupHorarios(settings?.horarios ?? []);
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -231,21 +241,38 @@ export default function AboutPage() {
               <MapPin className="w-6 h-6 text-brand-coral shrink-0 mt-1" />
               <div>
                 <p className="font-bold text-brand-deep text-lg">Dirección</p>
-                <p className="text-slate-500">Calle Principal #12, Huitzitzilingo, México</p>
+                {settings?.direccion && settings?.direccionUrl ? (
+                  <a
+                    href={settings.direccionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-500 hover:text-brand-deep underline decoration-dotted"
+                  >
+                    {settings.direccion}
+                  </a>
+                ) : (
+                  <p className="text-slate-500">{settings?.direccion || 'Calle Principal #12, Huitzitzilingo, México'}</p>
+                )}
               </div>
             </div>
             <div className="flex items-start gap-4">
               <Clock className="w-6 h-6 text-brand-coral shrink-0 mt-1" />
               <div>
                 <p className="font-bold text-brand-deep text-lg">Horario</p>
-                <p className="text-slate-500">Lun - Sáb: 9:00 AM - 8:00 PM<br/>Dom: 10:00 AM - 4:00 PM</p>
+                {horariosAgrupados.length > 0 ? (
+                  horariosAgrupados.map(g => (
+                    <p key={g.label} className="text-slate-500">{g.label}: {g.value}</p>
+                  ))
+                ) : (
+                  <p className="text-slate-500">Lun - Sáb: 9:00 AM - 8:00 PM<br/>Dom: 10:00 AM - 4:00 PM</p>
+                )}
               </div>
             </div>
             <div className="flex items-start gap-4">
               <Phone className="w-6 h-6 text-brand-coral shrink-0 mt-1" />
               <div>
                 <p className="font-bold text-brand-deep text-lg">Teléfono</p>
-                <p className="text-slate-500">+52 (555) 123-4567</p>
+                <p className="text-slate-500">{settings?.telefono || '+52 (555) 123-4567'}</p>
               </div>
             </div>
           </div>

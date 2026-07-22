@@ -10,6 +10,7 @@ import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { FadeIn, ScaleIn, AnimatedButton } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
+import { parseApiDate } from '../../utils/date';
 
 // ─── Status config ──────────────────────────────────────────────────────────
 const statusLabel: Record<string, string> = {
@@ -232,7 +233,7 @@ export default function AdminPaymentsPage() {
                                  <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight">${(trx.total || 0).toLocaleString()}</span>
                               </td>
                               <td className="px-8 py-5 text-xs font-bold text-slate-500">
-                                 {trx.fechaEntrega ? new Date(trx.fechaEntrega).toLocaleDateString() : 'N/A'}
+                                 {trx.fechaEntrega ? parseApiDate(trx.fechaEntrega)!.toLocaleDateString() : 'N/A'}
                               </td>
                               <td className="px-8 py-5">
                                  <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${stSet}`}>

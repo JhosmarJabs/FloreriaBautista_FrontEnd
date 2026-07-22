@@ -11,12 +11,19 @@ import { FadeIn, StaggerContainer, GlassCard, AnimatedButton } from '../../compo
 import { AdminService } from '../../services/adminService';
 import FALLBACK_SUPPLIES from '../../data/inventoryCatalog.json';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function AdminSupplyAnalysisPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [supply, setSupply] = useState<any>(null);
+
+  // ── Propuesta 1 (Modelos Predictivos): predicción real de cantidad a surtir ──
+  const [forecast, setForecast] = useState<any>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [forecastError, setForecastError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -66,6 +73,30 @@ export default function AdminSupplyAnalysisPage() {
 
     loadData();
   }, [id]);
+
+  useEffect(() => {
+    const supplyId = supply?.id;
+    if (!supplyId || !UUID_REGEX.test(supplyId)) {
+      setForecast(null);
+      return;
+    }
+
+    const loadForecast = async () => {
+      setForecastLoading(true);
+      setForecastError(null);
+      try {
+        const res = await AdminService.getSupplyForecast(supplyId);
+        if (res.success) setForecast(res.data);
+        else setForecastError(res.message || 'No se pudo calcular la predicción.');
+      } catch (e: any) {
+        setForecastError(e?.message || 'No se pudo calcular la predicción real.');
+      } finally {
+        setForecastLoading(false);
+      }
+    };
+
+    loadForecast();
+  }, [supply]);
 
   // Auxiliares para el modelo exponencial
   const getWeekIndex = (dateStr: string) => {
@@ -222,9 +253,108 @@ export default function AdminSupplyAnalysisPage() {
            ))}
         </div>
 
+        {/* Predicción de Surtido — Modelo Real (Propuesta 1: Regresión + Módulo de Temporada) */}
+        <GlassCard className="p-8 border-emerald-100 dark:border-emerald-900/40">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-emerald-600 flex items-center justify-center">
+                <BarChart2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase">Predicción de Surtido — Modelo Real</h3>
+                <p className="text-[9px] font-bold text-emerald-600/70 uppercase tracking-widest">Regresión sobre consumo semanal + módulo de temporada (BD)</p>
+              </div>
+            </div>
+            {forecast?.temporadaObjetivo && (
+              <span className="px-3 py-1.5 bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-black rounded-full uppercase tracking-widest">
+                🎉 {forecast.temporadaObjetivo}
+              </span>
+            )}
+          </div>
+
+          {!UUID_REGEX.test(supply.id) ? (
+            <div className="p-6 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-center">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Este insumo es de catálogo de demostración. Selecciona un insumo real desde Inventario para ver la predicción calculada con datos reales de la base de datos.
+              </p>
+            </div>
+          ) : forecastLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+            </div>
+          ) : forecastError ? (
+            <div className="p-6 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-900/40 text-center">
+              <AlertCircle className="w-6 h-6 text-rose-500 mx-auto mb-2" />
+              <p className="text-xs font-bold text-rose-600 dark:text-rose-400">{forecastError}</p>
+            </div>
+          ) : forecast ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Historial semanal (consumo real registrado, últimas {Math.min(forecast.historico.length, 10)} semanas)
+                </p>
+                {forecast.historico.length === 0 ? (
+                  <div className="p-6 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+                    <p className="text-xs font-bold text-slate-400">Aún no hay movimientos de tipo SALIDA registrados para este insumo.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden border border-slate-100 dark:border-slate-800 rounded-2xl">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50/50 dark:bg-slate-900/50 text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                        <tr>
+                          <th className="px-4 py-3">Semana</th>
+                          <th className="px-4 py-3">Temporada</th>
+                          <th className="px-4 py-3 text-right">Consumido</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                        {forecast.historico.slice(-10).map((w: any) => (
+                          <tr key={w.semana} className="text-[11px]">
+                            <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-300">{w.semana}</td>
+                            <td className="px-4 py-2.5">
+                              {w.temporada ? (
+                                <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[8px] font-black rounded uppercase">{w.temporada}</span>
+                              ) : (
+                                <span className="text-slate-300 text-[9px]">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-black font-mono text-rose-500">-{w.cantidadConsumida} {supply.unidadMedida ?? supply.unidad_medida ?? ''}</td>
+                          </tr>
+                        ))}
+                        <tr className="text-[11px] bg-emerald-50/50 dark:bg-emerald-900/10">
+                          <td className="px-4 py-2.5 font-black text-emerald-700 dark:text-emerald-400">{forecast.semanaObjetivo} (predicción)</td>
+                          <td className="px-4 py-2.5">
+                            {forecast.temporadaObjetivo ? (
+                              <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[8px] font-black rounded uppercase">{forecast.temporadaObjetivo}</span>
+                            ) : <span className="text-slate-300 text-[9px]">—</span>}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-black font-mono text-emerald-600">+{forecast.cantidadSugerida} {supply.unidadMedida ?? supply.unidad_medida ?? ''}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-400 font-medium italic leading-relaxed">{forecast.metodoCalculo}</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-6 bg-emerald-600 rounded-[2rem] shadow-xl shadow-emerald-500/20 text-center">
+                  <p className="text-[10px] font-black text-emerald-100 uppercase tracking-widest mb-2">Cantidad sugerida a surtir</p>
+                  <p className="text-5xl font-black text-white font-mono">{forecast.cantidadSugerida}</p>
+                  <p className="text-[10px] font-bold text-emerald-100 uppercase mt-2">{supply.unidadMedida ?? supply.unidad_medida ?? 'u'} · semana {forecast.semanaObjetivo}</p>
+                </div>
+                <div className="p-5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cobertura con stock actual</p>
+                  <p className="text-2xl font-black text-slate-900 dark:text-white font-mono">{forecast.coberturaStockPct}%</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </GlassCard>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           
-           {/* Gráfica y Tabla de Movimientos */}
+
+           {/* Gráfica y Tabla de Movimientos (simulación exponencial — referencia) */}
            <div className="lg:col-span-2 space-y-6">
               <GlassCard className="p-8">
                  <div className="flex items-center justify-between mb-8">
@@ -332,7 +462,7 @@ export default function AdminSupplyAnalysisPage() {
                        <BarChart2 className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                       <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase">Modelo Predictivo BI</h3>
+                       <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase">Simulación Exponencial (Referencia)</h3>
                        <p className="text-[9px] font-bold text-blue-600/60 uppercase tracking-widest">Configuración de Tasa de Venta</p>
                     </div>
                  </div>

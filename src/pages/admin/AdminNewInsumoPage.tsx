@@ -16,6 +16,26 @@ const inputBase =
   'w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 outline-none transition-all focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder:text-slate-400 dark:placeholder:text-slate-600';
 const labelBase = 'block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5';
 
+function FieldLabel({ children, hint, required }: { children: React.ReactNode; hint?: string; required?: boolean }) {
+  return (
+    <div className="mb-1.5">
+      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+        {children}{required && <span className="text-rose-400"> *</span>}
+      </label>
+      {hint && <p className="text-[11px] font-normal normal-case text-slate-400 dark:text-slate-500 mt-0.5">{hint}</p>}
+    </div>
+  );
+}
+
+function GroupCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-slate-50/60 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-700/60 rounded-xl p-5 space-y-4">
+      <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{title}</p>
+      {children}
+    </div>
+  );
+}
+
 type FormState = {
   nombre: string;
   sucursal: string;
@@ -214,17 +234,15 @@ export default function AdminNewInsumoPage() {
         <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
           <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Configuración de inventario</p>
           <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                checked={form.esFlorPrimaria}
-                onChange={(e) => setForm(prev => ({ ...prev, esFlorPrimaria: e.target.checked }))}
-                className="size-4 rounded border-slate-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500 bg-white dark:bg-slate-900"
-              />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors uppercase tracking-widest flex items-center gap-1">
-                <Star className={`w-3 h-3 ${form.esFlorPrimaria ? 'fill-amber-400 text-amber-400' : ''}`} /> Flor Primaria
+            <button
+              type="button"
+              onClick={() => setForm(prev => ({ ...prev, esFlorPrimaria: !prev.esFlorPrimaria }))}
+              className="flex items-center gap-2 cursor-pointer group"
+            >
+              <span className={`text-xs font-bold uppercase tracking-widest flex items-center gap-1 transition-colors ${form.esFlorPrimaria ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-amber-700 dark:group-hover:text-amber-300'}`}>
+                <Star className={`w-4 h-4 ${form.esFlorPrimaria ? 'fill-amber-400 text-amber-400' : ''}`} /> Flor Primaria
               </span>
-            </label>
+            </button>
             <label className="flex items-center gap-2 cursor-pointer group">
               <input 
                 type="checkbox" 
@@ -237,106 +255,110 @@ export default function AdminNewInsumoPage() {
           </div>
         </div>
 
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
-          
-          {/* Columna Izquierda: Formulario (Col 7) */}
-          <div className="lg:col-span-7 space-y-5">
-            {/* Nombre */}
-            <div>
-              <label className={labelBase}>Nombre del insumo *</label>
-              <input
-                type="text"
-                value={form.nombre}
-                onChange={set('nombre')}
-                className={`${inputBase} ${errors.nombre ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-400' : ''}`}
-                placeholder="Ej. Espuma floral verde, Cinta dorada, Base cerámica..."
-              />
-              {errors.nombre && (
-                <p className="mt-1 text-xs text-rose-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />{errors.nombre}
-                </p>
-              )}
-            </div>
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Sucursal */}
-              <div>
-                <label className={labelBase}>Sucursal (Almacén) *</label>
-                <select
-                  value={form.sucursal}
-                  onChange={set('sucursal')}
-                  className={`${inputBase} ${errors.sucursal ? 'border-rose-400' : ''}`}
-                >
-                  <option value="Sucursal Principal">Sucursal Principal</option>
-                  <option value="Almacen">Almacén</option>
-                </select>
-              </div>
+          {/* Columna Izquierda: Formulario */}
+          <div className="space-y-6">
 
-              {/* Unidad de Medida */}
+            <GroupCard title="Información general">
+              {/* Nombre */}
               <div>
-                <label className={labelBase}>Unidad de medida *</label>
-                <select
-                  value={form.unidadMedida}
-                  onChange={set('unidadMedida')}
-                  className={inputBase}>
-                  {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {/* Stock Actual */}
-              <div>
-                <label className={labelBase}>Existencia *</label>
+                <FieldLabel required hint="Así aparecerá en catálogos y recetas">¿Cómo se llama este insumo?</FieldLabel>
                 <input
-                  type="number"
-                  value={form.stockActual}
-                  onChange={set('stockActual')}
-                  className={`${inputBase} ${errors.stockActual ? 'border-rose-400' : ''}`}
+                  type="text"
+                  value={form.nombre}
+                  onChange={set('nombre')}
+                  className={`${inputBase} ${errors.nombre ? 'border-rose-400 focus:ring-rose-500/20 focus:border-rose-400' : ''}`}
+                  placeholder="Ej. Espuma floral verde, Cinta dorada, Base cerámica..."
                 />
+                {errors.nombre && (
+                  <p className="mt-1 text-xs text-rose-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />{errors.nombre}
+                  </p>
+                )}
               </div>
 
-              {/* Stock Mínimo */}
-              <div>
-                <label className={labelBase}>Mínimo *</label>
-                <input
-                  type="number"
-                  value={form.stockMinimo}
-                  onChange={set('stockMinimo')}
-                  className={`${inputBase} ${errors.stockMinimo ? 'border-rose-400' : ''}`}
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Sucursal */}
+                <div>
+                  <FieldLabel required hint="Sucursal o almacén donde se guarda">¿Dónde se guarda?</FieldLabel>
+                  <select
+                    value={form.sucursal}
+                    onChange={set('sucursal')}
+                    className={`${inputBase} ${errors.sucursal ? 'border-rose-400' : ''}`}
+                  >
+                    <option value="Sucursal Principal">Sucursal Principal</option>
+                    <option value="Almacen">Almacén</option>
+                  </select>
+                </div>
 
-              {/* Precio Costo */}
-              <div>
-                <label className={labelBase}>Costo Unitario *</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 dark:text-slate-500 text-xs">$</span>
-                  <input
-                    type="number"
-                    value={form.precioCosto}
-                    onChange={set('precioCosto')}
-                    className={`${inputBase} pl-6`}
-                    placeholder="0.00"
-                    step="0.01"
-                  />
+                {/* Unidad de Medida */}
+                <div>
+                  <FieldLabel required hint="Ej. pieza, metro, paquete...">¿Cómo se mide o se cuenta?</FieldLabel>
+                  <select
+                    value={form.unidadMedida}
+                    onChange={set('unidadMedida')}
+                    className={inputBase}>
+                    {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
                 </div>
               </div>
-            </div>
+            </GroupCard>
+
+            <GroupCard title="Inventario y costo">
+              <div className="grid grid-cols-3 gap-4">
+                {/* Stock Actual */}
+                <div>
+                  <FieldLabel required hint="Cantidad disponible ahora">¿Cuántos hay?</FieldLabel>
+                  <input
+                    type="number"
+                    value={form.stockActual}
+                    onChange={set('stockActual')}
+                    className={`${inputBase} ${errors.stockActual ? 'border-rose-400' : ''}`}
+                  />
+                </div>
+
+                {/* Stock Mínimo */}
+                <div>
+                  <FieldLabel required hint="Si baja de aquí, se avisa">¿Cuándo avisar?</FieldLabel>
+                  <input
+                    type="number"
+                    value={form.stockMinimo}
+                    onChange={set('stockMinimo')}
+                    className={`${inputBase} ${errors.stockMinimo ? 'border-rose-400' : ''}`}
+                  />
+                </div>
+
+                {/* Precio Costo */}
+                <div>
+                  <FieldLabel required hint="Costo de compra por unidad">¿Cuánto cuesta cada uno?</FieldLabel>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 dark:text-slate-500 text-xs">$</span>
+                    <input
+                      type="number"
+                      value={form.precioCosto}
+                      onChange={set('precioCosto')}
+                      className={`${inputBase} pl-6`}
+                      placeholder="0.00"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+              </div>
+            </GroupCard>
           </div>
 
-          {/* Columna Derecha: Imagen (Col 5) */}
-          <div className="lg:col-span-5">
-            <div className="h-full">
-              <ImageUploader
-                label="Imagen del insumo"
-                hint="Se subirá al presionar Guardar"
-                onFileSelect={setSelectedFile}
-                isUploading={isUploading}
-                existingUrl={isEdit ? form.imagenUrl : undefined}
-                uploadedUrl={uploadedUrl}
-              />
-            </div>
+          {/* Columna Derecha: Imagen */}
+          <div className="h-full">
+            <ImageUploader
+              label="Imagen del insumo"
+              hint="Se subirá al presionar Guardar"
+              onFileSelect={setSelectedFile}
+              isUploading={isUploading}
+              existingUrl={isEdit ? form.imagenUrl : undefined}
+              uploadedUrl={uploadedUrl}
+              square
+            />
           </div>
 
         </div>

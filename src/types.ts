@@ -86,6 +86,10 @@ export interface SiteSettings {
   telefono: string;
   correo: string;
   direccion: string;
+  direccionUrl: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  whatsappUrl: string;
   bannerTitulo: string;
   bannerSubtitulo: string;
   bannerCta: string;

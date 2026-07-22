@@ -398,16 +398,16 @@ export default function ProductManagementPage() {
               <p className={secTitle}><Info className="w-3.5 h-3.5 text-blue-500" /> Información Básica</p>
               <div className="space-y-3">
                 <div>
-                  <label className={lbl}>Nombre <span className="text-red-500">*</span></label>
+                  <label className={lbl}>¿Cómo se llama el producto? <span className="text-red-500">*</span></label>
                   <input type="text" value={form.nombre} onChange={e => set('nombre', e.target.value)} placeholder="Ej. Ramo de Rosas Premium" className={inp} />
                 </div>
                 <div>
-                  <label className={lbl}>Descripción</label>
+                  <label className={lbl}>¿Cómo lo describimos al cliente?</label>
                   <textarea value={form.descripcion} onChange={e => set('descripcion', e.target.value)} placeholder="Describe el producto..." className={`${inp} resize-none h-16`} />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className={lbl}>Precio de Venta (Público) <span className="text-red-500">*</span></label>
+                    <label className={lbl}>¿Cuánto le cobramos al cliente? <span className="text-red-500">*</span></label>
                     {margenGanancia > 0 && (
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${margenGanancia > 40 ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'}`}>
                         Margen: {margenGanancia.toFixed(0)}%
@@ -438,11 +438,11 @@ export default function ProductManagementPage() {
 
             {/* Receta del arreglo */}
             <div className={sec}>
-              <p className={secTitle}><FlaskConical className="w-3.5 h-3.5 text-indigo-500" /> Receta del Arreglo (Insumos)</p>
+              <p className={secTitle}><FlaskConical className="w-3.5 h-3.5 text-indigo-500" /> ¿Con qué se arma el arreglo?</p>
 
               {/* Inventory search */}
               <div className="mb-3">
-                <label className={lbl}>Agregar insumo</label>
+                <label className={lbl}>Busca una flor o insumo para agregarlo</label>
                 <InventorySearch onSelect={addToRecipe} />
               </div>
 
@@ -531,10 +531,10 @@ export default function ProductManagementPage() {
 
             {/* Categorías y catálogos */}
             <div className={sec}>
-              <p className={secTitle}><Tag className="w-3.5 h-3.5 text-amber-500" /> Categorías y Catálogos (Festividades)</p>
+              <p className={secTitle}><Tag className="w-3.5 h-3.5 text-amber-500" /> ¿Dónde aparece este producto?</p>
               <div className="space-y-3">
                 <div>
-                  <label className={lbl}>Categorías</label>
+                  <label className={lbl}>¿Con qué etiquetas lo encuentran?</label>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {form.categorias.map(cat => (
                       <span key={cat} className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-800/50 rounded-full text-xs font-bold">
@@ -577,7 +577,7 @@ export default function ProductManagementPage() {
                   </div>
                 </div>
                 <div>
-                  <label className={lbl}>Catálogos (Festividades)</label>
+                  <label className={lbl}>¿Para qué festividad o catálogo aplica?</label>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {form.catalogos.map(col => (
                       <span key={col} className="flex items-center gap-1 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 rounded-full text-xs font-bold">
@@ -627,7 +627,7 @@ export default function ProductManagementPage() {
           <div className="space-y-4">
             {/* Imágenes */}
             <div className={sec}>
-              <p className={secTitle}><ImagePlus className="w-3.5 h-3.5 text-pink-500" /> Imágenes del Producto</p>
+              <p className={secTitle}><ImagePlus className="w-3.5 h-3.5 text-pink-500" /> ¿Qué foto lo representa?</p>
               <ImageUploader
                 label="Imagen principal"
                 hint="Se subirá al presionar Guardar"
@@ -640,22 +640,22 @@ export default function ProductManagementPage() {
 
             {/* Clasificación */}
             <div className={sec}>
-              <p className={secTitle}><Layers className="w-3.5 h-3.5 text-purple-500" /> Clasificación</p>
+              <p className={secTitle}><Layers className="w-3.5 h-3.5 text-purple-500" /> Detalles del producto</p>
               <div className="space-y-3">
                 <div>
-                  <label className={lbl}>Tipo</label>
+                  <label className={lbl}>¿Qué tipo de producto es?</label>
                   <select value={form.tipo} onChange={e => set('tipo', e.target.value)} className={inp}>
                     {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={lbl}>Estado</label>
+                  <label className={lbl}>¿Está activo o pausado?</label>
                   <select value={form.estado} onChange={e => set('estado', e.target.value)} className={inp}>
                     {ESTADOS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={lbl}>Visibilidad</label>
+                  <label className={lbl}>¿Quién puede verlo?</label>
                   <select value={form.visibilidad} onChange={e => set('visibilidad', e.target.value)} className={inp}>
                     {VISIBILIDAD_OPTIONS.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
                   </select>
@@ -665,7 +665,7 @@ export default function ProductManagementPage() {
 
             {/* Personalizable */}
             <div className={sec}>
-              <p className={secTitle}><Settings className="w-3.5 h-3.5 text-emerald-500" /> Personalización</p>
+              <p className={secTitle}><Settings className="w-3.5 h-3.5 text-emerald-500" /> ¿Se puede personalizar?</p>
               <div className="flex items-center gap-3">
                 <div onClick={() => set('esPersonalizable', !form.esPersonalizable)} className="cursor-pointer">
                   <div className={`relative w-10 h-5 rounded-full transition-colors ${form.esPersonalizable ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`}>

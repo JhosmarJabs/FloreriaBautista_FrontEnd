@@ -30,10 +30,15 @@ interface CatalogForm {
   temporada: string;
   fechaInicio: string;
   fechaFin: string;
+  mesDiaInicio: string;
+  mesDiaFin: string;
   estado: 'ACTIVO' | 'INACTIVO' | 'PROGRAMADO';
   imagenUrl: string;
   productosIds: string[];
 }
+
+// MM-DD (ej. "02-07"). Se valida en blur para no interrumpir mientras el admin escribe.
+const esMesDiaValido = (v: string) => /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(v);
 
 export default function AdminNewCatalogPage() {
   const navigate = useNavigate();
@@ -47,6 +52,8 @@ export default function AdminNewCatalogPage() {
     temporada: '',
     fechaInicio: '',
     fechaFin: '',
+    mesDiaInicio: '',
+    mesDiaFin: '',
     estado: 'ACTIVO',
     imagenUrl: '',
     productosIds: [],
@@ -77,6 +84,8 @@ export default function AdminNewCatalogPage() {
             temporada: cat.temporada || '',
             fechaInicio: cat.fechaInicio ? cat.fechaInicio.split('T')[0] : '',
             fechaFin: cat.fechaFin ? cat.fechaFin.split('T')[0] : '',
+            mesDiaInicio: cat.mesDiaInicio || '',
+            mesDiaFin: cat.mesDiaFin || '',
             estado: cat.estado === 'ACTIVA' ? 'ACTIVO' : (cat.estado === 'INACTIVA' ? 'INACTIVO' : 'PROGRAMADO'),
             imagenUrl: cat.imagenUrl || '',
             productosIds: cat.productCatalogos ? cat.productCatalogos.map((pc: any) => pc.productId) : [],
@@ -120,7 +129,12 @@ export default function AdminNewCatalogPage() {
       showToast('El nombre del catálogo es obligatorio', 'error');
       return;
     }
-    
+
+    if ((form.mesDiaInicio && !esMesDiaValido(form.mesDiaInicio)) || (form.mesDiaFin && !esMesDiaValido(form.mesDiaFin))) {
+      showToast('La ventana de festividad debe tener formato MM-DD (ej. 02-14)', 'error');
+      return;
+    }
+
     setSaving(true);
     let finalImageUrl = form.imagenUrl;
 
@@ -146,6 +160,8 @@ export default function AdminNewCatalogPage() {
         estado: form.estado === 'ACTIVO' ? 'ACTIVA' : (form.estado === 'PROGRAMADO' ? 'PROGRAMADA' : 'INACTIVA'),
         activo: form.estado === 'ACTIVO',
         imagenUrl: finalImageUrl,
+        mesDiaInicio: form.mesDiaInicio || null,
+        mesDiaFin: form.mesDiaFin || null,
         productCatalogos: form.productosIds.map(pid => ({ productId: pid }))
       };
 
@@ -287,6 +303,38 @@ export default function AdminNewCatalogPage() {
                     className={`${inputBase} pl-10`}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="md:col-span-2">
+                <label className={labelBase}>Ventana de festividad (Modelo Predictivo BI)</label>
+                <p className="text-[11px] text-slate-400 font-medium mb-2">
+                  Formato <strong>MM-DD</strong>, sin año (se repite cada año). Ej. San Valentín: 02-07 a 02-14. Se usa para
+                  detectar automáticamente la temporada al predecir cuánto insumo surtir.
+                </p>
+              </div>
+              <div>
+                <label className={labelBase}>Mes-Día Inicio</label>
+                <input
+                  type="text"
+                  value={form.mesDiaInicio}
+                  onChange={e => setForm({ ...form, mesDiaInicio: e.target.value })}
+                  placeholder="02-07"
+                  maxLength={5}
+                  className={`${inputBase} font-mono ${form.mesDiaInicio && !esMesDiaValido(form.mesDiaInicio) ? 'border-rose-300 focus:ring-rose-200 focus:border-rose-400' : ''}`}
+                />
+              </div>
+              <div>
+                <label className={labelBase}>Mes-Día Fin</label>
+                <input
+                  type="text"
+                  value={form.mesDiaFin}
+                  onChange={e => setForm({ ...form, mesDiaFin: e.target.value })}
+                  placeholder="02-14"
+                  maxLength={5}
+                  className={`${inputBase} font-mono ${form.mesDiaFin && !esMesDiaValido(form.mesDiaFin) ? 'border-rose-300 focus:ring-rose-200 focus:border-rose-400' : ''}`}
+                />
               </div>
             </div>
           </motion.div>

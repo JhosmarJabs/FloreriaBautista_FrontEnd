@@ -21,6 +21,7 @@ import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
 import { FadeIn } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
+import { parseApiDate } from '../../utils/date';
 
 // Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs)
 const ESTADOS_FLUJO = [
@@ -206,7 +207,7 @@ export default function OrderDetailPage() {
             <div className="flex items-center gap-3">
               <Clock className="w-4 h-4 text-emerald-500 shrink-0" />
               <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
-                Entrega: {new Date(order.fechaEntrega).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Entrega: {parseApiDate(order.fechaEntrega)?.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
                 {order.horaEntrega ? ` — ${order.horaEntrega}` : ''}
               </p>
             </div>

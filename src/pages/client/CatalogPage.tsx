@@ -15,7 +15,6 @@ import {
   AlertTriangle,
   Search,
   ShoppingCart,
-  Eye,
   UploadCloud,
   DownloadCloud,
 } from "lucide-react";
@@ -31,6 +30,7 @@ import {
   AnimatedButton,
 } from "../../components/Animations";
 import ImportModal from "../../components/ImportModal";
+import { esCliente } from "../../utils/auth";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -53,7 +53,7 @@ export default function CatalogPage() {
   const [selectedType, setSelectedType] = useState("Todos los tipos");
   const [showInStockOnly, setShowInStockOnly] = useState("Todas");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 18;
 
   useEffect(() => {
     let currentUserRole = null;
@@ -123,7 +123,7 @@ export default function CatalogPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+    const filtered = products.filter((product) => {
       const matchesSearch =
         product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.id.toLowerCase().includes(searchTerm.toLowerCase());
@@ -134,6 +134,14 @@ export default function CatalogPage() {
         selectedType === "Todos los tipos" || product.tipo === selectedType;
       const matchesStock = showInStockOnly === "Todas" || (product.stock ?? 0) > 0;
       return matchesSearch && matchesCategory && matchesPrice && matchesType && matchesStock;
+    });
+
+    // Orden: primero los que SÍ tienen imagen, luego alfabéticamente por nombre.
+    const tieneImagen = (p: Product) => (p.imagenUrl && p.imagenUrl.trim() ? 1 : 0);
+    return filtered.sort((a, b) => {
+      const imgDiff = tieneImagen(b) - tieneImagen(a);
+      if (imgDiff !== 0) return imgDiff;
+      return a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" });
     });
   }, [products, searchTerm, selectedCategory, priceRange, selectedType, showInStockOnly]);
 
@@ -153,7 +161,7 @@ export default function CatalogPage() {
   ] as string[];
 
   const handleAddToCart = (product: Product) => {
-    if (user && (user.role === "cliente" || user.role === "customer")) {
+    if (esCliente(user)) {
       addToCart(product);
       showToast(`¡${product.nombre} añadido al carrito!`, "success");
     } else {
@@ -416,14 +424,14 @@ export default function CatalogPage() {
 
   // Customer View
   return (
-    <main className="w-full px-4 sm:px-6 lg:px-8 py-12 pt-32 min-h-screen font-sans overflow-hidden" style={{ zoom: 0.75 }}>
+    <main className="w-full px-6 sm:px-8 lg:px-12 xl:px-16 py-12 pt-32 min-h-screen font-sans overflow-hidden">
       <FadeIn className="mb-12">
-        <div className="relative w-full bg-gradient-to-br from-[#1A3B5B] via-[#2A527A] to-[#1A3B5B] rounded-[3rem] p-10 md:p-16 mb-12 overflow-hidden shadow-2xl shadow-blue-900/20">
+        <div className="relative w-full bg-gradient-to-br from-[#1A3B5B] via-[#2A527A] to-[#1A3B5B] rounded-[3rem] p-[30px] mb-12 overflow-hidden shadow-2xl shadow-blue-900/20">
           {/* Background Decorations */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#FBBF24] rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-400 rounded-full blur-[120px] opacity-20 translate-y-1/2 -translate-x-1/2"></div>
           
-          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 max-w-7xl mx-auto">
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 px-4 md:px-8">
             <div className="max-w-2xl">
               <span className="inline-block py-1.5 px-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white/90 text-sm font-black tracking-widest uppercase mb-6">
                 Descubre la magia
@@ -514,7 +522,7 @@ export default function CatalogPage() {
         </div>
       </FadeIn>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-6 gap-y-8">
         <AnimatePresence mode="popLayout">
           {paginatedProducts.length > 0 ? (
             paginatedProducts.map((product) => (
@@ -523,74 +531,55 @@ export default function CatalogPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.3 }}
                 layout
-                whileHover={{ y: -10 }}
-                className="group bg-white rounded-[2.5rem] overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 border border-slate-100 flex flex-col relative"
+                whileHover={{ y: -4 }}
+                className="group bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl hover:border-slate-300 transition-shadow duration-300 flex flex-col relative"
               >
-                <div className="relative aspect-[4/5] overflow-hidden rounded-t-[2.5rem] m-2.5">
-                   {product.imagenUrl ? (
-                    <motion.div
-                      className="absolute inset-0 bg-center bg-cover rounded-[2rem]"
-                      style={{ backgroundImage: `url('${product.imagenUrl}')` }}
-                      whileHover={{ scale: 1.15 }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-slate-50 flex items-center justify-center rounded-[2rem]">
-                      <Package className="w-16 h-16 text-slate-200" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1A3B5B]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[2rem]" />
+                <Link to={`/producto/${product.id}`} className="flex flex-col flex-1">
+                  <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
+                    {product.imagenUrl ? (
+                      <img
+                        src={product.imagenUrl}
+                        alt={product.nombre}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Package className="w-12 h-12 text-slate-200" />
+                      </div>
+                    )}
 
-                  {(product.stock ?? 0) <= 5 && (product.stock ?? 0) > 0 && (
-                    <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-xl flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" /> Pocos
-                    </div>
-                  )}
-
-                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black text-[#1A3B5B] uppercase tracking-widest shadow-lg">
-                    {product.tipo}
+                    {(product.stock ?? 0) <= 5 && (product.stock ?? 0) > 0 && (
+                      <div className="absolute top-3 left-3 bg-red-500 px-3 py-1 rounded-full text-[10px] font-bold text-white uppercase tracking-wide flex items-center gap-1 shadow-md">
+                        <AlertCircle className="w-3 h-3" /> Pocos
+                      </div>
+                    )}
                   </div>
 
-                  <div className="absolute inset-0 flex items-center justify-center gap-4 translate-y-8 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10">
-                    <Link
-                      to={`/producto/${product.id}`}
-                      className="p-4 bg-white rounded-full text-[#1A3B5B] hover:bg-[#FBBF24] hover:text-white hover:scale-110 transition-all shadow-2xl"
-                    >
-                      <Eye className="w-6 h-6" />
-                    </Link>
-                  </div>
-                </div>
+                  <div className="px-4 pt-3 flex flex-col flex-1">
+                    <span className="self-start bg-slate-100 text-slate-500 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide mb-2">
+                      {product.tipo}
+                    </span>
 
-                <div className="p-8 pt-6 flex flex-col flex-1">
-                  <div className="mb-4">
-                    <h3 className="text-xl font-black text-[#1A3B5B] group-hover:text-[#FBBF24] transition-colors leading-tight mb-2 line-clamp-1">
+                    <h3 className="text-sm font-bold text-slate-800 leading-snug line-clamp-2">
                       {product.nombre}
                     </h3>
-                    <p className="text-slate-500 text-sm font-medium line-clamp-2 leading-relaxed">
-                      Diseño floral exclusivo que robará corazones al instante.
-                    </p>
                   </div>
+                </Link>
 
-                  <div className="mt-auto pt-4 border-t border-slate-50">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio</span>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-black text-[#1A3B5B]">${product.precioBase.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <AnimatedButton
-                      className="w-full bg-[#1A3B5B] group-hover:bg-[#FBBF24] text-white group-hover:text-[#1A3B5B] py-4 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-colors duration-300 shadow-xl shadow-blue-900/10"
-                      onClick={() => handleAddToCart(product)}
-                    >
-                      <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110 group-hover:-rotate-12" />
-                      Lo Quiero
-                    </AnimatedButton>
-                  </div>
+                <div className="px-4 pb-4 pt-2 flex items-center justify-between gap-2">
+                  <span className="text-xl font-black text-[#1A3B5B]">
+                    ${product.precioBase.toLocaleString()}
+                  </span>
+                  <AnimatedButton
+                    className="w-10 h-10 shrink-0 rounded-full bg-[#1A3B5B] hover:bg-[#FBBF24] text-white hover:text-[#1A3B5B] flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300"
+                    onClick={() => handleAddToCart(product)}
+                    aria-label={`Agregar ${product.nombre} al carrito`}
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                  </AnimatedButton>
                 </div>
               </motion.div>
             ))

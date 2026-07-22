@@ -3,7 +3,9 @@ import { motion } from 'motion/react';
 import { MapPin, Phone, Mail, Send, MessageSquare } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { CmsService } from '../../services/cmsService';
+import { AdminService } from '../../services/adminService';
 import { SiteSettings } from '../../types';
+import { groupHorarios } from '../../utils/horarios';
 
 export default function ContactPage() {
   const { showToast } = useToast();
@@ -20,6 +22,36 @@ export default function ContactPage() {
 
   useEffect(() => {
     CmsService.getSettings().then(setSettings).catch(() => { /* usa los valores por defecto del markup */ });
+  }, []);
+
+  // Si el usuario tiene sesión iniciada, autocompleta sus datos de contacto.
+  useEffect(() => {
+    const prefillUser = async () => {
+      let u: any = null;
+      try {
+        const res = await AdminService.getCurrentUser();
+        u = res.data;
+      } catch {
+        const stored = localStorage.getItem('usuario') || localStorage.getItem('user');
+        if (stored) {
+          try { u = JSON.parse(stored); } catch { u = null; }
+        }
+      }
+      if (!u) return;
+
+      const nombre = [u.nombre, u.apellido].filter(Boolean).join(' ').trim() || u.name || '';
+      const correo = u.correo || u.email || '';
+      const telefono = u.telefono || u.phone || '';
+
+      // Solo rellena campos vacíos para no sobreescribir lo que el usuario escriba.
+      setFormData(prev => ({
+        ...prev,
+        name: prev.name || nombre,
+        email: prev.email || correo,
+        phone: prev.phone || telefono,
+      }));
+    };
+    prefillUser();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -86,9 +118,20 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-800 mb-1">Dirección</h4>
-                  <p className="text-slate-600 text-sm leading-relaxed">
-                    {settings?.direccion || 'Av. Principal S/N, Centro, Huitzitzilingo, Hidalgo, México'}
-                  </p>
+                  {settings?.direccion && settings?.direccionUrl ? (
+                    <a
+                      href={settings.direccionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-slate-600 hover:text-brand-deep text-sm leading-relaxed underline decoration-dotted"
+                    >
+                      {settings.direccion}
+                    </a>
+                  ) : (
+                    <p className="text-slate-600 text-sm leading-relaxed">
+                      {settings?.direccion || 'Av. Principal S/N, Centro, Huitzitzilingo, Hidalgo, México'}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -120,17 +163,16 @@ export default function ContactPage() {
               <div className="pt-4 border-t border-slate-100">
                 <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Horario de Atención</h4>
                 <ul className="space-y-2 text-sm text-slate-600">
-                  {(settings?.horarios ?? []).map(h => (
-                    <li key={h.dia} className="flex justify-between">
-                      <span>{h.dia}</span>
-                      <span className="font-medium text-slate-800">{h.cerrado ? 'Cerrado' : `${h.apertura} - ${h.cierre}`}</span>
+                  {groupHorarios(settings?.horarios ?? []).map(g => (
+                    <li key={g.label} className="flex justify-between">
+                      <span>{g.label}</span>
+                      <span className="font-medium text-slate-800">{g.value}</span>
                     </li>
                   ))}
                   {(!settings || settings.horarios.length === 0) && (
                     <>
-                      <li className="flex justify-between"><span>Lunes - Viernes</span><span className="font-medium text-slate-800">8:00 AM - 8:00 PM</span></li>
-                      <li className="flex justify-between"><span>Sábados</span><span className="font-medium text-slate-800">9:00 AM - 6:00 PM</span></li>
-                      <li className="flex justify-between"><span>Domingos</span><span className="font-medium text-slate-800">9:00 AM - 2:00 PM</span></li>
+                      <li className="flex justify-between"><span>Lunes - Sábado</span><span className="font-medium text-slate-800">09:00 - 19:00</span></li>
+                      <li className="flex justify-between"><span>Domingo</span><span className="font-medium text-slate-800">Cerrado</span></li>
                     </>
                   )}
                 </ul>

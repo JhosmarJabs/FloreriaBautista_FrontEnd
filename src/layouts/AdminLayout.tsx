@@ -19,6 +19,7 @@ import {
   Layout as LayoutIcon,
   Library,
   Tag,
+  UsersRound,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -213,6 +214,15 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           >
             <BarChart3 className="w-5 h-5 flex-shrink-0" />
             <Label>Reportes</Label>
+          </Link>
+
+          {/* Segmentación de clientes (Modelos Predictivos — Propuesta 3) */}
+          <Link
+            to="/admin/clientes"
+            className={linkCls(isActive("/admin/clientes"))}
+          >
+            <UsersRound className="w-5 h-5 flex-shrink-0" />
+            <Label>Clientes (Segmentos)</Label>
           </Link>
 
           {/* 9. CMS — Personalizar */}

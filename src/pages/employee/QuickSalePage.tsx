@@ -12,28 +12,12 @@ import {
   AlertTriangle,
   RefreshCw,
   Settings,
-  Sparkles,
-  Leaf,
-  Gift,
-  Heart,
-  Calendar,
-  Layout,
   ShoppingBag,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
-import { Product, QuickSaleTemplate, QuickSaleTemplateItem } from '../../types';
+import { Product, AdminCatalogo } from '../../types';
 import { useToast } from '../../hooks/useToast';
-
-const ICON_MAP: Record<string, any> = { Sparkles, Leaf, Gift, Heart, Calendar, Layout, ShoppingBag };
-const COLOR_MAP: Record<string, string> = {
-  emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  rose:    'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400',
-  amber:   'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  blue:    'bg-blue-50 dark:bg-blue-500/10 text-[#1e3a5f] dark:text-blue-400',
-  indigo:  'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
-  slate:   'bg-slate-50 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400',
-};
 
 interface CartItem {
   id: string;
@@ -44,8 +28,12 @@ interface CartItem {
 
 export default function QuickSalePage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [templates, setTemplates] = useState<QuickSaleTemplate[]>([]);
-  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  // Las "plantillas" de venta rápida ahora son los catálogos: cada catálogo es
+  // una pestaña y sus productos se muestran para agregarlos con un solo toque.
+  const [catalogs, setCatalogs] = useState<AdminCatalogo[]>([]);
+  const [activeCatalogId, setActiveCatalogId] = useState<string | null>(null);
+  const [catalogProducts, setCatalogProducts] = useState<Record<string, Product[]>>({});
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -57,7 +45,9 @@ export default function QuickSalePage() {
     setLoading(true);
     setError(null);
     try {
-      const productsRes = await AdminService.getProducts({ size: 500 });
+      // Catálogo completo de empleado (incluye productos SOLO_SUCURSAL) para la
+      // búsqueda global.
+      const productsRes = await AdminService.getEmployeeProducts({ size: 500 });
       setProducts(productsRes.data.items);
     } catch (err: any) {
       setError(err.message || 'Error al cargar el catálogo');
@@ -66,28 +56,49 @@ export default function QuickSalePage() {
     }
     setLoading(false);
 
-    // Las plantillas son un complemento (accesos rápidos); si fallan no deben
-    // tumbar la Venta Rápida — el catálogo y la búsqueda siguen funcionando.
+    // Los catálogos alimentan las plantillas; si fallan, la búsqueda global
+    // sigue funcionando.
     try {
-      const templatesRes = await AdminService.getQuickSaleTemplates();
-      const loadedTemplates = templatesRes.data || [];
-      setTemplates(loadedTemplates);
-      setActiveTemplateId(prev => {
-        if (prev && loadedTemplates.some(t => t.id === prev)) return prev;
-        return loadedTemplates[0]?.id ?? null;
+      const catalogosData = await AdminService.getPublicCatalogos();
+      setCatalogs(catalogosData);
+      setActiveCatalogId(prev => {
+        if (prev && catalogosData.some(c => c.id === prev)) return prev;
+        return catalogosData[0]?.id ?? null;
       });
     } catch (err) {
-      console.error('Error loading quick sale templates:', err);
-      setTemplates([]);
+      console.error('Error loading catalogs:', err);
+      setCatalogs([]);
     }
   };
 
   useEffect(() => { load(); }, []);
 
-  const activeTemplate = useMemo(
-    () => templates.find(t => t.id === activeTemplateId) ?? null,
-    [templates, activeTemplateId]
+  // Carga perezosa de los productos del catálogo activo (se cachean por id para
+  // no re-consultar al cambiar de pestaña).
+  useEffect(() => {
+    const catalog = catalogs.find(c => c.id === activeCatalogId);
+    if (!catalog || catalogProducts[catalog.id]) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingCatalog(true);
+      try {
+        const res = await AdminService.getEmployeeProducts({ catalogo: catalog.nombre, size: 200 });
+        if (!cancelled) setCatalogProducts(prev => ({ ...prev, [catalog.id]: res.data.items }));
+      } catch (err) {
+        console.error('Error loading catalog products:', err);
+        if (!cancelled) setCatalogProducts(prev => ({ ...prev, [catalog.id]: [] }));
+      } finally {
+        if (!cancelled) setLoadingCatalog(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeCatalogId, catalogs, catalogProducts]);
+
+  const activeCatalog = useMemo(
+    () => catalogs.find(c => c.id === activeCatalogId) ?? null,
+    [catalogs, activeCatalogId]
   );
+  const activeCatalogProducts = activeCatalogId ? catalogProducts[activeCatalogId] : undefined;
 
   const resultadosBusqueda = useMemo(() => {
     if (!search.trim()) return [];
@@ -106,7 +117,6 @@ export default function QuickSalePage() {
   };
 
   const addToCart = (product: Product) => addItemToCart(product.id, product.nombre, product.precioBase);
-  const addTemplateItemToCart = (item: QuickSaleTemplateItem) => addItemToCart(item.productId, item.nombre, item.precio);
 
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => prev.map(item => {
@@ -193,20 +203,20 @@ export default function QuickSalePage() {
         />
       </div>
 
-      {/* Template tabs */}
-      {!search.trim() && templates.length > 0 && (
+      {/* Catalog tabs (plantillas) */}
+      {!search.trim() && catalogs.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
-          {templates.map(t => (
+          {catalogs.map(c => (
             <button
-              key={t.id}
-              onClick={() => setActiveTemplateId(t.id)}
+              key={c.id}
+              onClick={() => setActiveCatalogId(c.id)}
               className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                activeTemplateId === t.id
+                activeCatalogId === c.id
                   ? 'bg-[#1e3a5f] text-white shadow-lg'
                   : 'bg-white/70 dark:bg-slate-800/40 text-slate-400 border border-slate-100 dark:border-white/5 hover:text-[#1e3a5f]'
               }`}
             >
-              {t.nombre}
+              {c.nombre}
             </button>
           ))}
         </div>
@@ -227,24 +237,28 @@ export default function QuickSalePage() {
                   )}
                 </div>
               </>
-            ) : templates.length === 0 ? (
+            ) : catalogs.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 gap-4">
                 <ShoppingBag className="w-12 h-12 text-slate-200 dark:text-slate-700" />
-                <p className="text-slate-400 dark:text-slate-500 text-sm font-bold">Aún no hay plantillas de venta rápida configuradas.</p>
-                <Link to="/empleado/venta-rapida/config" className="px-5 py-2.5 bg-[#1e3a5f] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all">
-                  Configurar plantillas
-                </Link>
+                <p className="text-slate-400 dark:text-slate-500 text-sm font-bold">Aún no hay catálogos disponibles para venta rápida.</p>
+                <p className="text-slate-400 dark:text-slate-500 text-xs">Crea un catálogo activo desde administración y asígnale productos.</p>
               </div>
             ) : (
               <>
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{activeTemplate?.nombre}</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {activeTemplate?.items.map(item => (
-                    <TemplateItemBoton key={item.id} item={item} onClick={() => addTemplateItemToCart(item)} />
-                  ))}
-                </div>
-                {activeTemplate?.items.length === 0 && (
-                  <p className="text-center text-slate-400 text-sm py-10">Esta plantilla todavía no tiene botones configurados.</p>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{activeCatalog?.nombre}</h3>
+                {loadingCatalog && !activeCatalogProducts ? (
+                  <div className="flex-1 flex flex-col items-center justify-center py-16 gap-3">
+                    <Loader2 className="w-8 h-8 text-[#1e3a5f] animate-spin" />
+                    <p className="text-slate-400 text-sm font-bold">Cargando productos del catálogo...</p>
+                  </div>
+                ) : activeCatalogProducts && activeCatalogProducts.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {activeCatalogProducts.map(p => (
+                      <ProductoBoton key={p.id} producto={p} onClick={() => addToCart(p)} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-slate-400 text-sm py-10">Este catálogo todavía no tiene productos asignados.</p>
                 )}
               </>
             )}
@@ -349,21 +363,3 @@ function ProductoBoton({ producto, onClick }: { producto: Product; onClick: () =
   );
 }
 
-function TemplateItemBoton({ item, onClick }: { item: QuickSaleTemplateItem; onClick: () => void }) {
-  const Icon = ICON_MAP[item.icono] || Sparkles;
-  const colorCls = COLOR_MAP[item.color] || COLOR_MAP.blue;
-  return (
-    <motion.button
-      whileHover={{ scale: 1.05, y: -4 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick}
-      className="group relative flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-800 transition-all text-center"
-    >
-      <div className={`p-4 rounded-2xl ${colorCls} mb-4 shadow-sm transition-transform group-hover:scale-110`}>
-        <Icon className="w-8 h-8" />
-      </div>
-      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest leading-none h-6 flex items-center justify-center w-full">{item.nombre}</span>
-      <span className="text-base font-black text-[#1e3a5f] dark:text-[#eab308] mt-3 italic">${item.precio}</span>
-    </motion.button>
-  );
-}

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   ChevronRight, Layout, Image, Type, Star, Tag, Clock, Phone,
-  Save, Eye, Megaphone, RefreshCw,
+  Save, Eye, Megaphone, RefreshCw, MapPin, ExternalLink, Share2,
 } from 'lucide-react';
+import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa';
+import type { IconType } from 'react-icons';
 import { AdminService } from '../../services/adminService';
 import { Horario } from '../../types';
+import { useToast } from '../../hooks/useToast';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface HorarioItem extends Horario {}
@@ -37,6 +40,7 @@ function SectionHeader({ icon: Icon, color, title, description }: {
 
 // ─── Main component ──────────────────────────────────────────────────────────
 export default function AdminCmsPage() {
+  const { showToast } = useToast();
   const [bannerTitulo, setBannerTitulo] = useState('');
   const [bannerSubtitulo, setBannerSubtitulo] = useState('');
   const [bannerCta, setBannerCta] = useState('Ver catálogo');
@@ -44,7 +48,11 @@ export default function AdminCmsPage() {
   const [nombreTienda, setNombreTienda] = useState('Florería Bautista');
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
+  const [direccionUrl, setDireccionUrl] = useState('');
   const [correo, setCorreo] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [whatsappUrl, setWhatsappUrl] = useState('');
   const [destacados, setDestacados] = useState<string[]>([]);
   const [anuncioTexto, setAnuncioTexto] = useState('🌸 Envío gratis en pedidos mayores a $500 MXN');
   const [anuncioActivo, setAnuncioActivo] = useState(false);
@@ -62,7 +70,11 @@ export default function AdminCmsPage() {
       setNombreTienda(s.nombreTienda || 'Florería Bautista');
       setTelefono(s.telefono || '');
       setDireccion(s.direccion || '');
+      setDireccionUrl(s.direccionUrl || '');
       setCorreo(s.correo || '');
+      setFacebookUrl(s.facebookUrl || '');
+      setInstagramUrl(s.instagramUrl || '');
+      setWhatsappUrl(s.whatsappUrl || '');
       setBannerTitulo(s.bannerTitulo || '');
       setBannerSubtitulo(s.bannerSubtitulo || '');
       setBannerCta(s.bannerCta || 'Ver catálogo');
@@ -83,7 +95,8 @@ export default function AdminCmsPage() {
     setSaving(true);
     try {
       await AdminService.updateCms({
-        nombreTienda, telefono, direccion, correo,
+        nombreTienda, telefono, direccion, direccionUrl, correo,
+        facebookUrl, instagramUrl, whatsappUrl,
         bannerTitulo, bannerSubtitulo, bannerCta,
         horarios, destacados: destacados.filter(d => d.trim()),
         anuncioTexto, anuncioActivo,
@@ -91,7 +104,7 @@ export default function AdminCmsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      // El usuario puede reintentar con el mismo botón
+      showToast('No se pudieron guardar los cambios. Verifica tu sesión e intenta de nuevo.', 'error');
     } finally {
       setSaving(false);
     }
@@ -265,11 +278,73 @@ export default function AdminCmsPage() {
                 { label: 'Nombre de la tienda', value: nombreTienda, set: setNombreTienda, icon: Type },
                 { label: 'Teléfono', value: telefono, set: setTelefono, icon: Phone },
                 { label: 'Correo', value: correo, set: setCorreo, icon: Tag },
-                { label: 'Dirección', value: direccion, set: setDireccion, icon: Tag },
               ].map(({ label, value, set }) => (
                 <div key={label}>
                   <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">{label}</label>
                   <input type="text" value={value} onChange={e => set(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all" />
+                </div>
+              ))}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Dirección</label>
+                <input type="text" value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Av. Principal S/N, Centro, Huitzitzilingo, Hidalgo" className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">URL de Google Maps</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-500" />
+                  <input
+                    type="text"
+                    value={direccionUrl}
+                    onChange={e => setDireccionUrl(e.target.value)}
+                    placeholder="Pega aquí el enlace de Google Maps..."
+                    className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all"
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                  En Google Maps: busca la dirección → "Compartir" → "Copiar enlace" → pégalo aquí.
+                </p>
+                {direccionUrl && (
+                  <a
+                    href={direccionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-purple-600 hover:text-purple-700"
+                  >
+                    Ver en Google Maps <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Redes sociales */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+            <SectionHeader
+              icon={Share2}
+              color="bg-sky-50 dark:bg-sky-500/10 text-sky-500 dark:text-sky-400 border border-sky-100 dark:border-sky-500/20"
+              title="Redes Sociales"
+              description="Enlaces de los íconos que aparecen en el footer"
+            />
+            <div className="space-y-3">
+              {(([
+                { label: 'Facebook', value: facebookUrl, set: setFacebookUrl, icon: FaFacebook, color: '#1877F2', placeholder: 'https://facebook.com/tu-pagina' },
+                { label: 'Instagram', value: instagramUrl, set: setInstagramUrl, icon: FaInstagram, color: '#dc2743', placeholder: 'https://instagram.com/tu-cuenta' },
+                { label: 'WhatsApp', value: whatsappUrl, set: setWhatsappUrl, icon: FaWhatsapp, color: '#25D366', placeholder: 'https://wa.me/527711234567' },
+              ]) as { label: string; value: string; set: (v: string) => void; icon: IconType; color: string; placeholder: string }[]).map(({ label, value, set, icon: Icon, color, placeholder }) => (
+                <div key={label}>
+                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">{label}</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center">
+                      <Icon size={14} color={color} />
+                    </span>
+                    <input
+                      type="text"
+                      value={value}
+                      onChange={e => set(e.target.value)}
+                      placeholder={placeholder}
+                      className="w-full pl-9 pr-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400 bg-white dark:bg-slate-900 text-slate-800 dark:text-white transition-all"
+                    />
+                  </div>
                 </div>
               ))}
             </div>

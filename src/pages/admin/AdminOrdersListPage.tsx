@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { FadeIn, StaggerContainer, AnimatedButton } from '../../components/Animations';
+import { parseApiDate } from '../../utils/date';
 
 // Estos son los estados reales que usa el backend (ver Transiciones en Backend/Services/OrderService.cs)
 const ESTADOS = [
@@ -27,15 +28,13 @@ const ESTADO_STYLE: Record<string, { bg: string; text: string; dot: string; labe
 };
 
 function formatDate(iso: string) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+  const d = parseApiDate(iso);
+  return d ? d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 }
 
 function formatTime(iso: string) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const d = parseApiDate(iso);
+  return d ? d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
 }
 
 export default function AdminOrdersListPage() {

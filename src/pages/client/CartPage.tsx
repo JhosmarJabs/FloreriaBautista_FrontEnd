@@ -1,40 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
-import { Trash2, ShoppingBag, ArrowLeft, ShieldCheck, Heart, Edit3 } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowLeft, ShieldCheck, Heart, Edit3, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AdminService } from '../../services/adminService';
+
+interface CartRecommendation {
+  productId: string;
+  nombre: string;
+  precioBase: number;
+  imagenUrl?: string | null;
+  confianza?: number | null;
+  esFallback: boolean;
+}
 
 export default function CartPage() {
-  const { cart, cartTotal, removeFromCart, updateQuantity } = useCart();
+  const { cart, cartTotal, removeFromCart, updateQuantity, addToCart } = useCart();
   const shippingCost = cart.length > 0 ? 150 : 0;
   const total = cartTotal + shippingCost;
 
-  const recommendations = [
-    {
-      id: 'rec-1',
-      name: 'Caja Chocolates Artisan',
-      price: 280,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCIRTfjcbn-ndv4P-2-Qn70VAyzz-eSPnFNa8Mi-UuLVIA-GzvM9E6ROY3feS9ZqNxW-DLAxmommEl3tB3zD0C73PXJv39mzTvWgbiTN1FUox3XKWhbjH2ROp-lLZHk7z5KQlgulw1tRw5pxYSn9TV-ZlHewIXJSRHGGsKiWvbQcg99HcTgyjC503rnFT3a2UvfjTSDuzYP3iAW8EI2imNo-QYgjMG_QnpxbT0T0psvjfkzvBs_SNZexCzqxADIad44O2_xUtDTW2yK'
-    },
-    {
-      id: 'rec-2',
-      name: 'Set de Globos "Celebración"',
-      price: 190,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAcJx7HjCh1QoBG9bbQWxgNKsa1kzZevUrHpQucMalU3JBgcBJCxYnzXsMbCblMCTEfxsRZ56NtEWVIbdCj5eVg1pNBOLQH2ueNo36yUkn8Sa9-uH0XOqUhHzvyRHm9VjkcWy8yNGcSs5CDWudHOAqZePrWZYox8gCw_QGMmQg9EMFUwXrTwniY_0AX0Bh0Dx7U0MUJsqKvCGthKo1kECjHLNy4lJmddjPtkabWzjqDa04LIXqPujZ9xUDocD8DmIuBImg05diW0zw6'
-    },
-    {
-      id: 'rec-3',
-      name: 'Orquídea Phalaenopsis',
-      price: 850,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUcofGuGfq35eIZs2frjjZWCDN7yNjc5SPlS4RMM__PN704SqcxYcmZydNVn2dU_mOOkHNAFQ9tqOTyu0CuZpZwK7-lZnrFELNd-1CCmVCQYD7nZtG5I7DA23BufwP8Hx3FKvRZAECU4VBh5ucJ_OOx6sfL3W_JffRZAzeplARwteCW2HQZEEtRNIsU4BD1v31vQqRpqpLOmyGStCbqr66pkHQoLod6YSK_nKsicDe8Mdt6x6hdINZZjvazvyLkBoZKjSFjcGEreHu'
-    },
-    {
-      id: 'rec-4',
-      name: 'Vino Tinto Reserva Selección',
-      price: 540,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBaYJUQ9qv0mFULykbk-yWdf0TAMnO33iqpfiLVhCWN6UjB5uchQIN17Yr_46ChSgpDLCf_E20vMpzuHd5ZCDmsdvTpZfMmGff5P6Ja-0lR0ENgxyR4jiuUdofefa2b8ScX9dK7HyMsqoiOuccMTcxsOBWB3z3-o643pS0Cb_WSnc_78iTJCYX08JAGZs0uL7mAPgEBbHdbdFvvOTQnGooMpdV3JvjWEQP2T7FtJmaBy-JFSDKuo9qHszsPyYxZAIbgruHhuQXBs0OO'
-    }
-  ];
+  // Propuesta 2 (Modelos Predictivos): "Suele comprarse junto con..." via reglas de asociación,
+  // con fallback automático a más vendidos cuando no hay regla aplicable (carrito vacío o
+  // productos sin historial de compra conjunta).
+  const [recommendations, setRecommendations] = useState<CartRecommendation[]>([]);
+  const [loadingRecs, setLoadingRecs] = useState(true);
+
+  useEffect(() => {
+    let cancelado = false;
+    const cargarRecomendaciones = async () => {
+      setLoadingRecs(true);
+      try {
+        const ids = cart.map(item => item.id);
+        const res = await AdminService.getRecommendedProducts(ids, 4);
+        if (!cancelado && res.success) setRecommendations(res.data || []);
+      } catch {
+        if (!cancelado) setRecommendations([]);
+      } finally {
+        if (!cancelado) setLoadingRecs(false);
+      }
+    };
+    cargarRecomendaciones();
+    return () => { cancelado = true; };
+  }, [cart.map(item => item.id).join(',')]);
+
+  const handleAddRecommendation = (rec: CartRecommendation) => {
+    addToCart({ id: rec.productId, name: rec.nombre, price: rec.precioBase, image: rec.imagenUrl || undefined });
+  };
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-32 min-h-screen font-sans bg-[#f0f7ff] text-slate-800 antialiased">
@@ -172,35 +183,52 @@ export default function CartPage() {
           </div>
           <Link to="/catalogo" className="text-[#004A99] font-semibold border-b-2 border-[#004A99] pb-1">Ver catálogo completo</Link>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {recommendations.map((product) => (
-            <motion.div 
-              key={product.id}
-              whileHover={{ y: -10 }}
-              className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-100 flex flex-col"
-            >
-              <div className="relative aspect-[4/5] overflow-hidden">
-                <div 
-                  className="absolute inset-0 bg-center bg-cover transition-transform duration-500 group-hover:scale-110" 
-                  style={{ backgroundImage: `url('${product.image}')` }}
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-1">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-xl font-bold text-[#004A99] group-hover:text-[#FF7F7D] transition-colors">{product.name}</h3>
-                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Extra</span>
+        {loadingRecs ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 text-[#004A99] animate-spin" />
+          </div>
+        ) : recommendations.length === 0 ? (
+          <p className="text-slate-400 text-sm italic text-center py-10">Aún no tenemos recomendaciones para mostrarte.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {recommendations.map((product) => (
+              <motion.div
+                key={product.productId}
+                whileHover={{ y: -10 }}
+                className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-100 flex flex-col"
+              >
+                <div className="relative aspect-[4/5] overflow-hidden">
+                  <div
+                    className="absolute inset-0 bg-center bg-cover transition-transform duration-500 group-hover:scale-110"
+                    style={{ backgroundImage: `url('${product.imagenUrl || 'https://picsum.photos/seed/flower/400/400'}')` }}
+                  />
                 </div>
-                <p className="text-slate-500 text-sm line-clamp-2 mb-4">El complemento perfecto para tu regalo floral.</p>
-                <div className="mt-auto">
-                  <div className="text-xl font-bold text-slate-900 mb-4">${product.price.toLocaleString()} MXN</div>
-                  <button className="w-full bg-[#FF7F7D] text-white py-2.5 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-sm">
-                    Añadir al carrito
-                  </button>
+                <div className="p-6 flex flex-col flex-1">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-xl font-bold text-[#004A99] group-hover:text-[#FF7F7D] transition-colors">{product.nombre}</h3>
+                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                      {product.esFallback ? 'Popular' : 'Suele combinarse'}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 text-sm line-clamp-2 mb-4">
+                    {product.esFallback
+                      ? 'Uno de los productos favoritos de nuestros clientes.'
+                      : 'Los clientes que compraron algo similar también llevaron esto.'}
+                  </p>
+                  <div className="mt-auto">
+                    <div className="text-xl font-bold text-slate-900 mb-4">${product.precioBase.toLocaleString()} MXN</div>
+                    <button
+                      onClick={() => handleAddRecommendation(product)}
+                      className="w-full bg-[#FF7F7D] text-white py-2.5 rounded-xl font-bold hover:bg-opacity-90 transition-all shadow-sm"
+                    >
+                      Añadir al carrito
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

@@ -14,13 +14,14 @@ import {
   Shield,
   Loader2
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AdminService } from '../../services/adminService';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
 
 type Tab = 'perfil' | 'direcciones' | 'pedidos' | 'favoritos' | 'notificaciones';
 
 export default function SettingsPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>('perfil');
   const [user, setUser] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -37,6 +38,14 @@ export default function SettingsPage() {
     fechaNacimiento: '',
   });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const validTabs: Tab[] = ['perfil', 'direcciones', 'pedidos', 'favoritos', 'notificaciones'];
+    if (tab && validTabs.includes(tab as Tab)) {
+      setActiveTab(tab as Tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const loadProfile = async () => {
