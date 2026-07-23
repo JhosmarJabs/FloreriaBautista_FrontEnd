@@ -20,6 +20,7 @@ export default function OrderSuccessPage() {
   const { clearCart } = useCart();
   const [order, setOrder] = useState<CompletedOrder | null>(null);
   const [verificando, setVerificando] = useState(true);
+  const [mensajeAccion, setMensajeAccion] = useState('');
 
   // Al volver de Mercado Pago confirmamos el pago con el backend antes de dar
   // por exitosa la compra. Solo entonces se vacía el carrito.
@@ -95,6 +96,61 @@ export default function OrderSuccessPage() {
     return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
       weekday: 'long', day: 'numeric', month: 'long',
     });
+  };
+
+  // ── Acciones del recibo ──────────────────────────────────────
+  const construirRecibo = () => {
+    const o = order;
+    const lineas = [
+      'FLORERÍA BAUTISTA',
+      `Recibo de pedido #${o.orderNumber}`,
+      `Fecha: ${fechaOrden}`,
+      '',
+      'PRODUCTOS',
+      ...o.items.map(i => `  ${i.quantity} x ${i.name}  —  $${(i.price * i.quantity).toFixed(2)}`),
+      ...(o.dedicatoria ? ['', `Dedicatoria: "${o.dedicatoria}"`] : []),
+      '',
+      'ENTREGA',
+      `  ${o.address.label}: ${o.address.fullAddress}`,
+      `  ${esAnticipado ? `Anticipado — ${formatearFecha(o.deliveryDate)}${o.timeSlot ? ` · ${o.timeSlot}` : ''}` : 'Instantánea — el mismo día (60 a 90 min)'}`,
+      '',
+      'PAGO',
+      `  Subtotal: $${o.subtotal.toFixed(2)}`,
+      `  Envío: ${o.shippingCost > 0 ? `$${o.shippingCost.toFixed(2)}` : 'Gratis'}`,
+      `  Total pagado: $${o.total.toFixed(2)} MXN`,
+      '',
+      '¡Gracias por tu compra!',
+    ];
+    return lineas.join('\n');
+  };
+
+  const handlePrint = () => window.print();
+
+  const handleDownload = () => {
+    const blob = new Blob([construirRecibo()], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Recibo-${order.orderNumber}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShare = async () => {
+    const texto = `¡Hice mi pedido en Florería Bautista! 🌸\nPedido #${order.orderNumber} · Total $${order.total.toFixed(2)} MXN`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Florería Bautista', text: texto });
+      } else {
+        await navigator.clipboard.writeText(texto);
+        setMensajeAccion('Resumen copiado al portapapeles');
+        setTimeout(() => setMensajeAccion(''), 2500);
+      }
+    } catch {
+      /* el usuario canceló el diálogo de compartir */
+    }
   };
 
   return (
@@ -236,7 +292,7 @@ export default function OrderSuccessPage() {
       </motion.div>
 
       {/* BEGIN: ActionButtons */}
-      <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+      <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center print:hidden">
         <button
           onClick={() => navigate('/catalogo')}
           className="w-full sm:w-auto px-8 py-3 text-[#1A3B5B] font-semibold border-2 border-[#1A3B5B]/20 rounded-full hover:bg-gray-100 transition-colors duration-200 flex items-center justify-center gap-2"
@@ -245,17 +301,35 @@ export default function OrderSuccessPage() {
           Seguir comprando
         </button>
         <div className="flex gap-2 w-full sm:w-auto">
-          <button className="p-3 bg-white text-[#1A3B5B] border border-gray-200 rounded-full hover:bg-gray-50 transition-all shadow-sm">
+          <button
+            onClick={handlePrint}
+            title="Imprimir recibo"
+            aria-label="Imprimir recibo"
+            className="p-3 bg-white text-[#1A3B5B] border border-gray-200 rounded-full hover:bg-gray-50 transition-all shadow-sm"
+          >
             <Printer className="w-5 h-5" />
           </button>
-          <button className="p-3 bg-white text-[#1A3B5B] border border-gray-200 rounded-full hover:bg-gray-50 transition-all shadow-sm">
+          <button
+            onClick={handleDownload}
+            title="Descargar recibo"
+            aria-label="Descargar recibo"
+            className="p-3 bg-white text-[#1A3B5B] border border-gray-200 rounded-full hover:bg-gray-50 transition-all shadow-sm"
+          >
             <Download className="w-5 h-5" />
           </button>
-          <button className="p-3 bg-white text-[#1A3B5B] border border-gray-200 rounded-full hover:bg-gray-50 transition-all shadow-sm">
+          <button
+            onClick={handleShare}
+            title="Compartir"
+            aria-label="Compartir"
+            className="p-3 bg-white text-[#1A3B5B] border border-gray-200 rounded-full hover:bg-gray-50 transition-all shadow-sm"
+          >
             <Share2 className="w-5 h-5" />
           </button>
         </div>
       </div>
+      {mensajeAccion && (
+        <p className="mt-4 text-center text-sm text-green-600 font-medium print:hidden">{mensajeAccion}</p>
+      )}
     </main>
   );
 }
