@@ -78,6 +78,72 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // ── Pedidos reales (usados por Historial y Notificaciones) ───
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [ordersCargados, setOrdersCargados] = useState(false);
+
+  const cargarPedidos = async () => {
+    setLoadingOrders(true);
+    try {
+      const res = await AdminService.getMyOrders();
+      setOrders(res.data?.items ?? []);
+    } catch {
+      setOrders([]);
+    } finally {
+      setLoadingOrders(false);
+      setOrdersCargados(true);
+    }
+  };
+
+  useEffect(() => {
+    if ((activeTab === 'pedidos' || activeTab === 'notificaciones') && !ordersCargados && !loadingOrders) {
+      cargarPedidos();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // Estado del pedido → etiqueta y color legibles.
+  const ESTADO_INFO: Record<string, { label: string; badge: string }> = {
+    PENDIENTE_VALIDACION: { label: 'Pendiente', badge: 'bg-amber-100 text-amber-700' },
+    EN_PREPARACION:       { label: 'En preparación', badge: 'bg-indigo-100 text-indigo-700' },
+    EN_RUTA:              { label: 'En ruta', badge: 'bg-blue-100 text-blue-700' },
+    ENTREGADO:            { label: 'Entregado', badge: 'bg-emerald-100 text-emerald-700' },
+    CANCELADO:            { label: 'Cancelado', badge: 'bg-slate-200 text-slate-600' },
+    PENDIENTE_ANULACION:  { label: 'Por anular', badge: 'bg-red-100 text-red-700' },
+    NO_COMPLETADO:        { label: 'Sin completar', badge: 'bg-slate-200 text-slate-600' },
+  };
+  const estadoInfo = (e: string) => ESTADO_INFO[e] ?? { label: e, badge: 'bg-slate-200 text-slate-600' };
+
+  const tiempoRelativo = (iso: string) => {
+    if (!iso) return '';
+    const diff = Date.now() - new Date(iso).getTime();
+    const min = Math.floor(diff / 60000);
+    if (min < 1) return 'Hace un momento';
+    if (min < 60) return `Hace ${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `Hace ${h} h`;
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'Ayer';
+    if (d < 30) return `Hace ${d} días`;
+    return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+  };
+
+  const folio = (id: string) => `FB-${(id || '').slice(0, 8).toUpperCase()}`;
+
+  // Mensaje de notificación según el estado real del pedido.
+  const mensajeNotificacion = (estado: string, id: string): string => {
+    const f = folio(id);
+    switch (estado) {
+      case 'ENTREGADO':            return `Tu pedido ${f} fue entregado. ¡Gracias por tu compra!`;
+      case 'EN_RUTA':              return `Tu pedido ${f} va en camino.`;
+      case 'EN_PREPARACION':       return `Estamos preparando tu pedido ${f}.`;
+      case 'PENDIENTE_VALIDACION': return `Recibimos tu pedido ${f}, lo estamos validando.`;
+      case 'CANCELADO':            return `Tu pedido ${f} fue cancelado.`;
+      default:                     return `Actualización de tu pedido ${f}.`;
+    }
+  };
+
   const abrirNuevaDireccion = () => {
     setEditingAddrId(null);
     setAddrForm(emptyAddr);
@@ -530,27 +596,55 @@ export default function SettingsPage() {
                   className="p-8"
                 >
                   <h2 className="text-2xl font-bold mb-6">Historial de Pedidos</h2>
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((order) => (
-                      <div key={order} className="border border-slate-100 rounded-xl p-4 hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase">Pedido #FL-2024-00{order}</p>
-                            <p className="text-sm font-bold">15 de Marzo, 2024</p>
+                  {loadingOrders ? (
+                    <div className="flex items-center justify-center py-16">
+                      <Loader2 className="w-8 h-8 text-[#1A3B5B] animate-spin" />
+                    </div>
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
+                      <ShoppingBag className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                      <p className="text-slate-500 mb-4">Aún no tienes pedidos.</p>
+                      <Link to="/catalogo" className="text-[#1A3B5B] font-bold text-sm hover:underline">Explorar el catálogo</Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.map((order) => {
+                        const info = estadoInfo(order.estadoPedido);
+                        const items = order.items ?? [];
+                        const primero = items[0];
+                        const totalArticulos = items.reduce((n: number, it: any) => n + (it.quantity ?? 0), 0);
+                        return (
+                          <div key={order.id} className="border border-slate-100 rounded-xl p-4 hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase">Pedido #{folio(order.id)}</p>
+                                <p className="text-sm font-bold">
+                                  {new Date(order.fechaCreacion).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </p>
+                              </div>
+                              <span className={`px-3 py-1 text-[10px] font-bold rounded-full ${info.badge}`}>{info.label}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="size-12 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 flex items-center justify-center">
+                                {primero?.productImage ? (
+                                  <img src={primero.productImage} className="w-full h-full object-cover" alt={primero.productName} />
+                                ) : (
+                                  <ShoppingBag className="w-6 h-6 text-slate-300" />
+                                )}
+                              </div>
+                              <div className="flex-grow min-w-0">
+                                <p className="text-sm font-bold truncate">{primero?.productName ?? 'Pedido'}</p>
+                                <p className="text-xs text-slate-500">
+                                  {totalArticulos} {totalArticulos === 1 ? 'artículo' : 'artículos'} • ${Number(order.total).toLocaleString('es-MX')}
+                                </p>
+                              </div>
+                              <Link to="/mis-pedidos" className="text-sm font-bold text-[#1A3B5B] hover:underline whitespace-nowrap">Ver detalles</Link>
+                            </div>
                           </div>
-                          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full">Entregado</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <img src="https://picsum.photos/seed/flower/100/100" className="size-12 rounded-lg object-cover" alt="Product" />
-                          <div className="flex-grow">
-                            <p className="text-sm font-bold">Ramo de Rosas Premium</p>
-                            <p className="text-xs text-slate-500">1 artículo • $650.00</p>
-                          </div>
-                          <button className="text-sm font-bold text-[#1A3B5B]">Ver detalles</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -561,19 +655,11 @@ export default function SettingsPage() {
                   className="p-8"
                 >
                   <h2 className="text-2xl font-bold mb-6">Mis Favoritos</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {[1, 2].map((fav) => (
-                      <div key={fav} className="group relative">
-                        <div className="aspect-square rounded-xl overflow-hidden mb-3">
-                          <img src={`https://picsum.photos/seed/flower${fav}/300/300`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="Fav" />
-                          <button className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm rounded-full text-red-500">
-                            <Heart className="w-4 h-4 fill-current" />
-                          </button>
-                        </div>
-                        <h4 className="font-bold text-sm">Arreglo Floral {fav}</h4>
-                        <p className="text-[#1A3B5B] font-bold">$450.00</p>
-                      </div>
-                    ))}
+                  <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
+                    <Heart className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                    <p className="text-slate-500 mb-1">Aún no tienes favoritos guardados.</p>
+                    <p className="text-slate-400 text-sm mb-4">Marca tus arreglos preferidos para encontrarlos rápido.</p>
+                    <Link to="/catalogo" className="text-[#1A3B5B] font-bold text-sm hover:underline">Explorar el catálogo</Link>
                   </div>
                 </motion.div>
               )}
@@ -585,31 +671,35 @@ export default function SettingsPage() {
                   className="p-8"
                 >
                   <h2 className="text-2xl font-bold mb-6">Notificaciones</h2>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 bg-blue-500 text-white rounded-lg">
-                          <ShoppingBag className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold">Tu pedido ha sido entregado</p>
-                          <p className="text-xs text-slate-500">Hace 2 horas</p>
-                        </div>
-                      </div>
-                      <div className="size-2 bg-blue-500 rounded-full"></div>
+                  {loadingOrders ? (
+                    <div className="flex items-center justify-center py-16">
+                      <Loader2 className="w-8 h-8 text-[#1A3B5B] animate-spin" />
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-slate-100">
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 bg-amber-500 text-white rounded-lg">
-                          <Bell className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold">Nueva oferta disponible</p>
-                          <p className="text-xs text-slate-500">Hace 1 día</p>
-                        </div>
-                      </div>
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
+                      <Bell className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                      <p className="text-slate-500">No tienes notificaciones por ahora.</p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.slice(0, 8).map((order) => {
+                        const entregado = order.estadoPedido === 'ENTREGADO';
+                        return (
+                          <div key={order.id} className={`flex items-center justify-between p-4 rounded-xl ${entregado ? 'bg-emerald-50' : 'border border-slate-100'}`}>
+                            <div className="flex items-center gap-4">
+                              <div className={`p-2 text-white rounded-lg ${entregado ? 'bg-emerald-500' : 'bg-[#1A3B5B]'}`}>
+                                {entregado ? <CheckCircle className="w-5 h-5" /> : <ShoppingBag className="w-5 h-5" />}
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold">{mensajeNotificacion(order.estadoPedido, order.id)}</p>
+                                <p className="text-xs text-slate-500">{tiempoRelativo(order.fechaCreacion)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </motion.div>
               )}
             </div>
