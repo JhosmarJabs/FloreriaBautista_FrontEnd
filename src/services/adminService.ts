@@ -34,6 +34,39 @@ import {
 const API_BASE = '/api/admin';
 const TOKEN_URL = '/api/dev/token';
 
+// ── Direcciones del cliente ──────────────────────────────────────
+export interface UserAddress {
+  id: string;
+  etiqueta?: string | null;
+  calle: string;
+  colonia: string;
+  municipio: string;
+  estado: string;
+  cp?: string | null;
+  referencias?: string | null;
+  esPrincipal: boolean;
+}
+
+export type AddressInput = Omit<UserAddress, 'id'>;
+
+// ── Creación de pedido web ───────────────────────────────────────
+export interface WebOrderInput {
+  fechaEntrega: string;        // YYYY-MM-DD
+  horaEntrega?: string | null; // HH:mm:ss (opcional)
+  tipoPedido: 'INSTANTANEO' | 'ANTICIPADO';
+  notas?: string | null;
+  costoEnvio?: number;
+  direccion: {
+    calle: string;
+    colonia: string;
+    municipio: string;
+    estado: string;
+    cp?: string | null;
+    referencias?: string | null;
+  };
+  items: { productId: string; cantidad: number; notas?: string | null }[];
+}
+
 // Cache del token para evitar múltiples llamadas seguidas
 let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
@@ -530,6 +563,100 @@ export const AdminService = {
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
+  },
+
+  // ─── Direcciones del usuario ──────────────────────────────────
+  getMyAddresses: async (): Promise<UserAddress[]> => {
+    const res = await fetch('/api/users/me/addresses', {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    const json = await res.json();
+    return json.data ?? [];
+  },
+
+  createMyAddress: async (body: AddressInput): Promise<UserAddress> => {
+    const res = await fetch('/api/users/me/addresses', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return (await res.json()).data;
+  },
+
+  updateMyAddress: async (id: string, body: AddressInput): Promise<UserAddress> => {
+    const res = await fetch(`/api/users/me/addresses/${id}`, {
+      method: 'PUT',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return (await res.json()).data;
+  },
+
+  setMyAddressPrincipal: async (id: string): Promise<UserAddress> => {
+    const res = await fetch(`/api/users/me/addresses/${id}/principal`, {
+      method: 'PATCH',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return (await res.json()).data;
+  },
+
+  deleteMyAddress: async (id: string): Promise<void> => {
+    const res = await fetch(`/api/users/me/addresses/${id}`, {
+      method: 'DELETE',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+  },
+
+  // ─── Pedidos web + pago Mercado Pago ──────────────────────────
+  createWebOrder: async (body: WebOrderInput): Promise<{ id: string; total: number; saldoPendiente: number }> => {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return (await res.json()).data;
+  },
+
+  createMpPreference: async (orderId: string): Promise<{ preferenceId: string; initPoint: string }> => {
+    const res = await fetch('/api/payments/mercadopago/preference', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ orderId }),
+    });
+    if (!res.ok) {
+      // 503 = pago en línea no configurado todavía
+      let msg = `Error ${res.status}`;
+      try { msg = (await res.json()).message || msg; } catch { /* noop */ }
+      throw new Error(msg);
+    }
+    return (await res.json()).data;
+  },
+
+  confirmMpPayment: async (paymentId: string): Promise<{ orderId: string; estado: string; acreditado: boolean }> => {
+    const res = await fetch('/api/payments/mercadopago/confirm', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ paymentId }),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return (await res.json()).data;
+  },
+
+  // Confirma el pago buscándolo en MP por id de orden (sin payment_id, ej. localhost).
+  confirmMpOrder: async (orderId: string): Promise<{ orderId: string; estado: string; acreditado: boolean }> => {
+    const res = await fetch('/api/payments/mercadopago/confirm-order', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ orderId }),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return (await res.json()).data;
   },
 
   // ─── Producto público por ID ──────────────────────────────────

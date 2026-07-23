@@ -20,6 +20,8 @@ import NotificationsPage from '../pages/client/NotificationsPage';
 import CheckoutDataPage from '../pages/client/CheckoutDataPage';
 import CheckoutReviewPage from '../pages/client/CheckoutReviewPage';
 import OrderSuccessPage from '../pages/client/OrderSuccessPage';
+import PaymentFailedPage from '../pages/client/PaymentFailedPage';
+import PaymentPendingPage from '../pages/client/PaymentPendingPage';
 
 // Auth Pages
 import LoginPage from '../pages/auth/LoginPage';
@@ -133,6 +135,8 @@ export default function AnimatedRoutes() {
         <Route path="/checkout/datos" element={<PageTransition><CheckoutDataPage /></PageTransition>} />
         <Route path="/checkout/revision" element={<PageTransition><CheckoutReviewPage /></PageTransition>} />
         <Route path="/checkout/exito" element={<PageTransition><OrderSuccessPage /></PageTransition>} />
+        <Route path="/checkout/fallo" element={<PageTransition><PaymentFailedPage /></PageTransition>} />
+        <Route path="/checkout/pendiente" element={<PageTransition><PaymentPendingPage /></PageTransition>} />
         <Route path="/producto/:id" element={<PageTransition><ProductPage /></PageTransition>} />
         <Route path="/testimonios" element={<PageTransition><TestimonialsPage /></PageTransition>} />
         <Route path="/nosotros" element={<PageTransition><AboutPage /></PageTransition>} />

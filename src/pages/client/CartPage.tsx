@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
-import { Trash2, ShoppingBag, ArrowLeft, ShieldCheck, Heart, Edit3, Loader2 } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowLeft, ShieldCheck, Heart, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AdminService } from '../../services/adminService';
 
@@ -16,8 +16,9 @@ interface CartRecommendation {
 
 export default function CartPage() {
   const { cart, cartTotal, removeFromCart, updateQuantity, addToCart } = useCart();
-  const shippingCost = cart.length > 0 ? 150 : 0;
-  const total = cartTotal + shippingCost;
+  // El costo de envío depende de la dirección de entrega, que se elige en el
+  // checkout; aquí solo mostramos el subtotal y avisamos que se calcula después.
+  const total = cartTotal;
 
   // Propuesta 2 (Modelos Predictivos): "Suele comprarse junto con..." via reglas de asociación,
   // con fallback automático a más vendidos cuando no hay regla aplicable (carrito vacío o
@@ -74,12 +75,16 @@ export default function CartPage() {
           <section className="lg:col-span-2 space-y-8">
             {cart.map((item) => (
               <article key={item.id} className="flex flex-col md:flex-row gap-6 p-6 border-b border-gray-100 items-start md:items-center group">
-                <div className="w-full md:w-32 h-40 bg-gray-100 overflow-hidden rounded-lg">
-                  <img 
-                    alt={item.name} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                    src={item.image || 'https://picsum.photos/seed/flower/400/400'} 
-                  />
+                <div className="w-full md:w-32 h-40 bg-gray-100 overflow-hidden rounded-lg flex items-center justify-center">
+                  {item.image ? (
+                    <img
+                      alt={item.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      src={item.image}
+                    />
+                  ) : (
+                    <ShoppingBag className="w-10 h-10 text-slate-300" />
+                  )}
                 </div>
                 <div className="flex-1 space-y-2">
                   <div className="flex justify-between items-start">
@@ -92,17 +97,7 @@ export default function CartPage() {
                       <Trash2 className="h-5 w-5" />
                     </button>
                   </div>
-                  <p className="text-[#4B5563] text-sm">SKU: FB-{item.id.substring(0, 5).toUpperCase()} | Cantidad: {item.quantity}</p>
-                  
-                  {/* Emotional Element - Card Message */}
-                  <div className="mt-4 p-4 bg-[#E6F0FF]/50 border border-[#E6F0FF] rounded-lg">
-                    <div className="flex items-center gap-2 mb-2 text-[#004A99]">
-                      <Edit3 className="h-4 w-4" />
-                      <span className="font-semibold text-sm uppercase tracking-wider">Tu Mensaje Personalizado</span>
-                    </div>
-                    <p className="text-gray-700 italic text-sm leading-relaxed">"Para la persona que ilumina mis días. ¡Feliz Aniversario!"</p>
-                    <button className="mt-2 text-xs font-medium text-[#004A99] underline hover:no-underline">Editar dedicatoria</button>
-                  </div>
+                  <p className="text-[#4B5563] text-sm">Cantidad: {item.quantity}</p>
                 </div>
                 <div className="text-right flex flex-col items-end gap-4">
                   <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
@@ -132,8 +127,8 @@ export default function CartPage() {
                   <span className="font-medium">${cartTotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#4B5563]">Envío estimado</span>
-                  <span className="font-medium">${shippingCost.toLocaleString()}</span>
+                  <span className="text-[#4B5563]">Envío</span>
+                  <span className="font-medium text-slate-500 text-right text-xs max-w-[55%]">Se calcula al elegir dirección</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#4B5563]">Impuestos (IVA)</span>
@@ -197,11 +192,17 @@ export default function CartPage() {
                 whileHover={{ y: -10 }}
                 className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-slate-100 flex flex-col"
               >
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  <div
-                    className="absolute inset-0 bg-center bg-cover transition-transform duration-500 group-hover:scale-110"
-                    style={{ backgroundImage: `url('${product.imagenUrl || 'https://picsum.photos/seed/flower/400/400'}')` }}
-                  />
+                <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+                  {product.imagenUrl ? (
+                    <div
+                      className="absolute inset-0 bg-center bg-cover transition-transform duration-500 group-hover:scale-110"
+                      style={{ backgroundImage: `url('${product.imagenUrl}')` }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ShoppingBag className="w-12 h-12 text-slate-300" />
+                    </div>
+                  )}
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex justify-between items-start mb-2">

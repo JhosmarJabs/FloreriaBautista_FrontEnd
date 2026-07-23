@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   User,
   MapPin,
@@ -12,10 +12,16 @@ import {
   CheckCircle,
   ChevronRight,
   Shield,
-  Loader2
+  Loader2,
+  Plus,
+  Trash2,
+  Edit3,
+  Star,
+  X
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AdminService } from '../../services/adminService';
+import { AdminService, type UserAddress, type AddressInput } from '../../services/adminService';
+import { lookupCp } from '../../services/sepomexService';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
 
 type Tab = 'perfil' | 'direcciones' | 'pedidos' | 'favoritos' | 'notificaciones';
@@ -38,6 +44,113 @@ export default function SettingsPage() {
     fechaNacimiento: '',
   });
   const navigate = useNavigate();
+
+  // ── Direcciones ──────────────────────────────────────────────
+  const emptyAddr: AddressInput = {
+    etiqueta: '', calle: '', colonia: '', municipio: '', estado: '', cp: '', referencias: '', esPrincipal: false,
+  };
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [loadingAddr, setLoadingAddr] = useState(false);
+  const [addrModalOpen, setAddrModalOpen] = useState(false);
+  const [editingAddrId, setEditingAddrId] = useState<string | null>(null);
+  const [addrForm, setAddrForm] = useState<AddressInput>(emptyAddr);
+  const [colonias, setColonias] = useState<string[]>([]);
+  const [savingAddr, setSavingAddr] = useState(false);
+  const [deletingAddrId, setDeletingAddrId] = useState<string | null>(null);
+  const [addrError, setAddrError] = useState('');
+
+  const cargarDirecciones = async () => {
+    setLoadingAddr(true);
+    try {
+      setAddresses(await AdminService.getMyAddresses());
+    } catch {
+      setAddresses([]);
+    } finally {
+      setLoadingAddr(false);
+    }
+  };
+
+  // Carga las direcciones al abrir esa pestaña (una sola vez).
+  useEffect(() => {
+    if (activeTab === 'direcciones' && addresses.length === 0 && !loadingAddr) {
+      cargarDirecciones();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const abrirNuevaDireccion = () => {
+    setEditingAddrId(null);
+    setAddrForm(emptyAddr);
+    setColonias([]);
+    setAddrError('');
+    setAddrModalOpen(true);
+  };
+
+  const abrirEditarDireccion = (a: UserAddress) => {
+    setEditingAddrId(a.id);
+    setAddrForm({
+      etiqueta: a.etiqueta ?? '', calle: a.calle, colonia: a.colonia,
+      municipio: a.municipio, estado: a.estado, cp: a.cp ?? '',
+      referencias: a.referencias ?? '', esPrincipal: a.esPrincipal,
+    });
+    setColonias(a.colonia ? [a.colonia] : []);
+    setAddrError('');
+    setAddrModalOpen(true);
+  };
+
+  // Al escribir un CP de 5 dígitos, autocompleta estado/municipio/colonias.
+  const handleCpChange = async (cp: string) => {
+    setAddrForm(f => ({ ...f, cp }));
+    if (/^\d{5}$/.test(cp)) {
+      const info = await lookupCp(cp);
+      if (info) {
+        setColonias(info.colonias);
+        setAddrForm(f => ({
+          ...f, cp, estado: info.estado, municipio: info.municipio,
+          colonia: info.colonias.includes(f.colonia ?? '') ? f.colonia : '',
+        }));
+      }
+    }
+  };
+
+  const guardarDireccion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddrError('');
+    setSavingAddr(true);
+    try {
+      if (editingAddrId) {
+        await AdminService.updateMyAddress(editingAddrId, addrForm);
+      } else {
+        await AdminService.createMyAddress(addrForm);
+      }
+      setAddrModalOpen(false);
+      await cargarDirecciones();
+    } catch (err: any) {
+      setAddrError('No se pudo guardar la dirección. Verifica los datos e intenta de nuevo.');
+    } finally {
+      setSavingAddr(false);
+    }
+  };
+
+  const eliminarDireccion = async (id: string) => {
+    if (!window.confirm('¿Eliminar esta dirección?')) return;
+    setDeletingAddrId(id);
+    try {
+      await AdminService.deleteMyAddress(id);
+      await cargarDirecciones();
+    } catch {
+      // noop: se mantiene la lista actual si falla
+    } finally {
+      setDeletingAddrId(null);
+    }
+  };
+
+  const marcarPrincipal = async (id: string) => {
+    try {
+      await AdminService.setMyAddressPrincipal(id);
+      await cargarDirecciones();
+    } catch { /* noop */ }
+  };
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -340,31 +453,73 @@ export default function SettingsPage() {
                       <h2 className="text-2xl font-bold">Mis Direcciones</h2>
                       <p className="text-slate-500">Gestiona tus lugares de entrega frecuentes.</p>
                     </div>
-                    <button className="bg-[#1A3B5B] text-white px-4 py-2 rounded-lg text-sm font-bold">
-                      + Nueva Dirección
+                    <button
+                      onClick={abrirNuevaDireccion}
+                      className="bg-[#1A3B5B] text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#1A3B5B]/90 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Nueva Dirección
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 border border-blue-200 bg-blue-50 rounded-xl relative">
-                      <div className="absolute top-4 right-4 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Principal</div>
-                      <h4 className="font-bold mb-1">Casa</h4>
-                      <p className="text-sm text-slate-600">Av. Reforma 123, Col. Centro</p>
-                      <p className="text-sm text-slate-600">Ciudad de México, CP 06000</p>
-                      <div className="mt-4 flex gap-3">
-                        <button className="text-xs font-bold text-[#1A3B5B]">Editar</button>
-                        <button className="text-xs font-bold text-red-500">Eliminar</button>
-                      </div>
+
+                  {loadingAddr ? (
+                    <div className="flex items-center justify-center py-16">
+                      <Loader2 className="w-8 h-8 text-[#1A3B5B] animate-spin" />
                     </div>
-                    <div className="p-4 border border-slate-200 rounded-xl">
-                      <h4 className="font-bold mb-1">Oficina</h4>
-                      <p className="text-sm text-slate-600">Insurgentes Sur 456, Piso 10</p>
-                      <p className="text-sm text-slate-600">Ciudad de México, CP 03100</p>
-                      <div className="mt-4 flex gap-3">
-                        <button className="text-xs font-bold text-[#1A3B5B]">Editar</button>
-                        <button className="text-xs font-bold text-red-500">Eliminar</button>
-                      </div>
+                  ) : addresses.length === 0 ? (
+                    <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
+                      <MapPin className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                      <p className="text-slate-500 mb-4">Aún no tienes direcciones guardadas.</p>
+                      <button
+                        onClick={abrirNuevaDireccion}
+                        className="text-[#1A3B5B] font-bold text-sm hover:underline"
+                      >
+                        Agregar mi primera dirección
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {addresses.map((a) => (
+                        <div
+                          key={a.id}
+                          className={`p-4 rounded-xl relative border ${a.esPrincipal ? 'border-blue-200 bg-blue-50' : 'border-slate-200'}`}
+                        >
+                          {a.esPrincipal && (
+                            <div className="absolute top-4 right-4 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Principal</div>
+                          )}
+                          <h4 className="font-bold mb-1">{a.etiqueta || 'Dirección'}</h4>
+                          <p className="text-sm text-slate-600">{a.calle}{a.colonia ? `, Col. ${a.colonia}` : ''}</p>
+                          <p className="text-sm text-slate-600">
+                            {a.municipio}{a.estado ? `, ${a.estado}` : ''}{a.cp ? `, CP ${a.cp}` : ''}
+                          </p>
+                          {a.referencias && <p className="text-xs text-slate-400 mt-1">Ref: {a.referencias}</p>}
+                          <div className="mt-4 flex gap-3 items-center flex-wrap">
+                            {!a.esPrincipal && (
+                              <button
+                                onClick={() => marcarPrincipal(a.id)}
+                                className="text-xs font-bold text-amber-600 flex items-center gap-1 hover:underline"
+                              >
+                                <Star className="w-3 h-3" /> Hacer principal
+                              </button>
+                            )}
+                            <button
+                              onClick={() => abrirEditarDireccion(a)}
+                              className="text-xs font-bold text-[#1A3B5B] flex items-center gap-1 hover:underline"
+                            >
+                              <Edit3 className="w-3 h-3" /> Editar
+                            </button>
+                            <button
+                              onClick={() => eliminarDireccion(a.id)}
+                              disabled={deletingAddrId === a.id}
+                              className="text-xs font-bold text-red-500 flex items-center gap-1 hover:underline disabled:opacity-50"
+                            >
+                              {deletingAddrId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -479,6 +634,151 @@ export default function SettingsPage() {
           </section>
         </div>
       </div>
+
+      {/* Modal Alta/Edición de Dirección */}
+      {addrModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <MapPin className="text-[#1A3B5B] w-5 h-5" />
+                  {editingAddrId ? 'Editar Dirección' : 'Nueva Dirección'}
+                </h3>
+                <button onClick={() => setAddrModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+
+              <form onSubmit={guardarDireccion} className="p-6 space-y-4 overflow-y-auto">
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700">Etiqueta (Ej. Casa, Oficina)</label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 focus:border-[#1A3B5B] focus:ring-1 focus:ring-[#1A3B5B] p-3"
+                    placeholder="Nombre para esta dirección"
+                    value={addrForm.etiqueta ?? ''}
+                    onChange={(e) => setAddrForm(f => ({ ...f, etiqueta: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">Código Postal</label>
+                    <input
+                      required
+                      maxLength={5}
+                      inputMode="numeric"
+                      className="w-full rounded-lg border border-slate-200 focus:border-[#1A3B5B] focus:ring-1 focus:ring-[#1A3B5B] p-3"
+                      placeholder="43021"
+                      value={addrForm.cp ?? ''}
+                      onChange={(e) => handleCpChange(e.target.value.replace(/\D/g, ''))}
+                    />
+                    <p className="text-[11px] text-slate-400">Autocompleta estado, municipio y colonias.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">Estado</label>
+                    <input
+                      required
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3"
+                      placeholder="Estado"
+                      value={addrForm.estado}
+                      onChange={(e) => setAddrForm(f => ({ ...f, estado: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">Municipio</label>
+                    <input
+                      required
+                      className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3"
+                      placeholder="Municipio"
+                      value={addrForm.municipio}
+                      onChange={(e) => setAddrForm(f => ({ ...f, municipio: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">Colonia</label>
+                    {colonias.length > 0 ? (
+                      <select
+                        required
+                        className="w-full rounded-lg border border-slate-200 focus:border-[#1A3B5B] focus:ring-1 focus:ring-[#1A3B5B] p-3"
+                        value={addrForm.colonia}
+                        onChange={(e) => setAddrForm(f => ({ ...f, colonia: e.target.value }))}
+                      >
+                        <option value="">Selecciona colonia</option>
+                        {colonias.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        required
+                        className="w-full rounded-lg border border-slate-200 focus:border-[#1A3B5B] focus:ring-1 focus:ring-[#1A3B5B] p-3"
+                        placeholder="Colonia"
+                        value={addrForm.colonia}
+                        onChange={(e) => setAddrForm(f => ({ ...f, colonia: e.target.value }))}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700">Calle y número</label>
+                  <input
+                    required
+                    className="w-full rounded-lg border border-slate-200 focus:border-[#1A3B5B] focus:ring-1 focus:ring-[#1A3B5B] p-3"
+                    placeholder="Ej. Av. Hidalgo 123"
+                    value={addrForm.calle}
+                    onChange={(e) => setAddrForm(f => ({ ...f, calle: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700">Referencias (opcional)</label>
+                  <input
+                    className="w-full rounded-lg border border-slate-200 focus:border-[#1A3B5B] focus:ring-1 focus:ring-[#1A3B5B] p-3"
+                    placeholder="Ej. Casa azul, entre calle 1 y 2"
+                    value={addrForm.referencias ?? ''}
+                    onChange={(e) => setAddrForm(f => ({ ...f, referencias: e.target.value }))}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300 text-[#1A3B5B] focus:ring-[#1A3B5B]"
+                    checked={addrForm.esPrincipal}
+                    onChange={(e) => setAddrForm(f => ({ ...f, esPrincipal: e.target.checked }))}
+                  />
+                  <span className="text-sm text-slate-700">Usar como dirección principal</span>
+                </label>
+
+                {addrError && <p className="text-sm text-red-500">{addrError}</p>}
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAddrModalOpen(false)}
+                    className="flex-1 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingAddr}
+                    className="flex-1 py-3 bg-[#1A3B5B] text-white font-bold rounded-xl hover:bg-[#1A3B5B]/90 disabled:opacity-60 transition-all flex items-center justify-center gap-2"
+                  >
+                    {savingAddr ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {editingAddrId ? 'Guardar cambios' : 'Agregar dirección'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
     </main>
   );
 }

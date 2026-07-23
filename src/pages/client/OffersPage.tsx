@@ -1,60 +1,21 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingCart, Heart, Clock, Info, Search, Filter, ArrowRight, Sparkles, Star } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { ShoppingCart, Heart, Clock, Search, Filter, ArrowRight, Sparkles, Star, Loader2 } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
+import { AdminService } from '../../services/adminService';
+import type { Product } from '../../types';
 
-const offersData = [
-  {
-    id: 'OFF-001',
-    name: 'Ramo de Rosas Elegance',
-    category: 'Ramos',
-    catalogo: 'Catálogo Premium',
-    price: 450,
-    oldPrice: 600,
-    discount: 25,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCVkE2uoVeUUyctwp74JoYnIoigk6R8XzaJyCBgb3lGY1wRRds4_zf7zbIN911Gughg2HjH6VLaoTdvkdP_he1gyP4HMDpWN_kbAaEzl9Qwmi2ZiUIk2_k_czUGuTY9Xk_S3nVaVNpyA7wy-T3Rsd595sd4HX7hIkFdFQWwIL5jxYnJV3-gc_0VeDwzen8uaLutYAmODueiZg2CE4e0TzsqHhVqDTygvU8DfQ20X_LKgM5w3Zqv2yb2IH1QPFUbxCL1bqoSZcaPyz2c',
-    timeLeft: '2 días',
-    rating: 4.8
-  },
-  {
-    id: 'OFF-002',
-    name: 'Caja Premium Tulipanes Holandeses',
-    category: 'Cajas de Regalo',
-    catalogo: 'Especial de Temporada',
-    price: 840,
-    oldPrice: 990,
-    discount: 15,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDk0_A2EKIv8hKJfCt1v4H_0Mzi1c78mABEyxGWmbmgOsnYGqvnfwyntr--1-i3Wx16i3Bzp3yG1Yh1UyY3Am44StDMS2zknXhj26d4MHUUeJ-KZVCfuVajDZ_WCyZQE-KWuAEjERPLPV6qo9d5bsCUwHaofQG6I9xvcQme-aQ2c28pHTzzSadTot9e0aRfmE3afpTPBca6AR0gER9P54YwgZnllUMeWeMocrQNszKLNMJgE5wVYi4UHRHFShfy5TTkjl-Xjclu2OFd',
-    fewUnits: true,
-    rating: 4.9
-  },
-  {
-    id: 'OFF-003',
-    name: 'Canasta Radiante de Girasoles',
-    category: 'Ramos',
-    catalogo: 'Favoritos del Sol',
-    price: 320,
-    oldPrice: 480,
-    discount: 33,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDLs2BT75hhxY8PgrMIWY7G63NjUyC3czXR3mI9Zff3BjyXr97SohcwSNkxj4bpHUa0-l2AsVjmDn8EQMRgkZIOgJtmYQ1TVKdnMundE3DtPNs64f1gsocT0E9Nw2R4kdtuZnsrjB_YU8afogYnHncIUzMeMaZeSbQ3Htrq6W4HBIBRJ8kqSx6iRZ5kzEf1ML5Yx63trTJcucoph6lI2EJTcXDqq0jkS0uRzS4414Nmec25ZMXLzzvqnZ8TIeCtgE05fCq8WfrduvMC',
-    flashSale: true,
-    timeLeft: 'Hoy a medianoche',
-    rating: 4.7
-  },
-  {
-    id: 'OFF-004',
-    name: 'Orquídea Phalaenopsis Púrpura',
-    category: 'Plantas',
-    catalogo: 'Plantas de Interior',
-    price: 550,
-    oldPrice: 620,
-    discount: 11,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBO63iRCcQjZHwFu7QkOk79P-dmBSyq6Q-O0wBXpPHRnH7__pEiAW-1JBKBysiCfIKd8vKnSDH7WFXtz8b4h7jmTYhYj9Eb-8jgxDWy7m80G4ae0kA2dPJ7GYIRXpP2M5rQOcAuavpt941KquGs_U4eNUEqxXJhAAgISllt9GONgYDkGC0ANNADkhKu2Ltky3g8Pjt23TZV2O_AL5tr5jXH0z2ORp2K0vWHtuNxKfX2EdXtFiP1jxjULtr6XG2PJC4x9RBcOyIaX4ci',
-    new: true,
-    info: 'Incluye maceta decorativa',
-    rating: 5.0
-  }
-];
+// Etiquetas legibles para el "tipo" de producto que viene de la BD.
+const TIPO_LABELS: Record<string, string> = {
+  ARREGLO_FLORAL: 'Arreglos Florales',
+  FLORERO: 'Floreros',
+  RAMO: 'Ramos',
+  PLANTA: 'Plantas',
+  CAJA_REGALO: 'Cajas de Regalo',
+};
+
+const prettyTipo = (tipo: string) =>
+  TIPO_LABELS[tipo] ?? tipo.charAt(0) + tipo.slice(1).toLowerCase().replace(/_/g, ' ');
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -76,41 +37,60 @@ const cardVariants = {
 
 export default function OffersPage() {
   const { addToCart } = useCart();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Todas las Ofertas');
-  const [sortBy, setSortBy] = useState('Mayor Descuento');
+  const [sortBy, setSortBy] = useState('Precio: Menor a Mayor');
   const [likedItems, setLikedItems] = useState<string[]>([]);
 
-  const categories = ['Todas las Ofertas', 'Ramos', 'Cajas de Regalo', 'Plantas', 'Ocasiones'];
+  // Productos reales de la base de datos.
+  useEffect(() => {
+    const cargar = async () => {
+      setLoading(true);
+      try {
+        const res = await AdminService.getProducts({ size: 60 });
+        setProducts(res.data.items);
+      } catch {
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargar();
+  }, []);
 
-  const filteredAndSortedOffers = useMemo(() => {
-    let result = [...offersData];
-    
+  // Categorías derivadas de los tipos reales presentes en el catálogo.
+  const categories = useMemo(() => {
+    const tipos = Array.from(new Set(products.map(p => p.tipo))).filter(Boolean);
+    return ['Todas las Ofertas', ...tipos];
+  }, [products]);
+
+  const filteredAndSortedProducts = useMemo(() => {
+    let result = [...products];
+
     if (selectedCategory !== 'Todas las Ofertas') {
-      result = result.filter(offer => offer.category === selectedCategory);
+      result = result.filter(p => p.tipo === selectedCategory);
     }
 
     switch (sortBy) {
-      case 'Mayor Descuento':
-        result.sort((a, b) => b.discount - a.discount);
-        break;
       case 'Precio: Menor a Mayor':
-        result.sort((a, b) => a.price - b.price);
+        result.sort((a, b) => a.precioBase - b.precioBase);
         break;
       case 'Precio: Mayor a Menor':
-        result.sort((a, b) => b.price - a.price);
+        result.sort((a, b) => b.precioBase - a.precioBase);
         break;
-      case 'Más Valorados':
-        result.sort((a, b) => b.rating - a.rating);
+      case 'Nombre: A-Z':
+        result.sort((a, b) => a.nombre.localeCompare(b.nombre));
         break;
       default:
         break;
     }
 
     return result;
-  }, [selectedCategory, sortBy]);
+  }, [products, selectedCategory, sortBy]);
 
   const toggleLike = (id: string) => {
-    setLikedItems(prev => 
+    setLikedItems(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
@@ -316,16 +296,16 @@ export default function OffersPage() {
         <section className="mb-12 flex flex-wrap items-center justify-between gap-6 p-4 bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-xl shadow-black/5">
           <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
             {categories.map(cat => (
-              <button 
+              <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-6 py-3 rounded-xl text-sm font-black transition-all whitespace-nowrap ${
-                  selectedCategory === cat 
-                    ? 'bg-brand-deep text-white shadow-lg shadow-brand-deep/20' 
+                  selectedCategory === cat
+                    ? 'bg-brand-deep text-white shadow-lg shadow-brand-deep/20'
                     : 'bg-white/50 text-slate-500 hover:bg-white hover:text-brand-deep border border-transparent hover:border-brand-deep/10'
                 }`}
               >
-                {cat}
+                {cat === 'Todas las Ofertas' ? cat : prettyTipo(cat)}
               </button>
             ))}
           </div>
@@ -337,98 +317,83 @@ export default function OffersPage() {
               onChange={(e) => setSortBy(e.target.value)}
               className="text-sm font-bold border-none bg-transparent focus:ring-0 text-brand-deep cursor-pointer pr-8"
             >
-              <option>Mayor Descuento</option>
               <option>Precio: Menor a Mayor</option>
               <option>Precio: Mayor a Menor</option>
-              <option>Más Valorados</option>
+              <option>Nombre: A-Z</option>
             </select>
           </div>
         </section>
 
         {/* Offers Grid with Staggered Animation */}
-        <motion.section 
+        {loading ? (
+          <div className="flex items-center justify-center py-32">
+            <Loader2 className="w-10 h-10 text-brand-deep animate-spin" />
+          </div>
+        ) : (
+        <motion.section
           variants={containerVariants}
           initial="hidden"
           animate="visible"
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
         >
-          <AnimatePresence mode="popLayout">
-            {filteredAndSortedOffers.map((offer) => (
-              <motion.article 
-                key={offer.id}
-                layout
+          {filteredAndSortedProducts.map((product) => (
+              <motion.article
+                key={product.id}
                 variants={cardVariants}
-                exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
                 className="bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col h-full border border-slate-100 group relative"
               >
                 {/* Futuristic Glow Effect on Hover */}
                 <div className="absolute inset-0 bg-gradient-to-br from-brand-coral/0 to-brand-coral/0 group-hover:from-brand-coral/5 group-hover:to-transparent pointer-events-none transition-all duration-500" />
-                
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  <motion.img 
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.6 }}
-                    alt={offer.name} 
-                    className="w-full h-full object-cover" 
-                    src={offer.image} 
-                  />
-                  
-                  {/* Badge with clip-path */}
-                  <div 
-                    className={`absolute top-6 left-0 px-4 py-1.5 font-black text-[10px] text-white uppercase tracking-[0.2em] shadow-lg ${
-                      offer.flashSale ? 'bg-red-600' : offer.new ? 'bg-blue-600' : 'bg-brand-coral'
-                    }`}
+
+                <div className="relative aspect-[4/5] overflow-hidden bg-slate-100">
+                  {product.imagenUrl ? (
+                    <motion.img
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.6 }}
+                      alt={product.nombre}
+                      className="w-full h-full object-cover"
+                      src={product.imagenUrl}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Sparkles className="w-12 h-12 text-slate-300" />
+                    </div>
+                  )}
+
+                  {/* Categoría real del producto */}
+                  <div
+                    className="absolute top-6 left-0 px-4 py-1.5 font-black text-[10px] text-white uppercase tracking-[0.2em] shadow-lg bg-brand-coral"
                     style={{ clipPath: 'polygon(0 0, 100% 0, 90% 100%, 0% 100%)' }}
                   >
-                    {offer.flashSale ? 'FLASH SALE' : offer.new ? 'NUEVO' : `-${offer.discount}%`}
+                    {prettyTipo(product.tipo)}
                   </div>
 
-                  <button 
-                    onClick={() => toggleLike(offer.id)}
+                  <button
+                    onClick={() => toggleLike(product.id)}
                     className={`absolute top-6 right-6 p-3 rounded-2xl transition-all shadow-xl backdrop-blur-md ${
-                      likedItems.includes(offer.id) 
-                        ? 'bg-brand-coral text-white scale-110' 
+                      likedItems.includes(product.id)
+                        ? 'bg-brand-coral text-white scale-110'
                         : 'bg-white/80 text-slate-400 hover:text-brand-coral hover:bg-white'
                     }`}
                   >
-                    <Heart className={`h-5 w-5 ${likedItems.includes(offer.id) ? 'fill-current' : ''}`} />
+                    <Heart className={`h-5 w-5 ${likedItems.includes(product.id) ? 'fill-current' : ''}`} />
                   </button>
-
-                  {/* Rating Badge */}
-                  <div className="absolute bottom-6 left-6 px-3 py-1 bg-black/40 backdrop-blur-md rounded-lg text-white text-[10px] font-black flex items-center gap-1.5">
-                    <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                    {offer.rating.toFixed(1)}
-                  </div>
                 </div>
 
                 <div className="p-8 flex flex-col flex-grow relative z-10">
                   <div className="mb-4">
-                    <p className="text-[10px] text-slate-400 mb-1 uppercase tracking-[0.2em] font-black">{offer.catalogo}</p>
-                    <h3 className="text-xl font-black text-brand-deep leading-tight group-hover:text-brand-coral transition-colors">{offer.name}</h3>
+                    <p className="text-[10px] text-slate-400 mb-1 uppercase tracking-[0.2em] font-black">{prettyTipo(product.tipo)}</p>
+                    <h3 className="text-xl font-black text-brand-deep leading-tight group-hover:text-brand-coral transition-colors">{product.nombre}</h3>
                   </div>
-                  
+
                   <div className="flex items-center gap-3 mb-8">
-                    <span className="text-3xl font-black text-brand-deep">${offer.price.toLocaleString()}</span>
-                    <span className="text-sm text-slate-300 line-through font-bold">${offer.oldPrice.toLocaleString()}</span>
+                    <span className="text-3xl font-black text-brand-deep">${product.precioBase.toLocaleString()}</span>
                   </div>
 
                   <div className="mt-auto space-y-4">
-                    {offer.timeLeft && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 rounded-xl">
-                        <Clock className="w-3.5 h-3.5 text-red-500" />
-                        <span className="text-[10px] text-red-600 font-black uppercase tracking-wider">Termina en {offer.timeLeft}</span>
-                      </div>
-                    )}
-                    {offer.fewUnits && (
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 rounded-xl">
-                        <Info className="w-3.5 h-3.5 text-orange-500" />
-                        <span className="text-[10px] text-orange-600 font-black uppercase tracking-wider">Últimas unidades</span>
-                      </div>
-                    )}
-                    
-                    <motion.button 
+                    <motion.button
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => addToCart(offer as any)}
+                      onClick={() => addToCart(product)}
                       className="w-full bg-brand-deep text-white py-4 rounded-2xl font-black hover:bg-brand-coral transition-all flex items-center justify-center gap-3 shadow-xl shadow-brand-deep/10 hover:shadow-brand-coral/30"
                     >
                       <ShoppingCart className="h-5 w-5" />
@@ -438,11 +403,11 @@ export default function OffersPage() {
                 </div>
               </motion.article>
             ))}
-          </AnimatePresence>
         </motion.section>
+        )}
 
         {/* Empty State */}
-        {filteredAndSortedOffers.length === 0 && (
+        {!loading && filteredAndSortedProducts.length === 0 && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

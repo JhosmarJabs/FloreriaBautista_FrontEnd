@@ -47,17 +47,26 @@ export const useCart = () => {
       } catch (e) {}
     }
 
-    const existingItemIndex = currentCart.findIndex(item => item.id === product.id);
-    
+    // Normaliza el producto: acepta tanto el formato de la API
+    // (nombre/precioBase/imagenUrl) como el ya normalizado (name/price/image).
+    const normalized = {
+      id: product.id,
+      name: product.name ?? product.nombre ?? '',
+      price: Number(product.price ?? product.precioBase ?? 0),
+      image: product.image ?? product.imagenUrl ?? undefined,
+    };
+
+    const existingItemIndex = currentCart.findIndex(item => item.id === normalized.id);
+
     if (existingItemIndex >= 0) {
       currentCart[existingItemIndex].quantity += quantity;
     } else {
       currentCart.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
+        id: normalized.id,
+        name: normalized.name,
+        price: normalized.price,
         quantity: quantity,
-        image: product.image
+        image: normalized.image
       });
     }
 
@@ -95,8 +104,13 @@ export const useCart = () => {
     }
   };
 
+  const clearCart = () => {
+    localStorage.removeItem('cart');
+    window.dispatchEvent(new Event('cart-updated'));
+  };
+
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
 
-  return { cart, cartCount, cartTotal, addToCart, removeFromCart, updateQuantity };
+  return { cart, cartCount, cartTotal, addToCart, removeFromCart, updateQuantity, clearCart };
 };

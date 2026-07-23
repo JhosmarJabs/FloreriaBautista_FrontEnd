@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Search, ShoppingCart, Menu, X, Bell, Settings, LogOut, User, ChevronDown, PlusCircle } from "lucide-react";
+import { ShoppingCart, Menu, X, Bell, Settings, LogOut, User, ChevronDown, PlusCircle } from "lucide-react";
 import { useCart } from "../hooks/useCart";
 import { motion, AnimatePresence } from "motion/react";
 
 const menuItems = [
   { name: "Inicio", href: "/" },
   { name: "Catálogo", href: "/catalogo" },
-  { name: "Ofertas", href: "/ofertas" },
-  { name: "Eventos", href: "/eventos" },
+  { name: "Ofertas", href: "/ofertas", disabled: true }, // En desarrollo: visible pero sin funcionar
+  { name: "Eventos", href: "/eventos", disabled: true }, // En desarrollo: visible pero sin funcionar
   { name: "Contacto", href: "/contacto" },
 ];
 
@@ -16,8 +16,6 @@ export function NavbarCliente() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { cartCount } = useCart();
   const [cartBounce, setCartBounce] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -97,38 +95,31 @@ export function NavbarCliente() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-10">
             {menuItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className="relative text-sm font-bold text-white/80 hover:text-white transition-colors duration-300 group"
-              >
-                {item.name}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#FBBF24] transition-all duration-300 group-hover:w-full"></span>
-              </Link>
+              item.disabled ? (
+                <span
+                  key={item.name}
+                  title="Próximamente — en desarrollo"
+                  aria-disabled="true"
+                  className="relative text-sm font-bold text-white/40 cursor-not-allowed select-none flex items-center gap-1.5"
+                >
+                  {item.name}
+                  <span className="text-[9px] font-bold uppercase tracking-wider bg-white/10 text-white/50 px-1.5 py-0.5 rounded-full">Pronto</span>
+                </span>
+              ) : (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className="relative text-sm font-bold text-white/80 hover:text-white transition-colors duration-300 group"
+                >
+                  {item.name}
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#FBBF24] transition-all duration-300 group-hover:w-full"></span>
+                </Link>
+              )
             ))}
           </nav>
 
-          {/* Right Section: Search, Icons, User */}
+          {/* Right Section: Icons, User */}
           <div className="flex items-center gap-8">
-            {/* Search Bar - Desktop */}
-            <motion.div 
-              animate={{ width: isSearchFocused ? 280 : 200 }}
-              className="relative hidden lg:block"
-            >
-              <input
-                type="text"
-                value={searchQuery}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar flores..."
-                className="w-full bg-white/10 border border-white/10 rounded-full py-2 pl-10 pr-4 text-sm text-white placeholder-white/40 outline-none focus:bg-white/20 focus:border-[#FBBF24]/50 transition-all duration-300"
-              />
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40">
-                <Search className="w-4 h-4" />
-              </div>
-            </motion.div>
-
             {/* Icons */}
             <div className="flex items-center gap-5">
               {/* Cart */}
@@ -307,31 +298,28 @@ export function NavbarCliente() {
               className="md:hidden overflow-hidden"
             >
               <div className="py-6 space-y-6">
-                {/* Mobile Search */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar flores..."
-                    className="w-full bg-white/10 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm text-white placeholder-white/40 outline-none focus:bg-white/20 transition-all"
-                  />
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">
-                    <Search className="w-5 h-5" />
-                  </div>
-                </div>
-
                 {/* Mobile Nav Links */}
                 <nav className="grid grid-cols-2 gap-3">
                   {menuItems.map((item) => (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className="flex items-center justify-center p-4 bg-white/5 rounded-2xl text-white font-bold hover:bg-white/10 transition-colors border border-white/5"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
+                    item.disabled ? (
+                      <span
+                        key={item.name}
+                        aria-disabled="true"
+                        className="flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl text-white/40 font-bold border border-white/5 cursor-not-allowed select-none gap-1"
+                      >
+                        {item.name}
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-white/40">Pronto</span>
+                      </span>
+                    ) : (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className="flex items-center justify-center p-4 bg-white/5 rounded-2xl text-white font-bold hover:bg-white/10 transition-colors border border-white/5"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    )
                   ))}
                 </nav>
 
