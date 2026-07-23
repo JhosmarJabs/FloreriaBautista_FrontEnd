@@ -36,28 +36,36 @@ export default function OrderSuccessPage() {
       const paymentId = searchParams.get('payment_id') || searchParams.get('collection_id');
       const status = searchParams.get('status') || searchParams.get('collection_status');
 
-      // Confirmamos el pago contra el backend antes de dar por exitosa la compra.
+      // Determina si el pedido ya está pagado.
       // 1) Si MP redirigió con payment_id, lo consultamos directo.
       // 2) Si no (ej. localhost sin auto_return), buscamos el pago por id de orden.
-      if (!o.pagado && (paymentId || o.backendOrderId)) {
+      let pagado = o.pagado === true;
+      if (!pagado && (paymentId || o.backendOrderId)) {
         try {
           const res = paymentId
             ? await AdminService.confirmMpPayment(paymentId)
             : await AdminService.confirmMpOrder(o.backendOrderId!);
 
-          if (res.estado !== 'approved' && !res.acreditado) {
-            // Aún no aprobado.
+          if (res.estado === 'approved' || res.acreditado) {
+            pagado = true;
+          } else {
             navigate(res.estado === 'rejected' || status === 'rejected' ? '/checkout/fallo' : '/checkout/pendiente', { replace: true });
             return;
           }
         } catch {
-          // Si falla la verificación y MP no marcó aprobado por query, lo dejamos pendiente.
-          if (!paymentId || (status && status !== 'approved')) {
+          // Si falla la verificación pero MP marcó aprobado por query, continuamos con cautela.
+          if (paymentId && (!status || status === 'approved')) {
+            pagado = true;
+          } else {
             navigate('/checkout/pendiente', { replace: true });
             return;
           }
         }
-        // Pago acreditado → se marca pagado, se vacía carrito y borrador.
+      }
+
+      // Siempre que el pedido esté pagado se vacía el carrito y el borrador
+      // (también en revisitas), para que la insignia del carrito no quede colgada.
+      if (pagado) {
         const pagada = { ...o, pagado: true };
         saveCompletedOrder(pagada);
         clearCart();

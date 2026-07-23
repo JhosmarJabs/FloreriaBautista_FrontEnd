@@ -670,7 +670,7 @@ export const AdminService = {
 
   // ─── Pedidos del cliente autenticado ─────────────────────────
   getMyOrders: async (): Promise<ApiResponse<Order>> => {
-    const res = await fetch('/api/orders/mis-pedidos', {
+    const res = await fetch('/api/orders/my', {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
