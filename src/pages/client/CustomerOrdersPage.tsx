@@ -171,14 +171,18 @@ export default function CustomerOrdersPage() {
                     {/* Products List */}
                     <div className="space-y-6">
                       <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Productos</h4>
-                      {selectedOrder.items.map((item: any, i: number) => (
+                      {(selectedOrder.items ?? []).map((item: any, i: number) => (
                         <div key={i} className="flex flex-col md:flex-row gap-6 pb-6 border-b border-slate-50 last:border-0 last:pb-0">
-                          <div className="w-full md:w-32 h-32 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0">
-                            <img 
-                              className="w-full h-full object-cover" 
-                              src={item.productImage || "https://picsum.photos/seed/flower/400/400"} 
-                              alt={item.productName} 
-                            />
+                          <div className="w-full md:w-32 h-32 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 flex items-center justify-center">
+                            {item.productImage ? (
+                              <img
+                                className="w-full h-full object-cover"
+                                src={item.productImage}
+                                alt={item.productName}
+                              />
+                            ) : (
+                              <Package className="w-10 h-10 text-slate-300" />
+                            )}
                           </div>
                           <div className="flex-grow flex flex-col justify-between">
                             <div>
