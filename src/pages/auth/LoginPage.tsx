@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle, Wrench } from "lucide-react";
+import { notificarCambioDeSesion } from "../../utils/userScope";
 
 const DEV_ACCOUNTS = [
   { label: "Admin", correo: "admin@gmail.com", contrasena: "J@bs1234" },
@@ -56,6 +57,10 @@ export default function LoginPage() {
         "usuario",
         JSON.stringify({ ...usuarioBase, role: roles[0] ?? "cliente" }),
       );
+
+      // Aísla el carrito por usuario: recarga el del nuevo usuario y fusiona
+      // lo que se hubiera agregado como invitado.
+      notificarCambioDeSesion();
 
       if (roles.includes("administrador") || roles.includes("admin")) {
         navigate("/admin/dashboard");

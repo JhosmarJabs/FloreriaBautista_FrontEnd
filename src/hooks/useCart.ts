@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { scopedKey, limpiarClavesLegacy } from '../utils/userScope';
 
 export interface CartItem {
   id: string;
@@ -8,18 +9,27 @@ export interface CartItem {
   image?: string;
 }
 
+// Clave del carrito aislada por usuario (cart:<id> o cart:guest).
+const cartKey = () => scopedKey('cart');
+
 export const useCart = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
 
   useEffect(() => {
+    // Elimina las claves globales viejas (no aisladas) que filtraban datos entre cuentas.
+    limpiarClavesLegacy();
+
     const loadCart = () => {
-      const savedCart = localStorage.getItem('cart');
+      const savedCart = localStorage.getItem(cartKey());
       if (savedCart) {
         try {
           setCart(JSON.parse(savedCart));
         } catch (e) {
           console.error("Error parsing cart", e);
+          setCart([]);
         }
+      } else {
+        setCart([]);
       }
     };
 
@@ -30,16 +40,18 @@ export const useCart = () => {
     };
 
     window.addEventListener('cart-updated', handleStorageChange);
-    window.addEventListener('storage', handleStorageChange); // Also listen to cross-tab changes
+    window.addEventListener('storage', handleStorageChange); // cambios entre pestañas
+    window.addEventListener('auth-changed', handleStorageChange); // login/logout: recargar carrito del nuevo usuario
 
     return () => {
       window.removeEventListener('cart-updated', handleStorageChange);
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-changed', handleStorageChange);
     };
   }, []);
 
   const addToCart = (product: any, quantity: number = 1) => {
-    const currentCartStr = localStorage.getItem('cart');
+    const currentCartStr = localStorage.getItem(cartKey());
     let currentCart: CartItem[] = [];
     if (currentCartStr) {
       try {
@@ -70,18 +82,18 @@ export const useCart = () => {
       });
     }
 
-    localStorage.setItem('cart', JSON.stringify(currentCart));
+    localStorage.setItem(cartKey(), JSON.stringify(currentCart));
     window.dispatchEvent(new Event('cart-updated'));
   };
 
   const removeFromCart = (productId: string) => {
-    const currentCartStr = localStorage.getItem('cart');
+    const currentCartStr = localStorage.getItem(cartKey());
     if (!currentCartStr) return;
-    
+
     let currentCart: CartItem[] = JSON.parse(currentCartStr);
     currentCart = currentCart.filter(item => item.id !== productId);
-    
-    localStorage.setItem('cart', JSON.stringify(currentCart));
+
+    localStorage.setItem(cartKey(), JSON.stringify(currentCart));
     window.dispatchEvent(new Event('cart-updated'));
   };
 
@@ -91,21 +103,21 @@ export const useCart = () => {
       return;
     }
 
-    const currentCartStr = localStorage.getItem('cart');
+    const currentCartStr = localStorage.getItem(cartKey());
     if (!currentCartStr) return;
-    
+
     let currentCart: CartItem[] = JSON.parse(currentCartStr);
     const itemIndex = currentCart.findIndex(item => item.id === productId);
-    
+
     if (itemIndex >= 0) {
       currentCart[itemIndex].quantity = quantity;
-      localStorage.setItem('cart', JSON.stringify(currentCart));
+      localStorage.setItem(cartKey(), JSON.stringify(currentCart));
       window.dispatchEvent(new Event('cart-updated'));
     }
   };
 
   const clearCart = () => {
-    localStorage.removeItem('cart');
+    localStorage.removeItem(cartKey());
     window.dispatchEvent(new Event('cart-updated'));
   };
 

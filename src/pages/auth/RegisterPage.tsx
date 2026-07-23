@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
 import api from '../../services/api';
+import { notificarCambioDeSesion } from '../../utils/userScope';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -48,13 +49,17 @@ export default function RegisterPage() {
       setLoading(true);
       const telefono = form.telefono ? `+521${form.telefono}` : undefined;
 
+      // El backend espera un solo campo "apellido": unimos paterno + materno.
+      const apellido = `${form.apellidoPaterno} ${form.apellidoMaterno}`.trim();
+
       const res = await api.post('/api/auth/register', {
         nombre: form.nombre,
-        apellidoP: form.apellidoPaterno,
-        apellidoM: form.apellidoMaterno,
+        apellido,
         correo: form.correo,
         contrasena: password,
         ...(telefono && { telefono }),
+        ...(form.sexo && { sexo: form.sexo }),
+        ...(form.fechaNacimiento && { fechaNacimiento: form.fechaNacimiento }),
       });
 
       const { accessToken, refreshToken, usuario } = res.data.data;
@@ -64,6 +69,9 @@ export default function RegisterPage() {
         ...usuario,
         role: usuario.roles?.[0]?.toLowerCase() ?? 'cliente',
       }));
+
+      // Aísla el carrito por usuario (cuenta nueva parte de un carrito propio).
+      notificarCambioDeSesion();
 
       navigate('/');
     } catch (err: any) {

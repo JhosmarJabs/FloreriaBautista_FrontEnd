@@ -8,6 +8,7 @@
 
 import type { CartItem } from '../hooks/useCart';
 import type { ZonaEnvio } from './envio';
+import { scopedKey } from './userScope';
 
 export interface CheckoutAddress {
   label: string;
@@ -41,15 +42,16 @@ export interface CompletedOrder extends CheckoutDraft {
   pagado?: boolean;        // true una vez confirmado el pago en Mercado Pago
 }
 
-const DRAFT_KEY = 'checkout_draft';
-const ORDER_KEY = 'last_order';
+// Claves aisladas por usuario para no filtrar el borrador ni el recibo entre cuentas.
+const draftKey = () => scopedKey('checkout_draft');
+const orderKey = () => scopedKey('last_order');
 
 export const saveDraft = (draft: CheckoutDraft) => {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  localStorage.setItem(draftKey(), JSON.stringify(draft));
 };
 
 export const getDraft = (): CheckoutDraft | null => {
-  const raw = localStorage.getItem(DRAFT_KEY);
+  const raw = localStorage.getItem(draftKey());
   if (!raw) return null;
   try {
     return JSON.parse(raw) as CheckoutDraft;
@@ -58,14 +60,14 @@ export const getDraft = (): CheckoutDraft | null => {
   }
 };
 
-export const clearDraft = () => localStorage.removeItem(DRAFT_KEY);
+export const clearDraft = () => localStorage.removeItem(draftKey());
 
 export const saveCompletedOrder = (order: CompletedOrder) => {
-  localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+  localStorage.setItem(orderKey(), JSON.stringify(order));
 };
 
 export const getCompletedOrder = (): CompletedOrder | null => {
-  const raw = localStorage.getItem(ORDER_KEY);
+  const raw = localStorage.getItem(orderKey());
   if (!raw) return null;
   try {
     return JSON.parse(raw) as CompletedOrder;
