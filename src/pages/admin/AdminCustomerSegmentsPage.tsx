@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Users, Crown, Repeat, Clock, UserX, RefreshCw, Download, Loader2, Phone, Mail
+  Users, Crown, Repeat, Clock, UserX, RefreshCw, Download, Loader2, Phone, Mail, ScatterChart as ScatterChartIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { FadeIn, GlassCard, AnimatedButton } from '../../components/Animations';
@@ -35,6 +35,124 @@ const GRUPO_META: Record<string, { label: string; icon: any; color: string; bg: 
 };
 
 const grupoMeta = (g: string) => GRUPO_META[g] ?? { label: g, icon: Users, color: 'text-slate-500', bg: 'bg-slate-50 dark:bg-slate-800', desc: '' };
+
+const GRUPO_HEX: Record<string, string> = {
+  VIP: '#f59e0b',
+  FRECUENTE: '#3b82f6',
+  OCASIONAL: '#10b981',
+  INACTIVO: '#f43f5e',
+};
+const grupoHex = (g: string) => GRUPO_HEX[g] ?? '#64748b';
+
+// ─── Gráfica de dispersión: Recencia vs Monto, tamaño = frecuencia ──────────
+function CustomerScatterChart({ segmentos }: { segmentos: SegmentGroup[] }) {
+  const puntos = useMemo(
+    () => segmentos.flatMap(s => s.clientes.map(c => ({ ...c, grupo: s.grupo }))),
+    [segmentos]
+  );
+
+  const gruposPresentes = useMemo(
+    () => Array.from(new Set(puntos.map(p => p.grupo))),
+    [puntos]
+  );
+
+  if (puntos.length === 0) return null;
+
+  const W = 900, H = 380;
+  const padX = 70, padY = 30;
+  const chartW = W - padX - 30;
+  const chartH = H - padY * 2;
+
+  const maxX = Math.max(...puntos.map(p => p.recenciaDias), 1) * 1.05;
+  const maxY = Math.max(...puntos.map(p => p.montoTotal), 1) * 1.08;
+  const maxFreq = Math.max(...puntos.map(p => p.frecuenciaPedidos), 1);
+
+  const toSvgX = (v: number) => padX + (v / maxX) * chartW;
+  const toSvgY = (v: number) => padY + chartH - (v / maxY) * chartH;
+  const toRadio = (freq: number) => 4 + (freq / maxFreq) * 10;
+
+  return (
+    <GlassCard className="p-8">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
+            <ScatterChartIcon className="w-5 h-5 text-indigo-500" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Dispersión de Clientes</h3>
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Recencia (días) vs. Monto total — tamaño = frecuencia de pedidos</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {gruposPresentes.map(g => (
+            <div key={g} className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full" style={{ background: grupoHex(g) }} />
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{grupoMeta(g).label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-hidden bg-slate-50/50 dark:bg-slate-950/20 rounded-[32px] border border-slate-100 dark:border-slate-800 p-4">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
+          {/* Grid + Y axis */}
+          {[0, 0.25, 0.5, 0.75, 1].map(p => {
+            const y = padY + chartH * p;
+            const val = maxY - maxY * p;
+            return (
+              <g key={p}>
+                <line x1={padX} y1={y} x2={W - 30} y2={y} className="stroke-slate-100 dark:stroke-slate-800" strokeWidth="1" />
+                <text x={padX - 12} y={y + 4} textAnchor="end" fontSize="10" fontWeight="900" className="fill-slate-400 font-mono uppercase">
+                  ${val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toFixed(0)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Grid + X axis */}
+          {[0, 0.25, 0.5, 0.75, 1].map(p => {
+            const x = padX + chartW * p;
+            const val = maxX * p;
+            return (
+              <g key={p}>
+                <line x1={x} y1={padY} x2={x} y2={padY + chartH} className="stroke-slate-100 dark:stroke-slate-800" strokeWidth="1" />
+                <text x={x} y={H - 6} textAnchor="middle" fontSize="9" fontWeight="900" className="fill-slate-400 font-mono uppercase">
+                  {val.toFixed(0)}d
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Puntos */}
+          {puntos.map(p => (
+            <motion.circle
+              key={p.customerId}
+              cx={toSvgX(p.recenciaDias)}
+              cy={toSvgY(p.montoTotal)}
+              r={toRadio(p.frecuenciaPedidos)}
+              fill={grupoHex(p.grupo)}
+              fillOpacity={0.65}
+              stroke={grupoHex(p.grupo)}
+              strokeWidth={1.5}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: Math.random() * 0.3 }}
+            >
+              <title>{`${p.nombre} — ${p.recenciaDias}d sin comprar, $${p.montoTotal.toLocaleString()}, ${p.frecuenciaPedidos} pedido(s)`}</title>
+            </motion.circle>
+          ))}
+
+          {/* Ejes labels */}
+          <text x={padX + chartW / 2} y={H + 2} textAnchor="middle" fontSize="9" fontWeight="900" className="fill-slate-300 uppercase tracking-widest" style={{ display: 'none' }} />
+        </svg>
+      </div>
+      <div className="flex justify-between px-2 mt-3">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">← Recencia (días sin comprar) →</p>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">↑ Monto total gastado</p>
+      </div>
+    </GlassCard>
+  );
+}
 
 function exportarCsv(grupo: SegmentGroup) {
   const encabezado = ['Nombre', 'Telefono', 'Correo', 'Recencia (dias)', 'Frecuencia (pedidos)', 'Monto total'];
@@ -170,6 +288,8 @@ export default function AdminCustomerSegmentsPage() {
               );
             })}
           </div>
+
+          <CustomerScatterChart segmentos={segmentos} />
 
           {grupoActivo && (
             <GlassCard className="p-0 overflow-hidden">
