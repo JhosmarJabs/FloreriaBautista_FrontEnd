@@ -249,8 +249,10 @@ export default function AdminReplenishmentPage() {
             <div className="p-4 border-t border-slate-100 dark:border-slate-800">
               <p className="text-[10px] text-slate-400 leading-relaxed">
                 <span className="font-black text-slate-500">Cómo se calcula:</span> el modelo Random Forest predice el
-                consumo de la próxima semana por insumo; la cantidad sugerida es <span className="font-mono">max(0, consumo
-                predicho − stock actual)</span>. Los insumos por debajo del mínimo se marcan con ⚠.
+                consumo de la próxima semana por insumo; se surte hasta cubrir el consumo predicho o, si el insumo está
+                por debajo del mínimo, al menos reponer el mínimo:
+                <span className="font-mono"> max(0, max(consumo predicho, stock mínimo) − stock actual)</span>. Los insumos
+                por debajo del mínimo se marcan con ⚠.
               </p>
             </div>
           </GlassCard>
