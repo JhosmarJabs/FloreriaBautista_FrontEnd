@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ChevronRight, ChevronLeft, Star, Lock, ShoppingCart, MessageCircle, Info, HelpCircle, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Star, Lock, ShoppingCart, MessageCircle, Info, HelpCircle, Loader2, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../hooks/useCart';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
 import { esCliente } from '../../utils/auth';
+import { slugify, esGuid } from '../../utils/slug';
 
 export default function ProductPage({ user: initialUser }: { user?: any }) {
   const { id } = useParams();
@@ -18,7 +19,7 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [loadingProduct, setLoadingProduct] = useState(true);
-  const [mainImage, setMainImage] = useState('https://picsum.photos/seed/placeholder/400/400');
+  const [mainImage, setMainImage] = useState('');
 
   useEffect(() => {
     if (!initialUser) {
@@ -33,7 +34,7 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
     // misma categoría, y como último respaldo el listado público general.
     const loadRelated = async (p: any) => {
       const excluir = (items: any[]) =>
-        items.filter((it: any) => it.id !== id).slice(0, 4);
+        items.filter((it: any) => it.id !== p?.id).slice(0, 4);
 
       const catalogo = p?.catalogos?.[0];
       const categoria = p?.categorias?.[0] || p?.tipo;
@@ -67,23 +68,42 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
       }
     };
 
-    const loadProduct = async () => {
-      setLoadingProduct(true);
-      let p: any = null;
+    // Obtiene el detalle completo a partir del id interno (nunca visible en la URL).
+    const fetchById = async (realId: string) => {
       try {
-        const res = await AdminService.getPublicProductById(id!);
-        p = res.data;
+        const res = await AdminService.getPublicProductById(realId);
+        return res.data;
       } catch {
         // Fallback: intentar con endpoint admin
         try {
-          const res = await AdminService.getAdminProductById(id!);
-          p = res.data;
+          const res = await AdminService.getAdminProductById(realId);
+          return res.data;
+        } catch {
+          return null;
+        }
+      }
+    };
+
+    const loadProduct = async () => {
+      setLoadingProduct(true);
+      let p: any = null;
+
+      if (esGuid(id!)) {
+        // Compatibilidad: enlaces antiguos que aún traen el id en la URL.
+        p = await fetchById(id!);
+      } else {
+        // URL tipo texto: resolver el slug (nombre) al producto real sin exponer el id.
+        try {
+          const res = await AdminService.getProducts({ size: 200 });
+          const match = res.data.items.find((it: any) => slugify(it.nombre) === id);
+          if (match) p = await fetchById(match.id);
         } catch {
           p = null;
         }
       }
+
       setProduct(p);
-      if (p) setMainImage(p.imagenUrl || 'https://picsum.photos/seed/placeholder/400/400');
+      if (p) setMainImage(p.imagenUrl || '');
       setLoadingProduct(false);
       // Buscar relacionados una vez que conocemos el catálogo/categoría del producto
       loadRelated(p);
@@ -94,12 +114,14 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
     }
   }, [id]);
 
-  const galleryImages = [
-    mainImage,
-    'https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&q=80&w=800',
-    'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&q=80&w=800',
-    'https://images.unsplash.com/photo-1591886960571-74d43a9d4166?auto=format&fit=crop&q=80&w=800'
-  ];
+  // Galería real del producto. Si en el futuro el producto trae varias imágenes
+  // (campo `imagenes`), se usan todas; de lo contrario solo la imagen principal.
+  const galleryImages: string[] =
+    Array.isArray((product as any)?.imagenes) && (product as any).imagenes.length > 0
+      ? (product as any).imagenes
+      : product?.imagenUrl
+        ? [product.imagenUrl]
+        : [];
 
   const handleAddToCart = (p: any) => {
     if (esCliente(user)) {
@@ -159,37 +181,46 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
         <FadeIn delay={0.2}>
           <div className="space-y-6">
             <div className="relative rounded-[2.5rem] overflow-hidden aspect-square bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/50 dark:border-slate-700/50">
-              <AnimatePresence mode="wait">
-                <motion.img 
-                  key={mainImage}
-                  initial={{ opacity: 0, scale: 1.1 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.4 }}
-                  alt={product.name} 
-                  className="w-full h-full object-cover" 
-                  src={mainImage} 
-                />
-              </AnimatePresence>
+              {mainImage ? (
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={mainImage}
+                    initial={{ opacity: 0, scale: 1.1 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4 }}
+                    alt={product.nombre}
+                    className="w-full h-full object-cover"
+                    src={mainImage}
+                  />
+                </AnimatePresence>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+                  <Package className="w-24 h-24 text-slate-300" />
+                </div>
+              )}
               {(product as any).badge && (
                 <div className="absolute top-8 left-0 bg-brand-coral text-white px-8 py-2 font-black text-xs uppercase tracking-[0.2em] rounded-r-full shadow-xl z-10">
                   {(product as any).badge}
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-4 gap-4">
-              {galleryImages.map((img, idx) => (
-                <motion.button 
-                  key={idx}
-                  whileHover={{ y: -4 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setMainImage(img)}
-                  className={`rounded-2xl overflow-hidden aspect-square border-2 transition-all shadow-md ${mainImage === img ? 'border-brand-coral ring-4 ring-brand-coral/10' : 'border-white dark:border-slate-800 hover:border-brand-coral/50'}`}
-                >
-                  <img className="w-full h-full object-cover" src={img} alt={`Gallery ${idx}`} />
-                </motion.button>
-              ))}
-            </div>
+            {/* Miniaturas: solo si el producto trae más de una imagen. */}
+            {galleryImages.length > 1 && (
+              <div className="grid grid-cols-4 gap-4">
+                {galleryImages.map((img, idx) => (
+                  <motion.button
+                    key={idx}
+                    whileHover={{ y: -4 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setMainImage(img)}
+                    className={`rounded-2xl overflow-hidden aspect-square border-2 transition-all shadow-md ${mainImage === img ? 'border-brand-coral ring-4 ring-brand-coral/10' : 'border-white dark:border-slate-800 hover:border-brand-coral/50'}`}
+                  >
+                    <img className="w-full h-full object-cover" src={img} alt={`${product.nombre} ${idx + 1}`} />
+                  </motion.button>
+                ))}
+              </div>
+            )}
           </div>
         </FadeIn>
 
@@ -355,12 +386,18 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
             <ScaleIn key={p.id}>
               <GlassCard className="group h-full flex flex-col overflow-hidden border-slate-200/50 dark:border-slate-700/50 hover:shadow-2xl hover:shadow-brand-coral/5 transition-all duration-500">
                 <div className="relative aspect-[4/5] overflow-hidden">
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.6 }}
-                    className="absolute inset-0 bg-center bg-cover"
-                    style={{ backgroundImage: `url('${p.imagenUrl || 'https://picsum.photos/seed/flower/400/400'}')` }}
-                  />
+                  {p.imagenUrl ? (
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.6 }}
+                      className="absolute inset-0 bg-center bg-cover"
+                      style={{ backgroundImage: `url('${p.imagenUrl}')` }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <Package className="w-12 h-12 text-slate-300" />
+                    </div>
+                  )}
                   {(p.stock ?? 0) <= 5 && (
                     <div className="absolute top-6 right-0 bg-orange-500 text-white px-4 py-1.5 font-black text-[10px] uppercase tracking-widest rounded-l-full shadow-lg z-10">
                       Pocas unidades
@@ -384,7 +421,7 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
                   </div>
                   
                   <div className="mt-auto space-y-3">
-                    <Link to={`/producto/${p.id}`} className="block">
+                    <Link to={`/producto/${slugify(p.nombre)}`} className="block">
                       <AnimatedButton className="w-full py-3.5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl font-bold text-sm">
                         Ver Detalles
                       </AnimatedButton>

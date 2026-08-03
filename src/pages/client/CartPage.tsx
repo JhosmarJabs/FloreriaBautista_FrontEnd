@@ -10,8 +10,12 @@ interface CartRecommendation {
   nombre: string;
   precioBase: number;
   imagenUrl?: string | null;
-  confianza?: number | null;
+  /** Suma de similitudes coseno con lo que hay en el carrito. Null si viene del respaldo. */
+  afinidad?: number | null;
   esFallback: boolean;
+  /** Explicación que envía el backend. El §7 del proyecto exige mostrar el significado
+   *  del resultado, no solo la lista de productos. */
+  motivo: string;
 }
 
 export default function CartPage() {
@@ -20,9 +24,10 @@ export default function CartPage() {
   // checkout; aquí solo mostramos el subtotal y avisamos que se calcula después.
   const total = cartTotal;
 
-  // Propuesta 2 (Modelos Predictivos): "Suele comprarse junto con..." via reglas de asociación,
-  // con fallback automático a más vendidos cuando no hay regla aplicable (carrito vacío o
-  // productos sin historial de compra conjunta).
+  // Solución 2 (Modelos Predictivos): filtrado colaborativo ítem-ítem. El backend consulta la
+  // matriz de similitud coseno que produjo la libreta 02_recomendacion_colaborativa.ipynb y
+  // cae en los más vendidos cuando el carrito está vacío o el producto no tiene historial
+  // suficiente (arranque en frío). Esos casos llegan marcados con esFallback.
   const [recommendations, setRecommendations] = useState<CartRecommendation[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(true);
 
@@ -207,15 +212,21 @@ export default function CartPage() {
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-bold text-[#004A99] group-hover:text-[#FF7F7D] transition-colors">{product.nombre}</h3>
-                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
-                      {product.esFallback ? 'Popular' : 'Suele combinarse'}
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-widest ${
+                        product.esFallback ? 'text-slate-400' : 'text-blue-500'
+                      }`}
+                      title={
+                        product.esFallback
+                          ? 'Sugerencia de respaldo: no proviene del modelo'
+                          : `Afinidad con tu carrito: ${product.afinidad?.toFixed(3) ?? '—'}`
+                      }
+                    >
+                      {product.esFallback ? 'Popular' : 'Recomendado para ti'}
                     </span>
                   </div>
-                  <p className="text-slate-500 text-sm line-clamp-2 mb-4">
-                    {product.esFallback
-                      ? 'Uno de los productos favoritos de nuestros clientes.'
-                      : 'Los clientes que compraron algo similar también llevaron esto.'}
-                  </p>
+                  {/* El texto lo envía el backend junto con la recomendación */}
+                  <p className="text-slate-500 text-sm line-clamp-2 mb-4">{product.motivo}</p>
                   <div className="mt-auto">
                     <div className="text-xl font-bold text-slate-900 mb-4">${product.precioBase.toLocaleString()} MXN</div>
                     <button

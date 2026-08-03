@@ -249,7 +249,7 @@ export default function AdminSettingsPage() {
               </div>
               <div className="p-6 space-y-3">
                 {[
-                  { name: 'Stripe',                abbr: 'STR',  desc: 'Tarjetas de crédito y débito',  bg: 'bg-blue-600',    connected: true  },
+                  { name: 'Mercado Pago',           abbr: 'MP',   desc: 'Tarjetas, débito y saldo Mercado Pago', bg: 'bg-[#009EE3]',   connected: true  },
                   { name: 'PayPal',                abbr: 'PPL',  desc: 'Pagos internacionales',          bg: 'bg-[#00457C]',   connected: false },
                   { name: 'Transferencia bancaria', abbr: 'SPEI', desc: 'Pagos locales en México',       bg: 'bg-emerald-600', connected: true  },
                 ].map(({ name, abbr, desc, bg, connected }) => (

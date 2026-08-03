@@ -24,6 +24,7 @@ import { FadeIn } from '../../components/Animations';
 import { AdminService } from '../../services/adminService';
 import { lookupCp } from '../../services/sepomexService';
 import { useToast } from '../../hooks/useToast';
+import { todayISO } from '../../utils/date';
 
 export default function PhysicalOrderPage() {
   const { showToast } = useToast();
@@ -93,7 +94,7 @@ export default function PhysicalOrderPage() {
   // Tipo de pedido: se paga y entrega ahora mismo, o se entrega despues (con posible anticipo)
   const [tipoPedido, setTipoPedido] = useState<'INSTANTANEO' | 'ANTICIPADO'>('INSTANTANEO');
 
-  const todayIso = () => new Date().toISOString().slice(0, 10);
+  const todayIso = () => todayISO();
   const [fechaEntrega, setFechaEntrega] = useState(todayIso());
   const [horaEntrega, setHoraEntrega] = useState('09:00:00');
   const [notaExtra, setNotaExtra] = useState('');

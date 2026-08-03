@@ -56,6 +56,7 @@ import AdminNewPromotionPage from '../pages/admin/AdminNewPromotionPage';
 import AdminProductAnalysisPage from '../pages/admin/AdminProductAnalysisPage';
 import AdminSupplyAnalysisPage from '../pages/admin/AdminSupplyAnalysisPage';
 import AdminCustomerSegmentsPage from '../pages/admin/AdminCustomerSegmentsPage';
+import AdminReplenishmentPage from '../pages/admin/AdminReplenishmentPage';
 
 // Employee Pages
 import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
@@ -110,6 +111,7 @@ export default function AnimatedRoutes() {
         <Route path="/admin/analisis-producto/:id" element={<PageTransition><AdminProductAnalysisPage /></PageTransition>} />
         <Route path="/admin/analisis-insumo/:id" element={<PageTransition><AdminSupplyAnalysisPage /></PageTransition>} />
         <Route path="/admin/clientes" element={<PageTransition><AdminCustomerSegmentsPage /></PageTransition>} />
+        <Route path="/admin/reabastecimiento" element={<PageTransition><AdminReplenishmentPage /></PageTransition>} />
         
         {/* Employee Routes */}
         <Route path="/empleado/dashboard" element={<PageTransition><EmployeeDashboardPage /></PageTransition>} />

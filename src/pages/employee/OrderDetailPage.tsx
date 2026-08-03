@@ -41,6 +41,10 @@ export default function OrderDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [montoPago, setMontoPago] = useState('');
+  const [metodoPago, setMetodoPago] = useState('EFECTIVO');
+  const [processingPayment, setProcessingPayment] = useState(false);
   const { showToast } = useToast();
 
   const load = async () => {
@@ -71,6 +75,38 @@ export default function OrderDetailPage() {
       showToast(err.message || 'Error al actualizar el estado', 'error');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const openPaymentModal = () => {
+    if (!order) return;
+    // Por defecto se propone liquidar el saldo completo.
+    setMontoPago(String(order.saldoPendiente));
+    setMetodoPago('EFECTIVO');
+    setShowPaymentModal(true);
+  };
+
+  const handleRegisterPayment = async () => {
+    if (!id || !order) return;
+    const monto = parseFloat(montoPago);
+    if (!monto || monto <= 0) {
+      showToast('Ingresa un monto válido mayor a 0', 'error');
+      return;
+    }
+    if (monto > order.saldoPendiente) {
+      showToast(`El monto excede el saldo pendiente ($${order.saldoPendiente.toLocaleString()})`, 'error');
+      return;
+    }
+    setProcessingPayment(true);
+    try {
+      await AdminService.registerOrderPayment(id, { monto, metodo: metodoPago });
+      setShowPaymentModal(false);
+      await load(); // Recarga el pedido para reflejar el saldo actualizado.
+      showToast(monto >= order.saldoPendiente ? 'Pedido liquidado correctamente' : 'Anticipo registrado', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Error al registrar el pago', 'error');
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -231,6 +267,15 @@ export default function OrderDetailPage() {
               <span className="text-[10px] font-black uppercase tracking-widest">Saldo Pendiente:</span>
               <span className="text-sm font-black">${order.saldoPendiente.toLocaleString()}</span>
             </div>
+            {order.saldoPendiente > 0 && !isCancelled && (
+              <button
+                onClick={openPaymentModal}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#1e3a5f] dark:bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-600 dark:hover:bg-emerald-500 transition-all"
+              >
+                <Wallet className="w-4 h-4" />
+                Registrar pago
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -285,6 +330,86 @@ export default function OrderDetailPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* MODAL: Registrar Pago (condicional simple para evitar el bug de cierre
+          de AnimatePresence con motion v12 + React 19) */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => !processingPayment && setShowPaymentModal(false)}
+            className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-700"
+          >
+            <div className="flex items-center justify-between p-8 border-b border-slate-50 dark:border-slate-700">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Registrar pago</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 uppercase font-bold tracking-widest">Orden #{id?.slice(0, 8).toUpperCase()}</p>
+              </div>
+              <button onClick={() => !processingPayment && setShowPaymentModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+                <X className="w-6 h-6 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-8 space-y-5">
+              <div className="flex justify-between items-center p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
+                <span className="text-[10px] font-black uppercase tracking-widest">Saldo pendiente</span>
+                <span className="text-sm font-black">${order.saldoPendiente.toLocaleString()}</span>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Monto a cobrar</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">$</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    max={order.saldoPendiente}
+                    value={montoPago}
+                    onChange={(e) => setMontoPago(e.target.value)}
+                    className="w-full pl-8 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMontoPago(String(order.saldoPendiente))}
+                  className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest hover:underline"
+                >
+                  Liquidar todo (${order.saldoPendiente.toLocaleString()})
+                </button>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Método de pago</label>
+                <select
+                  value={metodoPago}
+                  onChange={(e) => setMetodoPago(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="EFECTIVO">Efectivo</option>
+                  <option value="TARJETA">Terminal (Tarjeta)</option>
+                  <option value="TRANSFERENCIA">Transferencia SPEI</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-4 p-8 bg-slate-50/50 dark:bg-slate-900/30 border-t border-slate-50 dark:border-slate-700">
+              <button onClick={() => setShowPaymentModal(false)} disabled={processingPayment} className="px-6 py-2 text-slate-500 dark:text-slate-400 font-bold hover:text-slate-700 transition-colors disabled:opacity-50">
+                Cancelar
+              </button>
+              <button
+                onClick={handleRegisterPayment}
+                disabled={processingPayment}
+                className="flex items-center gap-2 px-6 py-3 bg-[#1e3a5f] dark:bg-emerald-600 text-white font-black text-sm rounded-xl hover:bg-emerald-600 dark:hover:bg-emerald-500 transition-all disabled:opacity-50"
+              >
+                {processingPayment ? <Clock className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Confirmar pago
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 

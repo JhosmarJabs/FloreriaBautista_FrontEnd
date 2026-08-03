@@ -30,6 +30,7 @@ import {
   AnimatedButton,
 } from "../../components/Animations";
 import ImportModal from "../../components/ImportModal";
+import { slugify } from "../../utils/slug";
 import { esCliente } from "../../utils/auth";
 
 const itemVariants = {
@@ -144,6 +145,11 @@ export default function CatalogPage() {
       return a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" });
     });
   }, [products, searchTerm, selectedCategory, priceRange, selectedType, showInStockOnly]);
+
+  // Al cambiar de página, subir al inicio para ver los primeros productos de esa página.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const paginatedProducts = filteredProducts.slice(
@@ -536,7 +542,7 @@ export default function CatalogPage() {
                 whileHover={{ y: -4 }}
                 className="group bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl hover:border-slate-300 transition-shadow duration-300 flex flex-col relative"
               >
-                <Link to={`/producto/${product.id}`} className="flex flex-col flex-1">
+                <Link to={`/producto/${slugify(product.nombre)}`} className="flex flex-col flex-1">
                   <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
                     {product.imagenUrl ? (
                       <img

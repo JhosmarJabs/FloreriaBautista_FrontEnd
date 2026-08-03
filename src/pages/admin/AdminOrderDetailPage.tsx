@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronRight, RefreshCw, AlertCircle, ShoppingCart, User,
-  Calendar, MapPin, CreditCard, Package, ChevronDown, CheckCircle,
+  Calendar, MapPin, CreditCard, Package, ArrowRight, CheckCircle,
   Clock, Truck, X, ArrowLeft,
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
 import { parseApiDate } from '../../utils/date';
+import { extractApiError } from '../../utils/apiError';
 
 // Estos son los estados reales que maneja el backend (ver Transiciones en OrderService.cs)
 const ESTADOS_FLUJO = [
@@ -50,7 +51,6 @@ export default function AdminOrderDetailPage() {
   // Status update
   const [updating, setUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -60,7 +60,7 @@ export default function AdminOrderDetailPage() {
       const res = await AdminService.getAdminOrderById(id);
       setOrder(res.data);
     } catch (err: any) {
-      setError(err.message || 'Error al cargar el pedido');
+      setError(extractApiError(err, 'Error al cargar el pedido'));
     } finally {
       setLoading(false);
     }
@@ -70,14 +70,13 @@ export default function AdminOrderDetailPage() {
 
   const handleStatusChange = async (nuevoEstado: string) => {
     if (!id || !order) return;
-    setShowStatusMenu(false);
     setUpdating(true);
     setUpdateError(null);
     try {
       const res = await AdminService.updateAdminOrderStatus(id, nuevoEstado);
       setOrder(res.data);
     } catch (err: any) {
-      setUpdateError(err.message || 'Error al actualizar el estado');
+      setUpdateError(extractApiError(err, 'Error al actualizar el estado'));
     } finally {
       setUpdating(false);
     }
@@ -132,58 +131,41 @@ export default function AdminOrderDetailPage() {
           </div>
         </div>
 
-        {/* Status change */}
-        <div className="flex items-center gap-2">
+        {/* Status change — flujo evolutivo: un botón avanza al siguiente estado
+            y un botón separado cancela el pedido. */}
+        <div className="flex flex-col items-end gap-2">
           {updateError && (
             <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/40 border border-red-100 dark:border-red-800/50 px-3 py-2 rounded-xl">
               <AlertCircle className="w-3.5 h-3.5" />{updateError}
             </div>
           )}
-          <div className="relative">
-            <button
-              onClick={() => setShowStatusMenu(v => !v)}
-              disabled={updating}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-60"
-            >
-              {updating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              Cambiar estado
-            </button>
-            {showStatusMenu && (
-              <div className="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-700">
-                  <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Nuevo estado</p>
-                  <button onClick={() => setShowStatusMenu(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="p-1.5 space-y-0.5">
-                  {ESTADOS_FLUJO.map(e => (
-                    <button
-                      key={e.key}
-                      onClick={() => handleStatusChange(e.key)}
-                      disabled={e.key === order.estadoPedido}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${e.key === order.estadoPedido ? 'bg-slate-50 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed' : `hover:bg-slate-50 dark:hover:bg-slate-700 ${e.text} hover:font-bold`}`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${e.color}`} />
-                      {e.label}
-                      {e.key === order.estadoPedido && <CheckCircle className="w-3.5 h-3.5 ml-auto text-slate-300 dark:text-slate-600" />}
-                    </button>
-                  ))}
-                  <div className="border-t border-slate-100 dark:border-slate-700 mt-1 pt-1">
-                    <button
-                      onClick={() => handleStatusChange('CANCELADO')}
-                      disabled={isCancelled || order.estadoPedido === 'ENTREGADO'}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${(isCancelled || order.estadoPedido === 'ENTREGADO') ? 'bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-600 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 hover:font-bold'}`}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-red-400" />
-                      Cancelar pedido
-                      {isCancelled && <CheckCircle className="w-3.5 h-3.5 ml-auto text-slate-300 dark:text-slate-600" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {!isCancelled && !isNoCompletado && (
+            <div className="flex items-center gap-2">
+              {siguienteEstado ? (
+                <button
+                  onClick={() => handleStatusChange(siguienteEstado)}
+                  disabled={updating}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-60"
+                >
+                  {updating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  Cambiar a {siguienteLabel}
+                </button>
+              ) : (
+                <span className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 rounded-xl text-sm font-bold">
+                  <CheckCircle className="w-3.5 h-3.5" /> Pedido entregado
+                </span>
+              )}
+              {order.estadoPedido !== 'ENTREGADO' && (
+                <button
+                  onClick={() => handleStatusChange('CANCELADO')}
+                  disabled={updating}
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40 rounded-xl text-sm font-black transition-all disabled:opacity-60"
+                >
+                  <X className="w-3.5 h-3.5" /> Cancelar pedido
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

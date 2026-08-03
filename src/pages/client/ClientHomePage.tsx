@@ -8,6 +8,7 @@ import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
 import { Product } from '../../types';
 import { esCliente } from '../../utils/auth';
+import { slugify } from '../../utils/slug';
 
 export default function ClientHomePage({ user }: { user?: any }) {
   const userName = user?.name || 'Carlos';
@@ -196,7 +197,7 @@ export default function ClientHomePage({ user }: { user?: any }) {
                   {/* Ver detalles al hover */}
                   <div className="absolute inset-x-0 bottom-0 p-4 flex justify-center translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
                     <Link
-                      to={`/producto/${product.id}`}
+                      to={`/producto/${slugify(product.nombre)}`}
                       className="flex items-center gap-2 bg-white/95 backdrop-blur-md text-brand-deep px-5 py-2.5 rounded-full text-sm font-bold shadow-xl hover:bg-brand-coral hover:text-white transition-colors"
                     >
                       <Eye className="w-4 h-4" /> Ver detalles

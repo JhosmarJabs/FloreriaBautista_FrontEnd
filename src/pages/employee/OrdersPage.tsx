@@ -56,7 +56,6 @@ export default function OrdersPage() {
   const [confirmOrder, setConfirmOrder] = useState<Order | null>(null);
   const { showToast } = useToast();
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ACTIVOS');
 
   const loadData = useCallback(async () => {
@@ -108,16 +107,12 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const matchesSearch = (order.nombreCliente ?? '').toLowerCase().includes(searchTerm.toLowerCase())
-        || order.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus =
-        statusFilter === 'Todos' ? true :
-        statusFilter === 'ACTIVOS' ? !ESTADOS_FINALIZADOS.includes(order.estadoPedido) :
-        order.estadoPedido === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [orders, searchTerm, statusFilter]);
+    return orders.filter(order =>
+      statusFilter === 'Todos' ? true :
+      statusFilter === 'ACTIVOS' ? !ESTADOS_FINALIZADOS.includes(order.estadoPedido) :
+      order.estadoPedido === statusFilter
+    );
+  }, [orders, statusFilter]);
 
   const stats = useMemo(() => ({
     total: orders.length,
@@ -168,7 +163,7 @@ export default function OrdersPage() {
           </button>
           <div className="flex items-center gap-2 bg-blue-50 text-[#1e3a5f] px-4 py-2 rounded-xl border border-blue-100 shadow-sm">
             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest">En Línea</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">En Línea</span>
           </div>
         </div>
       </div>
@@ -189,30 +184,20 @@ export default function OrdersPage() {
             className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-6 group shadow-sm`}
           >
             <div className="relative z-10">
-              <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{s.label}</p>
+              <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{s.label}</p>
               <div className="mt-1 text-xl font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">{s.value}</div>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Filters & Search */}
+      {/* Filters */}
       <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-md p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col lg:flex-row gap-4 transition-colors">
-        <div className="relative flex-1">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Buscar por folio o nombre de cliente..."
-            className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f] text-[#1e3a5f] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors text-sm font-medium"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
         <div className="flex gap-3">
           <div className="relative">
             <Filter className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
             <select
-              className="pl-12 pr-12 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f] text-[10px] font-black uppercase tracking-[0.2em] text-[#1e3a5f] dark:text-slate-300 appearance-none cursor-pointer min-w-[200px] transition-colors shadow-inner"
+              className="pl-12 pr-12 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f] text-[11px] font-black uppercase tracking-[0.2em] text-[#1e3a5f] dark:text-slate-300 appearance-none cursor-pointer min-w-[200px] transition-colors shadow-inner"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -254,11 +239,11 @@ export default function OrdersPage() {
                       {(order.nombreCliente || 'C').slice(0, 1).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">FOLIO: {order.id.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em]">FOLIO: {order.id.slice(0, 8).toUpperCase()}</p>
                       <p className="text-sm font-bold text-[#1e3a5f] dark:text-white mt-0.5">{new Date(order.fechaCreacion).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })}</p>
                     </div>
                   </div>
-                  <div className={`px-4 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${estilo.bg} ${estilo.color} ${estilo.border}`}>
+                  <div className={`px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 ${estilo.bg} ${estilo.color} ${estilo.border}`}>
                     <div className="w-1.5 h-1.5 rounded-full bg-current" />
                     {estilo.label}
                   </div>
@@ -271,18 +256,18 @@ export default function OrdersPage() {
                       <h3 className="text-lg font-bold text-[#1e3a5f] dark:text-white group-hover:text-blue-600 transition-colors leading-tight">
                         {order.nombreCliente || 'Cliente sin nombre'}
                       </h3>
-                      <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest mt-2 leading-none">
+                      <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest mt-2 leading-none">
                         <MapPin className="w-3.5 h-3.5 text-[#eab308]" />
                         <span className="truncate max-w-[180px]">Entrega: {parseApiDate(order.fechaEntrega)?.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Total</p>
+                      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Total</p>
                       <p className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-blue-400 leading-none mt-1">${order.total.toLocaleString()}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] pt-2 font-black uppercase tracking-[0.2em]">
+                  <div className="flex items-center justify-between text-[11px] pt-2 font-black uppercase tracking-[0.2em]">
                     <div className="flex items-center gap-2 text-slate-400 border-r border-slate-100 dark:border-white/5 pr-4">
                       <Clock className="w-4 h-4 text-[#eab308]" />
                       <span>ENTREGA: <span className="text-[#1e3a5f] dark:text-white">{parseApiDate(order.fechaEntrega)?.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span></span>
@@ -294,7 +279,7 @@ export default function OrdersPage() {
                 <div className="p-3 bg-slate-50/50 dark:bg-slate-900/40 border-t border-slate-50 dark:border-white/5 flex gap-3 transition-colors">
                   <Link
                     to={`/empleado/pedidos/${order.id}`}
-                    className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-[#1e3a5f] dark:text-slate-300 text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1e3a5f] hover:text-white transition-all text-center flex items-center justify-center gap-2 shadow-sm"
+                    className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/5 text-[#1e3a5f] dark:text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1e3a5f] hover:text-white transition-all text-center flex items-center justify-center gap-2 shadow-sm"
                   >
                     Documentación
                     <ArrowRight className="w-4 h-4" />
@@ -302,7 +287,7 @@ export default function OrdersPage() {
                   <button
                     onClick={() => requestStatusChange(order)}
                     disabled={updatingStatus === order.id || !siguiente}
-                    className="flex-1 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex-1 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-xl shadow-blue-900/10 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {updatingStatus === order.id ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -333,13 +318,13 @@ export default function OrdersPage() {
               className="absolute -top-2 -right-2 w-8 h-8 bg-[#eab308] rounded-full border-4 border-white dark:border-slate-800 shadow-lg"
             />
           </div>
-          <h3 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white">Sin Coincidencias</h3>
+          <h3 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white">Sin Pedidos</h3>
           <p className="text-slate-500 mt-3 max-w-xs mx-auto font-medium italic">
-            "No encontramos el folio o cliente que buscas."
+            "No hay pedidos en este estado."
           </p>
           <button
-            onClick={() => { setSearchTerm(''); setStatusFilter('ACTIVOS'); }}
-            className="mt-10 px-10 py-4 bg-[#1e3a5f] dark:bg-blue-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-2xl shadow-blue-900/20"
+            onClick={() => setStatusFilter('ACTIVOS')}
+            className="mt-10 px-10 py-4 bg-[#1e3a5f] dark:bg-blue-600 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-2xl shadow-blue-900/20"
           >
             Restaurar Bitácora
           </button>
@@ -347,7 +332,7 @@ export default function OrdersPage() {
       )}
 
       {/* Corporate Footer */}
-      <footer className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-slate-100 dark:border-white/5 text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] gap-6 transition-colors">
+      <footer className="flex flex-col md:flex-row items-center justify-between pt-10 border-t border-slate-100 dark:border-white/5 text-slate-400 text-[11px] font-black uppercase tracking-[0.4em] gap-6 transition-colors">
         <div className="flex items-center gap-10">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>
@@ -394,19 +379,19 @@ export default function OrdersPage() {
                       <span className="font-bold">{estiloDe(confirmOrder.estadoPedido).label}</span> a{' '}
                       <span className="font-bold text-emerald-600 dark:text-emerald-400">{estiloDe(SIGUIENTE_ESTADO[confirmOrder.estadoPedido] ?? '').label}</span>.
                     </p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black pt-1">Esta acción no se puede revertir</p>
+                    <p className="text-[12px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black pt-1">Esta acción no se puede revertir</p>
                   </div>
                 </div>
                 <div className="p-4 bg-slate-50/50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-white/5 flex gap-3">
                   <button
                     onClick={() => setConfirmOrder(null)}
-                    className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                    className="flex-1 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={confirmStatusChange}
-                    className="flex-1 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-xl shadow-blue-900/10"
+                    className="flex-1 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-[#eab308] hover:text-[#1e3a5f] transition-all shadow-xl shadow-blue-900/10"
                   >
                     Sí, avanzar
                   </button>

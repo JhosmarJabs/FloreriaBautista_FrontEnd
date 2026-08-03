@@ -22,6 +22,7 @@ import { calcularEnvio } from '../../utils/envio';
 import { saveDraft, getDraft } from '../../utils/checkout';
 import { AdminService } from '../../services/adminService';
 import { lookupCp } from '../../services/sepomexService';
+import { todayISO } from '../../utils/date';
 
 export default function CheckoutDataPage() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function CheckoutDataPage() {
   const [address, setAddress] = useState('casa');
   const [orderType, setOrderType] = useState<'instantaneo' | 'anticipado'>('instantaneo');
   const [showAddressModal, setShowAddressModal] = useState(false);
-  const [deliveryDate, setDeliveryDate] = useState(new Date().toISOString().split('T')[0]);
+  const [deliveryDate, setDeliveryDate] = useState(todayISO());
   const [timeSlot, setTimeSlot] = useState('');
   const [wantsDedicatoria, setWantsDedicatoria] = useState(false);
   const [dedicatoria, setDedicatoria] = useState('');
@@ -37,7 +38,7 @@ export default function CheckoutDataPage() {
     costo: 0, etiqueta: 'Por confirmar', gratis: true, zona: 'desconocida',
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayISO();
 
   const timeSlots = [
     { label: '09:00 AM - 12:00 PM', startHour: 9 },

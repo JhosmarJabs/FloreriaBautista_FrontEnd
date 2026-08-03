@@ -121,7 +121,7 @@ export default function EmployeeDashboardPage() {
           >
             <RefreshCw className="w-4.5 h-4.5 group-hover:rotate-180 transition-transform duration-700" />
           </button>
-          <button className="bg-[#1e3a5f] dark:bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:translate-y-[-1px] transition-all shadow-xl shadow-blue-900/10 active:scale-95">
+          <button className="bg-[#1e3a5f] dark:bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center gap-2 hover:translate-y-[-1px] transition-all shadow-xl shadow-blue-900/10 active:scale-95">
             <PlusCircle className="w-4 h-4" />
             Venta Nueva
           </button>
@@ -143,9 +143,9 @@ export default function EmployeeDashboardPage() {
           >
             <div className="absolute inset-0 bg-white/40 dark:bg-black/20 backdrop-blur-[1px] pointer-events-none" />
             <div className="relative z-10 flex flex-col justify-between h-full">
-              <p className="text-[9px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-[0.2em]">{s.label}</p>
+              <p className="text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-[0.2em]">{s.label}</p>
               <div className="mt-1 text-xl font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">{s.value}</div>
-              <p className={`text-[9px] mt-2 font-black uppercase tracking-widest ${s.color} opacity-80 flex items-center gap-1`}>
+              <p className={`text-[10px] mt-2 font-black uppercase tracking-widest ${s.color} opacity-80 flex items-center gap-1`}>
                 <div className="w-1 h-1 rounded-full bg-current animate-pulse" />
                 {s.trend}
               </p>
@@ -167,7 +167,7 @@ export default function EmployeeDashboardPage() {
               <div className="w-1.5 h-8 bg-[#eab308] rounded-full shadow-lg shadow-amber-600/20"></div>
               <h2 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white">Reporte Rápido de Ventas</h2>
             </div>
-            <Link to="/empleado/pedidos" className="group flex items-center gap-2 text-[#1e3a5f] dark:text-blue-400 font-black text-[9px] uppercase tracking-widest hover:bg-[#1e3a5f] hover:text-white transition-all px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/50 backdrop-blur-md">
+            <Link to="/empleado/pedidos" className="group flex items-center gap-2 text-[#1e3a5f] dark:text-blue-400 font-black text-[10px] uppercase tracking-widest hover:bg-[#1e3a5f] hover:text-white transition-all px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/50 backdrop-blur-md">
               Ver Todo
               <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
@@ -177,11 +177,11 @@ export default function EmployeeDashboardPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/20">
-                  <th className="px-6 py-4 text-left text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/6">Folio</th>
-                  <th className="px-6 py-4 text-left text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex-1">Producto</th>
-                  <th className="px-6 py-4 text-center text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/6">Cantidad</th>
-                  <th className="px-6 py-4 text-right text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/5">Total</th>
-                  <th className="px-6 py-4 text-center text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/4">Estado</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/6">Folio</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex-1">Producto</th>
+                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/6">Cantidad</th>
+                  <th className="px-6 py-4 text-right text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/5">Total</th>
+                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/4">Estado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
@@ -195,16 +195,16 @@ export default function EmployeeDashboardPage() {
                       transition={{ delay: idx * 0.05 }}
                       className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors group"
                     >
-                      <td className="px-6 py-4 text-[9px] font-black text-[#1e3a5f] dark:text-blue-400">{order.id.slice(0, 8).toUpperCase()}</td>
-                      <td className="px-6 py-4 text-[9px] font-bold text-slate-700 dark:text-slate-300 truncate">
+                      <td className="px-6 py-4 text-[10px] font-black text-[#1e3a5f] dark:text-blue-400">{order.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-6 py-4 text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">
                         {order.items && order.items.length > 0 ? order.items[0].name || 'Producto' : 'Producto'}
                       </td>
-                      <td className="px-6 py-4 text-center text-[9px] font-bold text-slate-700 dark:text-slate-300">
+                      <td className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 dark:text-slate-300">
                         {order.items ? order.items.length : 0}
                       </td>
-                      <td className="px-6 py-4 text-right text-[9px] font-black text-[#1e3a5f] dark:text-blue-400">${order.total.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-right text-[10px] font-black text-[#1e3a5f] dark:text-blue-400">${order.total.toFixed(2)}</td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-[0.15em] inline-flex items-center gap-1.5 whitespace-nowrap ${
+                        <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.15em] inline-flex items-center gap-1.5 whitespace-nowrap ${
                           order.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:border-amber-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-500/20'
                         }`}>
                           <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${order.status === 'pending' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-emerald-500'}`}></div>
@@ -236,7 +236,7 @@ export default function EmployeeDashboardPage() {
                   </div>
                   <div>
                     <p className="font-bold text-lg leading-none">Venta Rápida</p>
-                    <p className="text-white/40 text-[9px] font-black uppercase tracking-[0.2em] mt-1.5">Módulo Directo</p>
+                    <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mt-1.5">Módulo Directo</p>
                   </div>
                 </div>
                 <ArrowUpRight className="w-5 h-5 text-white/30 group-hover:text-white transition-colors relative z-10" />
@@ -247,14 +247,14 @@ export default function EmployeeDashboardPage() {
                     <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all z-10">
                         <Package className="w-5 h-5" />
                     </div>
-                    <span className="font-black text-[9px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-[#1e3a5f] transition-colors z-10">Suministros</span>
+                    <span className="font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-[#1e3a5f] transition-colors z-10">Suministros</span>
                 </Link>
                 
                 <Link to="/empleado/pedidos" className="bg-white/70 dark:bg-slate-800/40 backdrop-blur-xl p-5 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex flex-col items-center justify-center gap-2 text-center hover:border-blue-500 hover:shadow-xl transition-all group overflow-hidden relative">
                     <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-all z-10">
                         <ClipboardList className="w-5 h-5" />
                     </div>
-                    <span className="font-black text-[9px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-amber-600 transition-colors z-10">Bitácora</span>
+                    <span className="font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-amber-600 transition-colors z-10">Bitácora</span>
                 </Link>
               </div>
 
@@ -265,7 +265,7 @@ export default function EmployeeDashboardPage() {
                   </div>
                   <div className="text-left">
                     <p className="font-bold text-slate-700 dark:text-white leading-none text-base transition-colors">Escanear</p>
-                    <p className="text-blue-600 dark:text-blue-400/60 text-[8px] font-black uppercase tracking-widest mt-1 underline underline-offset-2 decoration-[#eab308]">Tickets de entrega</p>
+                    <p className="text-blue-600 dark:text-blue-400/60 text-[9px] font-black uppercase tracking-widest mt-1 underline underline-offset-2 decoration-[#eab308]">Tickets de entrega</p>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#1e3a5f] transition-colors" />
@@ -287,11 +287,11 @@ export default function EmployeeDashboardPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[9px] font-black text-[#eab308] uppercase tracking-[0.3em]">✓ Sin Entregas Pendientes</p>
+                  <p className="text-[10px] font-black text-[#eab308] uppercase tracking-[0.3em]">✓ Sin Entregas Pendientes</p>
                   <p className="text-2xl font-serif font-medium leading-tight mt-3">
                     Hoy no tenemos entregas
                   </p>
-                  <p className="text-[11px] font-bold mt-3 text-white/70">
+                  <p className="text-[12px] font-bold mt-3 text-white/70">
                     Completa tu turno sin compromisos de entrega.
                   </p>
                 </div>
@@ -314,7 +314,7 @@ export default function EmployeeDashboardPage() {
 
                 return (
                   <div className="relative z-10 space-y-4">
-                    <div className={`flex items-center gap-3 font-black text-[9px] uppercase tracking-[0.3em] ${
+                    <div className={`flex items-center gap-3 font-black text-[10px] uppercase tracking-[0.3em] ${
                       isUrgent ? 'text-rose-300' : 'text-[#eab308]'
                     }`}>
                       <div className={`p-2 rounded-lg ${
@@ -329,14 +329,14 @@ export default function EmployeeDashboardPage() {
                       <p className="text-xl font-serif font-medium leading-tight">
                         {urgentOrder.nombreCliente || 'Cliente'}
                       </p>
-                      <p className="text-[11px] font-bold mt-2 text-white/70">
+                      <p className="text-[12px] font-bold mt-2 text-white/70">
                         {urgentOrder.items && urgentOrder.items.length > 0
                           ? `${urgentOrder.items.map(i => i.name || 'Producto').join(', ')}`
                           : 'Pedido General'}
                       </p>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${
                         isUrgent ? 'text-rose-200' : 'text-white/60'
                       }`}>
                         {daysUntilDelivery <= 0
@@ -360,7 +360,7 @@ export default function EmployeeDashboardPage() {
       </div>
 
       {/* ── Corporate Footer ── */}
-      <footer className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-200 dark:border-white/5 text-slate-400 text-[9px] font-black uppercase tracking-[0.3em] gap-4 relative z-10 transition-colors">
+      <footer className="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-slate-200 dark:border-white/5 text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] gap-4 relative z-10 transition-colors">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></div>

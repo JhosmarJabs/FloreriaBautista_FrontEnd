@@ -20,6 +20,7 @@ import {
   Library,
   Tag,
   UsersRound,
+  Truck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -153,6 +154,15 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           >
             <Package className="w-5 h-5 flex-shrink-0" />
             <Label>Inventario</Label>
+          </Link>
+
+          {/* 3.5 Reabastecimiento */}
+          <Link
+            to="/admin/reabastecimiento"
+            className={linkCls(isActive("/admin/reabastecimiento"))}
+          >
+            <Truck className="w-5 h-5 flex-shrink-0" />
+            <Label>Reabastecimiento</Label>
           </Link>
 
           {/* 4. Productos */}
