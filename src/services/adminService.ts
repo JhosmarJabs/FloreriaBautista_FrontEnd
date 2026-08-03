@@ -362,6 +362,15 @@ export const AdminService = {
     return res.json();
   },
 
+  // Lista de reabastecimiento: insumos con la predicción del modelo S1 (Propuesta 1)
+  getReabastecimiento: async (): Promise<SingleResponse<any[]>> => {
+    const res = await fetch(`${API_BASE}/inventory/reabastecimiento`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
   createInventoryItem: async (body: any): Promise<SingleResponse<InventoryItem>> => {
     const res = await fetch(`${API_BASE}/inventory`, {
       method: 'POST',
