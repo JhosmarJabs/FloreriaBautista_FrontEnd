@@ -362,9 +362,10 @@ export const AdminService = {
     return res.json();
   },
 
-  // Lista de reabastecimiento: insumos con la predicción del modelo S1 (Propuesta 1)
-  getReabastecimiento: async (): Promise<SingleResponse<any[]>> => {
-    const res = await fetch(`${API_BASE}/inventory/reabastecimiento`, {
+  // Lista de reabastecimiento: insumos con la predicción del modelo S1 (Propuesta 1).
+  // Por defecto lee del caché del backend; refresh=true fuerza recalcular el modelo.
+  getReabastecimiento: async (refresh = false): Promise<SingleResponse<any[]>> => {
+    const res = await fetch(`${API_BASE}/inventory/reabastecimiento${refresh ? '?refresh=true' : ''}`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);

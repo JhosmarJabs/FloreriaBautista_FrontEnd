@@ -43,10 +43,10 @@ export default function AdminReplenishmentPage() {
     }
   });
 
-  const cargarReabastecimiento = async () => {
+  const cargarReabastecimiento = async (forzar = false) => {
     setLoading(true);
     try {
-      const res = await AdminService.getReabastecimiento();
+      const res = await AdminService.getReabastecimiento(forzar);
       setInsumos(res.data || []);
     } catch {
       showToast('Error al calcular el reabastecimiento con el modelo', 'error');
@@ -136,7 +136,7 @@ export default function AdminReplenishmentPage() {
             </p>
           </div>
           <AnimatedButton
-            onClick={cargarReabastecimiento}
+            onClick={() => cargarReabastecimiento(true)}
             disabled={loading}
             className="px-5 py-3 bg-[#1e3a5f] text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-lg disabled:opacity-60"
           >
