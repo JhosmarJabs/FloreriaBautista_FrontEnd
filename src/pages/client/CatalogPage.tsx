@@ -436,8 +436,6 @@ export default function CatalogPage() {
           {/* Background Decorations */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#FBBF24] rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-400 rounded-full blur-[120px] opacity-20 translate-y-1/2 -translate-x-1/2"></div>
-          {/* Degradado inferior: funde sutilmente el header con el fondo de la página */}
-          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#f0f7ff] to-transparent pointer-events-none z-0"></div>
 
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 px-4 md:px-8">
             <div className="max-w-2xl">
@@ -461,10 +459,6 @@ export default function CatalogPage() {
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                   className="w-full pl-14 pr-6 py-4 bg-white border-0 rounded-full text-base font-medium text-[#1A3B5B] focus:ring-4 focus:ring-[#FBBF24]/30 focus:outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
                 />
-              </div>
-              <div className="flex items-center gap-2 text-xs font-black text-[#1A3B5B] uppercase tracking-widest bg-[#FBBF24] px-5 py-2.5 rounded-full shadow-lg shadow-yellow-500/20 transform hover:scale-105 transition-transform">
-                <Filter className="w-4 h-4" />
-                <span>{filteredProducts.length} productos</span>
               </div>
             </div>
           </div>
