@@ -436,7 +436,9 @@ export default function CatalogPage() {
           {/* Background Decorations */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#FBBF24] rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-400 rounded-full blur-[120px] opacity-20 translate-y-1/2 -translate-x-1/2"></div>
-          
+          {/* Degradado inferior: funde sutilmente el header con el fondo de la página */}
+          <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#f0f7ff] to-transparent pointer-events-none z-0"></div>
+
           <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 px-4 md:px-8">
             <div className="max-w-2xl">
               <span className="inline-block py-1.5 px-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white/90 text-sm font-black tracking-widest uppercase mb-6">
@@ -470,25 +472,8 @@ export default function CatalogPage() {
 
         {/* Horizontal Filters Bar (Yandex/Ebay style) */}
         <div className="max-w-7xl mx-auto px-4 md:px-0 mb-8 border-b border-slate-100 pb-2">
-          {/* Quick Category Links */}
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x">
-             {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
-                  className={`flex-none px-6 py-2.5 rounded-full font-black text-sm transition-all snap-start whitespace-nowrap ${
-                    selectedCategory === cat
-                      ? "bg-slate-100 text-[#1A3B5B] shadow-inner"
-                      : "bg-transparent text-slate-500 hover:text-[#1A3B5B] hover:bg-slate-50"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-          </div>
-          
           {/* Pill Dropdowns */}
-          <div className="flex flex-wrap items-center gap-3 py-4 border-t border-slate-50">
+          <div className="flex flex-wrap items-center gap-3 py-4">
             <div className="flex items-center gap-2 text-slate-400 text-xs font-bold mr-2 uppercase tracking-widest hidden md:flex">
               <Filter className="w-4 h-4 text-[#FBBF24]" />
               Filtros
