@@ -432,7 +432,7 @@ export default function CatalogPage() {
   return (
     <main className="w-full px-6 sm:px-8 lg:px-12 xl:px-16 py-12 pt-32 min-h-screen font-sans overflow-hidden">
       <FadeIn className="mb-12">
-        <div className="relative w-full bg-gradient-to-br from-[#1A3B5B] via-[#2A527A] to-[#1A3B5B] rounded-[3rem] p-[30px] mb-12 overflow-hidden shadow-2xl shadow-blue-900/20">
+        <div className="relative w-full bg-gradient-to-br from-[#1A3B5B] via-[#2A527A] to-[#1A3B5B] rounded-[3rem] p-[30px] mb-4 overflow-hidden shadow-2xl shadow-blue-900/20">
           {/* Background Decorations */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#FBBF24] rounded-full blur-[100px] opacity-20 -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-400 rounded-full blur-[120px] opacity-20 translate-y-1/2 -translate-x-1/2"></div>
