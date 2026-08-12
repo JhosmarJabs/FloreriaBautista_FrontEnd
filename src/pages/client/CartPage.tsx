@@ -57,7 +57,7 @@ export default function CartPage() {
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-32 min-h-screen font-sans bg-[#f0f7ff] text-slate-800 antialiased">
       {/* Header Section */}
       <header className="mb-10 text-center md:text-left">
-        <h1 className="text-4xl md:text-5xl font-bold text-[#004A99] mb-2 font-serif">Tu Carrito</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-[#1A3B5B] mb-2 font-serif">Tu Carrito</h1>
         <p className="text-[#4B5563] italic">Cada arreglo es una historia que estás a punto de enviar.</p>
       </header>
 
@@ -68,7 +68,7 @@ export default function CartPage() {
           <p className="text-slate-500 mb-8">¡Explora nuestro catálogo y encuentra el detalle perfecto!</p>
           <Link 
             to="/catalogo" 
-            className="inline-flex items-center gap-2 bg-[#004A99] text-white px-8 py-4 rounded-full font-semibold hover:bg-blue-800 transition-all shadow-lg"
+            className="inline-flex items-center gap-2 bg-[#1A3B5B] text-white px-8 py-4 rounded-full font-semibold hover:bg-blue-800 transition-all shadow-lg"
           >
             <ArrowLeft className="w-5 h-5" />
             Ir al catálogo
@@ -125,7 +125,7 @@ export default function CartPage() {
           {/* Order Summary Sidebar */}
           <aside className="lg:col-span-1">
             <div className="bg-[#F3F4F6] p-8 rounded-2xl sticky top-32">
-              <h2 className="text-2xl font-bold text-[#004A99] mb-6 font-serif">Resumen del Pedido</h2>
+              <h2 className="text-2xl font-bold text-[#1A3B5B] mb-6 font-serif">Resumen del Pedido</h2>
               <div className="space-y-4 text-sm mb-8 border-b border-gray-200 pb-6">
                 <div className="flex justify-between">
                   <span className="text-[#4B5563]">Subtotal ({cart.length} productos)</span>
@@ -142,18 +142,18 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between items-baseline mb-8">
                 <span className="text-lg font-bold">Total</span>
-                <span className="text-3xl font-bold text-[#004A99]">${total.toLocaleString()} MXN</span>
+                <span className="text-3xl font-bold text-[#1A3B5B]">${total.toLocaleString()} MXN</span>
               </div>
               <div className="space-y-4">
                 <Link 
                   to="/checkout/datos" 
-                  className="w-full bg-[#004A99] text-white py-4 rounded-full font-semibold text-lg hover:bg-blue-800 transition-all shadow-lg hover:shadow-[#004A99]/20 text-center block"
+                  className="w-full bg-[#1A3B5B] text-white py-4 rounded-full font-semibold text-lg hover:bg-blue-800 transition-all shadow-lg hover:shadow-[#1A3B5B]/20 text-center block"
                 >
                   Continuar con pedido
                 </Link>
                 <Link 
                   to="/catalogo" 
-                  className="w-full bg-white text-[#004A99] border-2 border-[#004A99] py-4 rounded-full font-semibold text-lg hover:bg-[#E6F0FF] transition-all text-center block"
+                  className="w-full bg-white text-[#1A3B5B] border-2 border-[#1A3B5B] py-4 rounded-full font-semibold text-lg hover:bg-[#E6F0FF] transition-all text-center block"
                 >
                   Seguir comprando
                 </Link>
@@ -181,11 +181,11 @@ export default function CartPage() {
             <h2 className="text-3xl font-bold font-serif">Recomendaciones para ti</h2>
             <p className="text-[#4B5563] italic">Complementa tu gesto con estos detalles especiales.</p>
           </div>
-          <Link to="/catalogo" className="text-[#004A99] font-semibold border-b-2 border-[#004A99] pb-1">Ver catálogo completo</Link>
+          <Link to="/catalogo" className="text-[#1A3B5B] font-semibold border-b-2 border-[#1A3B5B] pb-1">Ver catálogo completo</Link>
         </div>
         {loadingRecs ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 text-[#004A99] animate-spin" />
+            <Loader2 className="w-8 h-8 text-[#1A3B5B] animate-spin" />
           </div>
         ) : recommendations.length === 0 ? (
           <p className="text-slate-400 text-sm italic text-center py-10">Aún no tenemos recomendaciones para mostrarte.</p>
@@ -211,7 +211,7 @@ export default function CartPage() {
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xl font-bold text-[#004A99] group-hover:text-[#FF7F7D] transition-colors">{product.nombre}</h3>
+                    <h3 className="text-xl font-bold text-[#1A3B5B] group-hover:text-[#FF7F7D] transition-colors">{product.nombre}</h3>
                     <span
                       className={`text-[10px] font-black uppercase tracking-widest ${
                         product.esFallback ? 'text-slate-400' : 'text-blue-500'

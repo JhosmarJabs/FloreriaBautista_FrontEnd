@@ -559,7 +559,7 @@ export default function CatalogPage() {
                     ${product.precioBase.toLocaleString()}
                   </span>
                   <AnimatedButton
-                    className="w-10 h-10 shrink-0 rounded-full bg-[#1A3B5B] hover:bg-[#FBBF24] text-white hover:text-[#1A3B5B] flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300"
+                    className="w-10 h-10 shrink-0 rounded-full bg-[#FF7F7D] hover:bg-[#1A3B5B] text-white flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300"
                     onClick={() => handleAddToCart(product)}
                     aria-label={`Agregar ${product.nombre} al carrito`}
                   >
@@ -584,7 +584,7 @@ export default function CatalogPage() {
                 </p>
                 <button
                   onClick={() => { setSearchTerm(""); setSelectedCategory("Todos"); setPriceRange(5000); setSelectedType("Todos los tipos"); }}
-                  className="px-10 py-4 bg-[#FBBF24] text-[#1A3B5B] font-black rounded-2xl shadow-xl shadow-yellow-500/20 hover:scale-105 transition-transform uppercase text-sm tracking-widest"
+                  className="px-10 py-4 bg-[#1A3B5B] text-white font-black rounded-2xl shadow-xl shadow-blue-900/20 hover:bg-[#FF7F7D] transition-colors uppercase text-sm tracking-widest"
                 >
                   Limpiar filtros
                 </button>
