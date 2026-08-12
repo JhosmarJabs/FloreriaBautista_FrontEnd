@@ -4,6 +4,7 @@ import {
   Settings,
   Trash2,
   Plus,
+  Minus,
   Save,
   Calendar,
   Heart,
@@ -26,12 +27,14 @@ import {
   Zap,
   Search,
   Loader2,
-  Link2
+  Link2,
+  Library
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FadeIn, ScaleIn } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
+import { AdminCatalogo } from '../../types';
 
 /* ── Tipos ──────────────────────────────────────────────── */
 // El nombre y precio se resuelven siempre desde el producto real (backend);
@@ -43,6 +46,7 @@ type QuickItem = {
   price: number;
   icon: string;
   color: string;
+  cantidad: number;
 };
 
 type QuickTemplate = {
@@ -50,6 +54,7 @@ type QuickTemplate = {
   name: string;
   description: string;
   icon: string;
+  activa: boolean;
   items: QuickItem[];
 };
 
@@ -85,6 +90,7 @@ const fromDto = (t: any): QuickTemplate => ({
   name: t.nombre,
   description: t.descripcion ?? '',
   icon: t.icono || 'Sparkles',
+  activa: t.activa ?? true,
   items: (t.items || []).map((i: any) => ({
     id: i.id,
     productId: i.productId,
@@ -92,10 +98,11 @@ const fromDto = (t: any): QuickTemplate => ({
     price: i.precio,
     icon: i.icono || 'Sparkles',
     color: i.color || 'blue',
+    cantidad: i.cantidad ?? 1,
   })),
 });
 
-export default function QuickSaleTemplatesPage() {
+export default function AdminQuickSaleTemplatesPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [templates, setTemplates] = useState<QuickTemplate[]>([]);
@@ -109,6 +116,15 @@ export default function QuickSaleTemplatesPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [searchProducts, setSearchProducts] = useState('');
+
+  // Puente con los catálogos de temporada: son dos cosas distintas (un catálogo
+  // define qué se muestra en la tienda; una plantilla, qué botones ve el
+  // mostrador), pero ambos apuntan a Product, así que un catálogo sirve como
+  // punto de partida para llenar la botonera.
+  const [showCatalogsModal, setShowCatalogsModal] = useState(false);
+  const [catalogs, setCatalogs] = useState<AdminCatalogo[]>([]);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(false);
+  const [importingCatalogId, setImportingCatalogId] = useState<string | null>(null);
 
   useEffect(() => {
     loadTemplates();
@@ -135,6 +151,7 @@ export default function QuickSaleTemplatesPage() {
         nombre: 'Nueva Configuración',
         descripcion: 'Define botones rápidos para una temporada o evento.',
         icono: 'Layout',
+        activa: false, // nace como borrador: el admin la publica cuando esté lista
         items: [],
       });
       const created = fromDto(response.data);
@@ -171,6 +188,15 @@ export default function QuickSaleTemplatesPage() {
     setEditingTemplate({ ...editingTemplate, items: newItems });
   };
 
+  const updateItemCantidad = (itemId: string, cantidad: number) => {
+    if (!editingTemplate) return;
+    const safe = Number.isFinite(cantidad) && cantidad >= 1 ? Math.floor(cantidad) : 1;
+    const newItems = editingTemplate.items.map(item =>
+      item.id === itemId ? { ...item, cantidad: safe } : item
+    );
+    setEditingTemplate({ ...editingTemplate, items: newItems });
+  };
+
   const removeItemFromEdit = (itemId: string) => {
     if (!editingTemplate) return;
     setEditingTemplate({
@@ -187,10 +213,12 @@ export default function QuickSaleTemplatesPage() {
         nombre: editingTemplate.name,
         descripcion: editingTemplate.description,
         icono: editingTemplate.icon,
+        activa: editingTemplate.activa,
         items: editingTemplate.items.map(i => ({
           productId: i.productId,
           icono: i.icon,
           color: i.color,
+          cantidad: i.cantidad,
         })),
       });
       const updated = fromDto(response.data);
@@ -205,14 +233,19 @@ export default function QuickSaleTemplatesPage() {
     }
   };
 
-  const loadProductsFromEndpoint = async () => {
+  // Devuelve la lista además de guardarla: quien importa desde un catálogo la
+  // necesita en el mismo tick, sin esperar al re-render.
+  const loadProductsFromEndpoint = async (): Promise<any[]> => {
     setLoadingProducts(true);
     try {
       const response = await AdminService.getProducts({ size: 500 });
-      setProducts(response.data.items || []);
+      const items = response.data.items || [];
+      setProducts(items);
+      return items;
     } catch (error) {
       console.error('Error loading products:', error);
       showToast('Error al cargar productos', 'error');
+      return [];
     } finally {
       setLoadingProducts(false);
     }
@@ -227,7 +260,8 @@ export default function QuickSaleTemplatesPage() {
       name: product.nombre || product.name,
       price: product.precioBase ?? product.precio ?? product.price ?? 0,
       icon: 'Sparkles',
-      color: 'blue'
+      color: 'blue',
+      cantidad: 1,
     };
 
     setEditingTemplate({
@@ -246,6 +280,73 @@ export default function QuickSaleTemplatesPage() {
     setShowProductsModal(true);
     if (products.length === 0) {
       await loadProductsFromEndpoint();
+    }
+  };
+
+  const handleOpenCatalogsModal = async () => {
+    setShowCatalogsModal(true);
+    if (catalogs.length > 0) return;
+    setLoadingCatalogs(true);
+    try {
+      const res = await AdminService.getCatalogos();
+      setCatalogs(res.data || []);
+    } catch (error) {
+      console.error('Error loading seasonal catalogs:', error);
+      showToast('Error al cargar los catálogos de temporada', 'error');
+    } finally {
+      setLoadingCatalogs(false);
+    }
+  };
+
+  // Precarga los productos de un catálogo de temporada como botones. No enlaza
+  // la plantilla al catálogo: copia los productos una vez y a partir de ahí cada
+  // botón se edita por separado.
+  const handleImportFromCatalog = async (catalog: AdminCatalogo) => {
+    if (!editingTemplate) return;
+    setImportingCatalogId(catalog.id);
+    try {
+      // El detalle del catálogo solo trae los IDs de sus productos; el nombre y
+      // el precio se resuelven contra la lista de productos real.
+      const res = await AdminService.getCatalogoById(catalog.id);
+      const productIds: string[] = (res.data?.productCatalogos || []).map(
+        (pc: any) => pc.productId
+      );
+
+      if (productIds.length === 0) {
+        showToast(`"${catalog.nombre}" todavía no tiene productos`, 'info');
+        return;
+      }
+
+      const catalogoProductos = products.length > 0 ? products : await loadProductsFromEndpoint();
+      const yaEnPlantilla = new Set(editingTemplate.items.map(i => i.productId));
+      const nuevos: QuickItem[] = catalogoProductos
+        .filter((p: any) => productIds.includes(p.id) && !yaEnPlantilla.has(p.id))
+        .map((p: any) => ({
+          id: newLocalItemId(),
+          productId: p.id,
+          name: p.nombre || p.name,
+          price: p.precioBase ?? p.precio ?? p.price ?? 0,
+          icon: 'Sparkles',
+          color: 'blue',
+          cantidad: 1,
+        }));
+
+      if (nuevos.length === 0) {
+        showToast(`Los productos de "${catalog.nombre}" ya están en la plantilla`, 'info');
+        return;
+      }
+
+      setEditingTemplate(prev => (prev ? { ...prev, items: [...prev.items, ...nuevos] } : prev));
+      setShowCatalogsModal(false);
+      showToast(
+        `${nuevos.length} producto(s) de "${catalog.nombre}" agregados — guarda para publicarlos`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Error importing from catalog:', error);
+      showToast('Error al leer el catálogo de temporada', 'error');
+    } finally {
+      setImportingCatalogId(null);
     }
   };
 
@@ -273,19 +374,27 @@ export default function QuickSaleTemplatesPage() {
 
           <div className="flex flex-col gap-3 relative z-10">
             <button
-              onClick={() => navigate('/empleado/venta-rapida')}
+              onClick={() => navigate('/admin/dashboard')}
               className="group/back flex items-center gap-2 text-slate-400 hover:text-[#1e3a5f] dark:hover:text-amber-400 transition-all w-fit"
             >
               <div className="p-1.5 rounded-xl border border-slate-100 dark:border-white/10 group-hover/back:bg-[#1e3a5f] group-hover/back:text-white transition-all">
                 <ArrowLeft className="w-3 h-3" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-[0.3em]">Cerrar Configuración</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.3em]">Volver al panel</span>
             </button>
             <div className="mt-1">
                 <h1 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter leading-none">
-                  Gestión de <span className="italic text-[#eab308]">Terminal</span>
+                  Plantillas de <span className="italic text-[#eab308]">venta rápida</span>
                 </h1>
-                <p className="text-slate-400 dark:text-slate-500 text-sm mt-2 font-medium italic max-w-lg leading-relaxed">Configuración de botonera rápida — compartida por todos los empleados.</p>
+                <p className="text-slate-400 dark:text-slate-500 text-sm mt-2 font-medium italic max-w-xl leading-relaxed">
+                  Los botones de un toque del mostrador. No cambian el catálogo ni los precios:
+                  solo aceleran la captura de la venta en el punto de venta.
+                </p>
+                <p className="text-slate-400 dark:text-slate-500 text-xs mt-2 font-medium max-w-xl leading-relaxed">
+                  Las plantillas inactivas no se ven en el POS: cada una nace como
+                  <span className="font-bold"> borrador</span> y solo aparece en Venta Rápida cuando la
+                  marcas como <span className="font-bold">publicada</span>.
+                </p>
             </div>
           </div>
 
@@ -334,7 +443,16 @@ export default function QuickSaleTemplatesPage() {
                         {renderIcon(t.icon, "w-5 h-5")}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h4 className="font-serif font-bold text-[#1e3a5f] dark:text-white truncate text-base leading-none">{t.name}</h4>
+                        <div className="flex items-center gap-2">
+                            <h4 className="font-serif font-bold text-[#1e3a5f] dark:text-white truncate text-base leading-none">{t.name}</h4>
+                            <span className={`shrink-0 text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full ${
+                                t.activa
+                                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                            }`}>
+                                {t.activa ? 'Publicada' : 'Borrador'}
+                            </span>
+                        </div>
                         <div className="flex items-center gap-2 mt-2">
                             <Layers className="w-3 h-3 text-amber-500" />
                             <p className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">{t.items.length} Componentes</p>
@@ -421,14 +539,33 @@ export default function QuickSaleTemplatesPage() {
                       </div>
                   </div>
 
-                  <button
-                    onClick={saveEditChanges}
-                    disabled={saving}
-                    className="flex items-center justify-center gap-3 px-6 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {saving ? 'Guardando...' : 'Guardar Cambios'}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {/* Autorización/publicación: solo las plantillas activas aparecen en el POS */}
+                    <button
+                      type="button"
+                      onClick={() => setEditingTemplate({ ...editingTemplate, activa: !editingTemplate.activa })}
+                      title={editingTemplate.activa
+                        ? 'Publicada: visible en Venta Rápida. Clic para pasar a borrador.'
+                        : 'Borrador: no visible en Venta Rápida. Clic para publicar.'}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border transition-all ${
+                        editingTemplate.activa
+                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-white/10'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {editingTemplate.activa ? 'Publicada' : 'Borrador'}
+                    </button>
+
+                    <button
+                      onClick={saveEditChanges}
+                      disabled={saving}
+                      className="flex items-center justify-center gap-3 px-6 py-3 bg-[#1e3a5f] dark:bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg transition-all disabled:opacity-50"
+                    >
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      {saving ? 'Guardando...' : 'Guardar Cambios'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Grid Configuration */}
@@ -441,12 +578,21 @@ export default function QuickSaleTemplatesPage() {
                         </div>
                         <p className="text-xs text-slate-500 italic">{editingTemplate.items.length} artículos</p>
                     </div>
-                    <button
-                      onClick={handleOpenProductsModal}
-                      className="flex items-center gap-2 px-6 py-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 dark:border-emerald-500/20 shadow-sm"
-                    >
-                      <Plus className="w-4 h-4" /> Nueva Acción
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleOpenCatalogsModal}
+                        title="Precarga como botones los productos de un catálogo de temporada"
+                        className="flex items-center gap-2 px-5 py-3 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-amber-600 hover:text-white transition-all border border-amber-100 dark:border-amber-500/20 shadow-sm"
+                      >
+                        <Library className="w-4 h-4" /> Desde un catálogo
+                      </button>
+                      <button
+                        onClick={handleOpenProductsModal}
+                        className="flex items-center gap-2 px-6 py-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 dark:border-emerald-500/20 shadow-sm"
+                      >
+                        <Plus className="w-4 h-4" /> Nueva Acción
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
@@ -459,7 +605,10 @@ export default function QuickSaleTemplatesPage() {
                         >
                           {/* ── LIVE PREVIEW ── */}
                           <div className="flex-shrink-0">
-                             <div className={`w-20 h-20 rounded-xl ${colorData.light} ${colorData.text} flex flex-col items-center justify-center p-2 text-center border shadow-sm`}>
+                             <div className={`relative w-20 h-20 rounded-xl ${colorData.light} ${colorData.text} flex flex-col items-center justify-center p-2 text-center border shadow-sm`}>
+                                {item.cantidad > 1 && (
+                                  <span className="absolute -top-2 -right-2 text-[8px] font-black text-white bg-[#1e3a5f] px-1.5 py-0.5 rounded-full shadow">×{item.cantidad}</span>
+                                )}
                                 {renderIcon(item.icon, "w-5 h-5")}
                                 <span className="text-[7px] font-black uppercase tracking-tight leading-none mt-2 break-words w-full">{item.name || '...'}</span>
                                 <span className="text-[9px] font-bold mt-1">${item.price}</span>
@@ -488,7 +637,34 @@ export default function QuickSaleTemplatesPage() {
 
                             <div className="space-y-4">
                                 <div className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl flex items-center justify-between">
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio catálogo</span>
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cantidad por toque</span>
+                                    <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-white/10">
+                                        <button
+                                            type="button"
+                                            onClick={() => updateItemCantidad(item.id, item.cantidad - 1)}
+                                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-[#1e3a5f] disabled:opacity-30"
+                                            disabled={item.cantidad <= 1}
+                                        >
+                                            <Minus className="w-3 h-3" />
+                                        </button>
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={item.cantidad}
+                                            onChange={e => updateItemCantidad(item.id, parseInt(e.target.value, 10))}
+                                            className="w-10 text-center text-sm font-black text-slate-700 dark:text-white bg-transparent border-none focus:ring-0 p-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => updateItemCantidad(item.id, item.cantidad + 1)}
+                                            className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-[#1e3a5f]"
+                                        >
+                                            <Plus className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl flex items-center justify-between">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio unitario</span>
                                     <span className="text-sm font-black text-slate-700 dark:text-white">${item.price.toFixed(2)}</span>
                                 </div>
                                 <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl h-[42px]">
@@ -635,6 +811,86 @@ export default function QuickSaleTemplatesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal Agregar desde un Catálogo de Temporada.
+          Sin AnimatePresence a propósito: envolver el modal impide que se cierre
+          (motion v12 + React 19). */}
+      {showCatalogsModal && (
+        <div
+          onClick={() => setShowCatalogsModal(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-white/5 w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col"
+          >
+            <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/20 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-slate-800 dark:text-white">
+                  Agregar productos desde un catálogo de temporada
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 max-w-xl leading-relaxed">
+                  Copia los productos del catálogo como botones de esta plantilla. El catálogo
+                  sigue siendo lo que se muestra en la tienda en línea; la plantilla solo acelera
+                  la captura en el mostrador.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCatalogsModal(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingCatalogs ? (
+                <div className="flex flex-col items-center justify-center gap-3 py-16">
+                  <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+                  <p className="text-slate-500 text-sm">Cargando catálogos...</p>
+                </div>
+              ) : catalogs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+                  <Library className="w-10 h-10 text-slate-300 dark:text-slate-600" />
+                  <p className="text-slate-500 text-sm font-bold">No hay catálogos de temporada</p>
+                  <p className="text-slate-400 text-xs max-w-xs">
+                    Créalos en <span className="font-bold">Catálogo → Catálogos de temporada</span>.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {catalogs.map((catalog) => (
+                    <button
+                      key={catalog.id}
+                      onClick={() => handleImportFromCatalog(catalog)}
+                      disabled={importingCatalogId !== null}
+                      className="p-5 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/10 rounded-2xl hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all text-left group disabled:opacity-50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-slate-800 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate">
+                            {catalog.nombre}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                            {catalog.descripcion || 'Sin descripción'}
+                          </p>
+                        </div>
+                        {importingCatalogId === catalog.id ? (
+                          <Loader2 className="w-4 h-4 text-amber-500 animate-spin shrink-0" />
+                        ) : (
+                          <span className="shrink-0 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-500 dark:text-slate-300">
+                            {catalog.estado}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -88,14 +88,15 @@ export default function AdminProductsListPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Productos</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">
-              Arreglos, ramos y productos — {loading ? '...' : `${total} registros`}
+            <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xl">
+              Los arreglos y artículos que vendes, con su precio y su receta.
+              {' — '}{loading ? '...' : `${total} registros`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/admin/catalogo/recetas')}
+            onClick={() => navigate('/admin/productos/recetas')}
             className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-100 dark:border-indigo-800/50 px-3 py-2 rounded-xl transition-all"
           >
             <FlaskConical className="w-3.5 h-3.5" />

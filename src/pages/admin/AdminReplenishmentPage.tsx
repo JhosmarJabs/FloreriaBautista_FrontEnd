@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Truck, TrendingUp, PlusCircle, Trash2, Copy, RefreshCw, Loader2,
   ClipboardList, Flower2, Package, MessageCircle, AlertTriangle, Sparkles,
+  FileText, History,
 } from 'lucide-react';
 import { FadeIn, GlassCard, AnimatedButton } from '../../components/Animations';
 import { AdminService } from '../../services/adminService';
@@ -32,8 +34,11 @@ const STORAGE_KEY = 'REABASTECIMIENTO_LISTA';
 
 export default function AdminReplenishmentPage() {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [insumos, setInsumos] = useState<ReabItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [proveedor, setProveedor] = useState('');
+  const [generando, setGenerando] = useState(false);
   const [lista, setLista] = useState<ListaItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -119,6 +124,34 @@ export default function AdminReplenishmentPage() {
     window.open(url, '_blank');
   };
 
+  // Convierte la lista local (localStorage) en una solicitud persistente en el
+  // backend y navega a su detalle. El borrador local se limpia solo si el POST
+  // tuvo éxito, para no perder el trabajo si la red falla.
+  const generarSolicitud = async () => {
+    if (lista.length === 0) return;
+    setGenerando(true);
+    try {
+      const res = await AdminService.createSupplyOrder({
+        proveedor: proveedor.trim() || null,
+        semanaObjetivo: insumos[0]?.semanaObjetivo ?? null,
+        lineas: lista.map(i => ({
+          inventoryItemId: i.id,
+          cantidad: i.cantidad,
+          origen: i.origen,
+        })),
+      });
+      const creada = res.data;
+      localStorage.removeItem(STORAGE_KEY);
+      setLista([]);
+      showToast(`Solicitud ${creada.folio} generada`, 'success');
+      navigate(`/admin/reabastecimiento/solicitudes/${creada.id}`);
+    } catch (e: any) {
+      showToast(e?.message || 'No se pudo generar la solicitud', 'error');
+    } finally {
+      setGenerando(false);
+    }
+  };
+
   const semana = insumos[0]?.semanaObjetivo;
   const totalSugeridos = insumos.filter(i => i.cantidadSugerida > 0).length;
 
@@ -135,14 +168,22 @@ export default function AdminReplenishmentPage() {
               {semana ? ` · semana ${semana}` : ''}
             </p>
           </div>
-          <AnimatedButton
-            onClick={() => cargarReabastecimiento(true)}
-            disabled={loading}
-            className="px-5 py-3 bg-[#1e3a5f] text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-lg disabled:opacity-60"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Recalcular
-          </AnimatedButton>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin/reabastecimiento/solicitudes')}
+              className="px-5 py-3 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+            >
+              <History className="w-4 h-4" /> Historial
+            </button>
+            <AnimatedButton
+              onClick={() => cargarReabastecimiento(true)}
+              disabled={loading}
+              className="px-5 py-3 bg-[#1e3a5f] text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center gap-2 shadow-lg disabled:opacity-60"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Recalcular
+            </AnimatedButton>
+          </div>
         </div>
       </FadeIn>
 
@@ -301,18 +342,43 @@ export default function AdminReplenishmentPage() {
 
             {lista.length > 0 && (
               <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+                    Proveedor (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={proveedor}
+                    onChange={e => setProveedor(e.target.value)}
+                    placeholder="Nombre del proveedor"
+                    className="w-full px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
                 <button
-                  onClick={enviarPorWhatsapp}
-                  className="w-full py-3 bg-emerald-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all"
+                  onClick={generarSolicitud}
+                  disabled={generando}
+                  className="w-full py-3 bg-[#1e3a5f] text-white rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-[#254c7d] transition-all disabled:opacity-60"
                 >
-                  <MessageCircle className="w-4 h-4" /> Enviar por WhatsApp
+                  {generando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  Generar solicitud
                 </button>
-                <button
-                  onClick={copiarLista}
-                  className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-                >
-                  <Copy className="w-4 h-4" /> Copiar lista
-                </button>
+                <p className="text-[9px] text-slate-400 leading-relaxed text-center px-1">
+                  Crea un documento persistente con folio para exportar a PDF y confirmar la recepción línea por línea.
+                </p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={enviarPorWhatsapp}
+                    className="py-2.5 bg-emerald-600 text-white rounded-xl font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                  </button>
+                  <button
+                    onClick={copiarLista}
+                    className="py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-black uppercase text-[9px] tracking-widest flex items-center justify-center gap-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                  >
+                    <Copy className="w-3.5 h-3.5" /> Copiar
+                  </button>
+                </div>
                 <button
                   onClick={limpiarLista}
                   className="w-full py-2.5 text-rose-500 rounded-xl font-bold uppercase text-[9px] tracking-widest hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"

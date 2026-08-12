@@ -9,7 +9,10 @@ import {
   Order,
   OrderDetail,
   InventoryItem,
+  InventoryMovement,
+  RegisterMovementRequest,
   ApiResponse,
+  PagedResult,
   SingleResponse,
   MeResponse,
   User,
@@ -28,7 +31,7 @@ import {
   SiteSettings,
   InventoryKpis,
   ProductKpis,
-  CatalogKpis,
+  SeasonalCatalogKpis,
 } from '../types';
 
 const API_BASE = '/api/admin';
@@ -48,6 +51,68 @@ export interface UserAddress {
 }
 
 export type AddressInput = Omit<UserAddress, 'id'>;
+
+// ── Solicitudes de reabastecimiento ──────────────────────────────
+export type SupplyOrderEstado =
+  | 'BORRADOR' | 'ENVIADA' | 'RECIBIDA_PARCIAL' | 'RECIBIDA' | 'CANCELADA';
+
+export type SupplyOrderLineaEstado =
+  | 'PENDIENTE' | 'COMPLETO' | 'PARCIAL' | 'NO_LLEGO' | 'EXCEDENTE';
+
+export interface SupplyOrderListItem {
+  id: string;
+  folio: string;
+  estado: SupplyOrderEstado;
+  proveedor?: string | null;
+  fechaSolicitud: string;
+  fechaEnvio?: string | null;
+  fechaRecepcion?: string | null;
+  semanaObjetivo?: string | null;
+  totalLineas: number;
+  lineasConfirmadas: number;
+  porcentajeRecibido: number;
+  totalEstimado: number;
+}
+
+export interface SupplyOrderLinea {
+  id: string;
+  inventoryItemId: string;
+  nombreSnapshot: string;
+  unidadMedida?: string | null;
+  cantidadSolicitada: number;
+  cantidadRecibida?: number | null;
+  estadoLinea: SupplyOrderLineaEstado;
+  precioUnitario?: number | null;
+  origen: string;
+  observacion?: string | null;
+  recibidoEn?: string | null;
+  inventoryMovementId?: string | null;
+  diferencia: number;
+}
+
+export interface SupplyOrderDetail extends SupplyOrderListItem {
+  notas?: string | null;
+  usuarioId: string;
+  usuarioNombre?: string | null;
+  lineas: SupplyOrderLinea[];
+}
+
+export interface SupplyOrderInput {
+  proveedor?: string | null;
+  semanaObjetivo?: string | null;
+  notas?: string | null;
+  lineas: { inventoryItemId: string; cantidad: number; origen?: string }[];
+}
+
+export interface SupplyOrderReceiveInput {
+  lineas: {
+    itemId: string;
+    cantidadRecibida: number;
+    precioUnitario?: number | null;
+    observacion?: string | null;
+  }[];
+  cerrarSolicitud: boolean;
+}
 
 // ── Creación de pedido web ───────────────────────────────────────
 export interface WebOrderInput {
@@ -127,6 +192,26 @@ const authHeaders = async () => ({
   Accept: 'application/json',
   Authorization: `Bearer ${await getToken()}`,
 });
+
+/**
+ * Extrae el mensaje real del backend. ExceptionMiddleware responde `{ status, message }`
+ * y la validación de [ApiController] responde ProblemDetails con `errors`; en ambos casos
+ * el usuario merece ver el motivo ("Stock insuficiente…") y no un "Error 400" pelón.
+ */
+const errorMessage = async (res: Response, fallback: string): Promise<string> => {
+  try {
+    const body = await res.json();
+    if (typeof body?.message === 'string' && body.message) return body.message;
+    if (body?.errors) {
+      const detalles = Object.values(body.errors as Record<string, string[]>).flat();
+      if (detalles.length > 0) return detalles.join(' ');
+    }
+    if (typeof body?.title === 'string' && body.title) return body.title;
+  } catch {
+    /* respuesta sin JSON: se usa el mensaje genérico */
+  }
+  return `${fallback} (error ${res.status})`;
+};
 
 export const AdminService = {
   // ─── Base de datos ────────────────────────────────────────────
@@ -329,6 +414,36 @@ export const AdminService = {
     return res.json();
   },
 
+  getAdminInventoryMovements: async (params: {
+    inventoryItemId?: string;
+    page?: number;
+    size?: number;
+  } = {}): Promise<ApiResponse<InventoryMovement>> => {
+    const query = new URLSearchParams();
+    if (params.inventoryItemId) query.set('inventoryItemId', params.inventoryItemId);
+    if (params.page !== undefined) query.set('page', String(params.page));
+    if (params.size !== undefined) query.set('size', String(params.size));
+    const qs = query.toString();
+    const res = await fetch(`${API_BASE}/inventory/movements${qs ? `?${qs}` : ''}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error('Error al obtener movimientos de inventario');
+    return res.json();
+  },
+
+  registerAdminInventoryMovement: async (
+    body: RegisterMovementRequest,
+  ): Promise<SingleResponse<InventoryMovement>> => {
+    const res = await fetch(`${API_BASE}/inventory/movements`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(json?.message || 'Error al registrar el movimiento');
+    return json;
+  },
+
   getAdminProductsKpis: async (): Promise<SingleResponse<ProductKpis>> => {
     const res = await fetch(`${API_BASE}/products/kpis`, {
       headers: await authHeaders(),
@@ -337,7 +452,7 @@ export const AdminService = {
     return res.json();
   },
 
-  getAdminCatalogsKpis: async (): Promise<SingleResponse<CatalogKpis>> => {
+  getAdminCatalogsKpis: async (): Promise<SingleResponse<SeasonalCatalogKpis>> => {
     const res = await fetch(`${API_BASE}/catalogos/kpis`, {
       headers: await authHeaders(),
     });
@@ -369,6 +484,90 @@ export const AdminService = {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    return res.json();
+  },
+
+  // ─── Solicitudes de reabastecimiento ──────────────────────────
+  // La lista armada con la predicción del modelo se vuelve un documento persistente:
+  // se genera, se manda al proveedor y después se confirma la recepción línea por línea.
+  getSupplyOrders: async (params: {
+    estado?: SupplyOrderEstado | '';
+    desde?: string;
+    hasta?: string;
+    page?: number;
+    size?: number;
+  } = {}): Promise<SingleResponse<PagedResult<SupplyOrderListItem>>> => {
+    const qs = new URLSearchParams();
+    if (params.estado) qs.set('estado', params.estado);
+    if (params.desde)  qs.set('desde', params.desde);
+    if (params.hasta)  qs.set('hasta', params.hasta);
+    qs.set('page', String(params.page ?? 1));
+    qs.set('size', String(params.size ?? 20));
+
+    const res = await fetch(`${API_BASE}/supply-orders?${qs}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al obtener las solicitudes'));
+    return res.json();
+  },
+
+  getSupplyOrder: async (id: string): Promise<SingleResponse<SupplyOrderDetail>> => {
+    const res = await fetch(`${API_BASE}/supply-orders/${id}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al obtener la solicitud'));
+    return res.json();
+  },
+
+  createSupplyOrder: async (body: SupplyOrderInput): Promise<SingleResponse<SupplyOrderDetail>> => {
+    const res = await fetch(`${API_BASE}/supply-orders`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al generar la solicitud'));
+    return res.json();
+  },
+
+  updateSupplyOrder: async (id: string, body: SupplyOrderInput): Promise<SingleResponse<SupplyOrderDetail>> => {
+    const res = await fetch(`${API_BASE}/supply-orders/${id}`, {
+      method: 'PUT',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al actualizar la solicitud'));
+    return res.json();
+  },
+
+  sendSupplyOrder: async (id: string): Promise<SingleResponse<SupplyOrderDetail>> => {
+    const res = await fetch(`${API_BASE}/supply-orders/${id}/enviar`, {
+      method: 'POST',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al marcar la solicitud como enviada'));
+    return res.json();
+  },
+
+  receiveSupplyOrder: async (
+    id: string,
+    body: SupplyOrderReceiveInput,
+  ): Promise<SingleResponse<SupplyOrderDetail>> => {
+    const res = await fetch(`${API_BASE}/supply-orders/${id}/recepcion`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al registrar la recepción'));
+    return res.json();
+  },
+
+  cancelSupplyOrder: async (id: string, motivo?: string): Promise<SingleResponse<SupplyOrderDetail>> => {
+    const res = await fetch(`${API_BASE}/supply-orders/${id}/cancelar`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ motivo: motivo ?? null }),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al cancelar la solicitud'));
     return res.json();
   },
 
@@ -952,8 +1151,10 @@ export const AdminService = {
   },
 
   // ─── Plantillas de Venta Rápida (compartidas ADMIN + EMPLEADO) ──
-  getQuickSaleTemplates: async (): Promise<SingleResponse<QuickSaleTemplate[]>> => {
-    const res = await fetch('/api/quick-sale-templates', {
+  // soloActivas=true -> solo plantillas publicadas (POS). Omitir -> todas (editor admin).
+  getQuickSaleTemplates: async (soloActivas = false): Promise<SingleResponse<QuickSaleTemplate[]>> => {
+    const qs = soloActivas ? '?soloActivas=true' : '';
+    const res = await fetch(`/api/quick-sale-templates${qs}`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);

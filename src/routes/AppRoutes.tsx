@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import PageTransition from '../components/PageTransition';
 
@@ -49,14 +49,18 @@ import AdminRecipeManagementPage from '../pages/admin/AdminRecipeManagementPage'
 import AdminCmsPage from '../pages/admin/AdminCmsPage';
 import AdminOrdersListPage from '../pages/admin/AdminOrdersListPage';
 import AdminOrderDetailPage from '../pages/admin/AdminOrderDetailPage';
-import AdminCatalogsPage from '../pages/admin/AdminCatalogsPage';
+import AdminSeasonalCatalogsPage from '../pages/admin/AdminSeasonalCatalogsPage';
 import AdminNewCatalogPage from '../pages/admin/AdminNewCatalogPage';
 import AdminPromotionsPage from '../pages/admin/AdminPromotionsPage';
 import AdminNewPromotionPage from '../pages/admin/AdminNewPromotionPage';
 import AdminProductAnalysisPage from '../pages/admin/AdminProductAnalysisPage';
 import AdminSupplyAnalysisPage from '../pages/admin/AdminSupplyAnalysisPage';
 import AdminCustomerSegmentsPage from '../pages/admin/AdminCustomerSegmentsPage';
+import AdminPeopleModule from '../pages/admin/AdminPeopleModule';
 import AdminReplenishmentPage from '../pages/admin/AdminReplenishmentPage';
+import AdminSupplyOrdersPage from '../pages/admin/AdminSupplyOrdersPage';
+import AdminSupplyOrderDetailPage from '../pages/admin/AdminSupplyOrderDetailPage';
+import AdminQuickSaleTemplatesPage from '../pages/admin/AdminQuickSaleTemplatesPage';
 
 // Employee Pages
 import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
@@ -67,8 +71,6 @@ import PhysicalOrderPage from '../pages/employee/PhysicalOrderPage';
 import DailyDeliveriesPage from '../pages/employee/DailyDeliveriesPage';
 import QuickInventoryPage from '../pages/employee/QuickInventoryPage';
 import QuickSalePage from '../pages/employee/QuickSalePage';
-import QuickSaleTemplatesPage from '../pages/employee/QuickSaleTemplatesPage';
-import SeasonTemplatesPage from '../pages/employee/SeasonTemplatesPage';
 import SessionOrderPage from '../pages/employee/SessionOrderPage';
 import EmployeeSettingsPage from '../pages/employee/EmployeeSettingsPage';
 
@@ -82,25 +84,38 @@ export default function AnimatedRoutes() {
         <Route path="/inicio" element={<PageTransition><ClientHomePage /></PageTransition>} />
         <Route path="/admin/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
         <Route path="/admin/reportes" element={<PageTransition><ReportsPage /></PageTransition>} />
-        <Route path="/admin/catalogo" element={<PageTransition><AdminProductsListPage /></PageTransition>} />
-        <Route path="/admin/catalogos" element={<PageTransition><AdminCatalogsPage /></PageTransition>} />
-        <Route path="/admin/catalogos/nuevo" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
-        <Route path="/admin/catalogos/editar/:id" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
-        <Route path="/admin/promociones" element={<PageTransition><AdminPromotionsPage /></PageTransition>} />
-        <Route path="/admin/promociones/nuevo" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
-        <Route path="/admin/promociones/editar/:id" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
-        <Route path="/admin/catalogo/recetas" element={<PageTransition><AdminRecipeManagementPage /></PageTransition>} />
-        <Route path="/admin/cms" element={<PageTransition><AdminCmsPage /></PageTransition>} />
+        {/* ── Catálogo: los productos que vendes ── */}
+        <Route path="/admin/productos" element={<PageTransition><AdminProductsListPage /></PageTransition>} />
+        <Route path="/admin/productos/recetas" element={<PageTransition><AdminRecipeManagementPage /></PageTransition>} />
         <Route path="/admin/productos/nuevo" element={<PageTransition><ProductManagementPage /></PageTransition>} />
         <Route path="/admin/productos/editar/:id" element={<PageTransition><ProductManagementPage /></PageTransition>} />
         <Route path="/admin/productos/:id" element={<PageTransition><AdminProductDetailPage /></PageTransition>} />
+
+        {/* Rutas viejas: /admin/catalogo (singular) nunca fue un catálogo, era la
+            lista de productos. Se conservan como redirect para no romper enlaces
+            guardados. */}
+        <Route path="/admin/catalogo" element={<Navigate to="/admin/productos" replace />} />
+        <Route path="/admin/catalogo/recetas" element={<Navigate to="/admin/productos/recetas" replace />} />
+
+        {/* ── Catálogo: agrupaciones por festividad/temporada ── */}
+        <Route path="/admin/catalogos" element={<PageTransition><AdminSeasonalCatalogsPage /></PageTransition>} />
+        <Route path="/admin/catalogos/nuevo" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
+        <Route path="/admin/catalogos/editar/:id" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
+
+        {/* ── Punto de venta: botonera del mostrador ── */}
+        <Route path="/admin/plantillas-venta" element={<PageTransition><AdminQuickSaleTemplatesPage /></PageTransition>} />
+
+        <Route path="/admin/promociones" element={<PageTransition><AdminPromotionsPage /></PageTransition>} />
+        <Route path="/admin/promociones/nuevo" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
+        <Route path="/admin/promociones/editar/:id" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
+        <Route path="/admin/cms" element={<PageTransition><AdminCmsPage /></PageTransition>} />
         <Route path="/admin/pedidos" element={<PageTransition><AdminOrdersListPage /></PageTransition>} />
         <Route path="/admin/pedidos/:id" element={<PageTransition><AdminOrderDetailPage /></PageTransition>} />
         <Route path="/admin/inventario" element={<PageTransition><AdminInventoryPage /></PageTransition>} />
         <Route path="/admin/inventario/nuevo" element={<PageTransition><AdminNewInsumoPage /></PageTransition>} />
         <Route path="/admin/inventario/editar/:id" element={<PageTransition><AdminNewInsumoPage /></PageTransition>} />
         <Route path="/admin/pagos" element={<PageTransition><AdminPaymentsPage /></PageTransition>} />
-        <Route path="/admin/usuarios" element={<PageTransition><AdminUsersPage /></PageTransition>} />
+        <Route path="/admin/usuarios" element={<PageTransition><AdminPeopleModule initialTab="usuarios" /></PageTransition>} />
         <Route path="/admin/usuarios/nuevo" element={<PageTransition><AdminNewUserPage /></PageTransition>} />
         <Route path="/admin/operacion" element={<PageTransition><AdminOperationPage /></PageTransition>} />
         <Route path="/admin/respaldos" element={<PageTransition><BackupsPage /></PageTransition>} />
@@ -110,8 +125,10 @@ export default function AnimatedRoutes() {
         <Route path="/admin/configuracion" element={<PageTransition><AdminSettingsPage /></PageTransition>} />
         <Route path="/admin/analisis-producto/:id" element={<PageTransition><AdminProductAnalysisPage /></PageTransition>} />
         <Route path="/admin/analisis-insumo/:id" element={<PageTransition><AdminSupplyAnalysisPage /></PageTransition>} />
-        <Route path="/admin/clientes" element={<PageTransition><AdminCustomerSegmentsPage /></PageTransition>} />
+        <Route path="/admin/clientes" element={<PageTransition><AdminPeopleModule initialTab="segmentos" /></PageTransition>} />
         <Route path="/admin/reabastecimiento" element={<PageTransition><AdminReplenishmentPage /></PageTransition>} />
+        <Route path="/admin/reabastecimiento/solicitudes" element={<PageTransition><AdminSupplyOrdersPage /></PageTransition>} />
+        <Route path="/admin/reabastecimiento/solicitudes/:id" element={<PageTransition><AdminSupplyOrderDetailPage /></PageTransition>} />
         
         {/* Employee Routes */}
         <Route path="/empleado/dashboard" element={<PageTransition><EmployeeDashboardPage /></PageTransition>} />
@@ -122,8 +139,6 @@ export default function AnimatedRoutes() {
         <Route path="/empleado/entregas" element={<PageTransition><DailyDeliveriesPage /></PageTransition>} />
         <Route path="/empleado/inventario" element={<PageTransition><QuickInventoryPage /></PageTransition>} />
         <Route path="/empleado/venta-rapida" element={<PageTransition><QuickSalePage /></PageTransition>} />
-        <Route path="/empleado/venta-rapida/config" element={<PageTransition><QuickSaleTemplatesPage /></PageTransition>} />
-        <Route path="/empleado/plantillas" element={<PageTransition><SeasonTemplatesPage /></PageTransition>} />
         <Route path="/empleado/configuracion" element={<PageTransition><EmployeeSettingsPage /></PageTransition>} />
 
         {/* Client Specific Routes */}

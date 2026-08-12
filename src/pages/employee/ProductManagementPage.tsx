@@ -310,7 +310,7 @@ export default function ProductManagementPage() {
         await AdminService.createAdminProduct(body);
         showToast('Producto creado', 'success');
       }
-      navigate('/admin/catalogo');
+      navigate('/admin/productos');
     } catch {
       showToast('Error al guardar', 'error');
     } finally { setSaving(false); }
@@ -329,7 +329,7 @@ export default function ProductManagementPage() {
 
       await AdminService.updateAdminProduct(id, body);
       showToast('Producto desactivado correctamente', 'success');
-      navigate('/admin/catalogo');
+      navigate('/admin/productos');
     } catch {
       showToast('Error al desactivar el producto', 'error');
     } finally {
@@ -363,7 +363,7 @@ export default function ProductManagementPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <AnimatedButton onClick={() => navigate('/admin/catalogo')} className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+            <AnimatedButton onClick={() => navigate('/admin/productos')} className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
               Cancelar
             </AnimatedButton>
             <AnimatedButton onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-60">

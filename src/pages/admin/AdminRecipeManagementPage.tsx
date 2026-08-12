@@ -73,7 +73,7 @@ export default function AdminRecipeManagementPage() {
 
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 font-medium tracking-tight">
-        <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer" onClick={() => navigate('/admin/catalogo')}>Catálogo</span>
+        <span className="hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer" onClick={() => navigate('/admin/productos')}>Productos</span>
         <ChevronRight className="w-3 h-3" />
         <span className="text-slate-700 dark:text-slate-300 font-bold uppercase tracking-widest text-[10px]">Gestión de Recetas</span>
       </nav>

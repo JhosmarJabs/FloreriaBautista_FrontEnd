@@ -167,7 +167,7 @@ export default function EmployeeDashboardPage() {
               <div className="w-1.5 h-8 bg-[#eab308] rounded-full shadow-lg shadow-amber-600/20"></div>
               <h2 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white">Reporte Rápido de Ventas</h2>
             </div>
-            <Link to="/empleado/pedidos" className="group flex items-center gap-2 text-[#1e3a5f] dark:text-blue-400 font-black text-[10px] uppercase tracking-widest hover:bg-[#1e3a5f] hover:text-white transition-all px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/50 backdrop-blur-md">
+            <Link to="/empleado/pedidos" className="group flex items-center gap-2 text-[#1e3a5f] dark:text-blue-300 font-black text-[10px] uppercase tracking-widest hover:bg-[#1e3a5f] hover:text-white hover:border-transparent transition-all px-4 py-2 rounded-full border border-[#1e3a5f]/15 dark:border-blue-400/30 bg-[#1e3a5f]/5 dark:bg-blue-500/15 backdrop-blur-md">
               Ver Todo
               <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>

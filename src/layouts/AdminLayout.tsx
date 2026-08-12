@@ -6,7 +6,6 @@ import {
   ShoppingCart,
   Package,
   BarChart3,
-  Users,
   Settings,
   Wrench,
   Bell,
@@ -18,6 +17,8 @@ import {
   ArrowLeftRight,
   Layout as LayoutIcon,
   Library,
+  FlaskConical,
+  Zap,
   Tag,
   UsersRound,
   Truck,
@@ -199,6 +200,17 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Promociones</Label>
           </Link>
 
+          {/* 6.5 Plantillas de venta */}
+          <Link
+            to="/admin/plantillas-venta"
+            className={linkCls(
+              location.pathname.startsWith("/admin/plantillas-venta"),
+            )}
+          >
+            <Zap className="w-5 h-5 flex-shrink-0" />
+            <Label>Plantillas de venta</Label>
+          </Link>
+
           {/* 2. Pedidos */}
           <Link
             to="/admin/pedidos"
@@ -206,15 +218,6 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           >
             <ShoppingCart className="w-5 h-5 flex-shrink-0" />
             <Label>Pedidos</Label>
-          </Link>
-
-          {/* 7. Usuarios */}
-          <Link
-            to="/admin/usuarios"
-            className={linkCls(isActive("/admin/usuarios"))}
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            <Label>Usuarios</Label>
           </Link>
 
           {/* 8. Reportes */}
@@ -226,13 +229,16 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Reportes</Label>
           </Link>
 
-          {/* Segmentación de clientes (Modelos Predictivos — Propuesta 3) */}
+          {/* Clientes: módulo con pestañas (segmentos + todos los usuarios) */}
           <Link
             to="/admin/clientes"
-            className={linkCls(isActive("/admin/clientes"))}
+            className={linkCls(
+              location.pathname.startsWith("/admin/clientes") ||
+                location.pathname.startsWith("/admin/usuarios"),
+            )}
           >
             <UsersRound className="w-5 h-5 flex-shrink-0" />
-            <Label>Clientes (Segmentos)</Label>
+            <Label>Clientes</Label>
           </Link>
 
           {/* 9. CMS — Personalizar */}

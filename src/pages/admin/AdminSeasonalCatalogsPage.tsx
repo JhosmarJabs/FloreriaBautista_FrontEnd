@@ -13,7 +13,7 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
-import { AdminCatalogo, CatalogKpis } from '../../types';
+import { AdminCatalogo, SeasonalCatalogKpis } from '../../types';
 
 interface ExtendedCatalogItem extends AdminCatalogo {
   temporada?: string;
@@ -23,11 +23,11 @@ interface ExtendedCatalogItem extends AdminCatalogo {
   productCatalogos?: any[];
 }
 
-export default function AdminCatalogsPage() {
+export default function AdminSeasonalCatalogsPage() {
   const navigate = useNavigate();
   const [busqueda, setBusqueda] = useState('');
   const [catalogs, setCatalogs] = useState<ExtendedCatalogItem[]>([]);
-  const [kpis, setKpis] = useState<CatalogKpis | null>(null);
+  const [kpis, setKpis] = useState<SeasonalCatalogKpis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,8 +79,11 @@ export default function AdminCatalogsPage() {
             <Library className="w-5 h-5 text-amber-600 dark:text-amber-500" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Gestión de Catálogos (Festividades)</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Agrupa productos por épocas, festividades o temporadas</p>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Catálogos de temporada</h1>
+            <p className="text-xs text-slate-400 dark:text-slate-500 max-w-2xl">
+              Agrupa productos por festividad (San Valentín, 10 de mayo, Día de Muertos).
+              Definen qué se muestra en la tienda en línea durante cada temporada.
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

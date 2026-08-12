@@ -9,16 +9,16 @@ import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
 import { parseApiDate } from '../../utils/date';
 import { extractApiError } from '../../utils/apiError';
+import { ESTADO_PEDIDO, type EstadoPedido } from '../../utils/labels';
 
-// Estos son los estados reales que maneja el backend (ver Transiciones en OrderService.cs)
-const ESTADOS_FLUJO = [
-  { key: 'PENDIENTE_VALIDACION', label: 'Pendiente',      color: 'bg-amber-400',   text: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10'   },
-  { key: 'EN_PREPARACION',       label: 'En preparación', color: 'bg-purple-400',  text: 'text-purple-700 dark:text-purple-400',  bg: 'bg-purple-50 dark:bg-purple-500/10'  },
-  { key: 'EN_RUTA',              label: 'En camino',      color: 'bg-indigo-400',  text: 'text-indigo-700 dark:text-indigo-400',  bg: 'bg-indigo-50 dark:bg-indigo-500/10'  },
-  { key: 'ENTREGADO',            label: 'Entregado',      color: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-];
-const ESTADO_CANCELADO = { key: 'CANCELADO', label: 'Cancelado', color: 'bg-red-400', text: 'text-red-700 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' };
-const ESTADO_NO_COMPLETADO = { key: 'NO_COMPLETADO', label: 'No completado', color: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/30' };
+// Estos son los estados reales que maneja el backend (ver Transiciones en OrderService.cs).
+// Etiqueta y color salen de utils/labels.ts: aquí solo se arma el paso del stepper.
+// `color` es el punto sólido del stepper, que en el diccionario se llama `dot`.
+const paso = (key: EstadoPedido) => ({ key, ...ESTADO_PEDIDO[key], color: ESTADO_PEDIDO[key].dot });
+
+const ESTADOS_FLUJO = (['PENDIENTE_VALIDACION', 'EN_PREPARACION', 'EN_RUTA', 'ENTREGADO'] as const).map(paso);
+const ESTADO_CANCELADO = paso('CANCELADO');
+const ESTADO_NO_COMPLETADO = paso('NO_COMPLETADO');
 
 // Siguiente estado permitido segun la maquina de estados del backend
 const SIGUIENTE_ESTADO: Record<string, string | null> = {

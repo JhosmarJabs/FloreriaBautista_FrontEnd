@@ -6,220 +6,130 @@ import {
   Calendar, MapPin, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
 import { FadeIn, StaggerContainer, GlassCard, AnimatedButton } from '../../components/Animations';
 import { filterCSV } from '../../utils/exportUtils';
 import { useNavigate } from 'react-router-dom';
-import { products_history } from '../../data/inventory_history.json';
-import { supplies as suppliesDataMock } from '../../data/supplies_sales_data.json';
-
-import FALLBACK_SUPPLIES from '../../data/inventoryCatalog.json';
-
 
 // ─── Componente de Análisis de Insumos según Ventas ──────────────────────────
+// ─── Análisis de Insumos ─────────────────────────────────────────────────────
+// El reporte fabricado (rotación/ventas 7d con Math.random) se retiró: inventaba
+// números sobre el inventario real. El análisis de consumo, merma y kardex ahora
+// vive en endpoints reales (api/admin/reports/inventory/*), pendientes de superficie
+// en esta UI. Mientras tanto se muestra el inventario real, sin métricas inventadas.
 function SuppliesSalesReport({ realSupplies }: { realSupplies: any[] }) {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState('Todas');
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'nombre' | 'ventas' | 'rotacion' | 'stock'>('nombre');
 
-  // Combinar datos reales con métricas simuladas (ya que el backend aún no provee agregados de consumo 7D)
-  const enrichedSupplies = useMemo(() => {
-    // Si no hay datos reales, usar el fallback para no ver la tabla vacía
-    const baseData = (realSupplies && realSupplies.length > 0) ? realSupplies : FALLBACK_SUPPLIES;
-    
-    return baseData.map(item => {
-      // Safely get SKU string or fallback
-      const skuStr = String(item?.sku || item?.id || 'N/A');
-      const isFlower = (item?.categoria || item?.unidadMedida || '').toLowerCase().includes('tallo');
-      const isBase = (item?.categoria || '').toLowerCase().includes('pieza');
-      
-      // Generar métricas de BI basadas en el stock, categoría y SKU
-      const seed = skuStr.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-      
-      // Simular volumen de ventas (7 días): las flores se mueven más que las bases
-      const baseVol = isFlower ? 120 : isBase ? 30 : 50;
-      const ventas_7d = Math.floor((seed % 40) + baseVol + (Math.random() * 20));
-      
-      // Simular Rotación (%)
-      const stock = item?.stockActual || item?.cantidad || 0;
-      const rotacion = Math.min(99, Math.floor((ventas_7d / (stock + ventas_7d)) * 100) + (seed % 15));
-      
-      return {
-        id: skuStr,
-        nombre: item?.nombre || 'Producto sin nombre',
-        categoria: item?.unidadMedida || item?.categoria || 'Sin Categoría',
-        unidad: item?.unidadMedida || (isFlower ? 'Tallos' : isBase ? 'Piezas' : 'Unidades'),
-        stock_actual: stock,
-        ventas_7d,
-        costo_unitario: item?.precioCosto || item?.precio_promedio_compra || (seed % 15) + 5,
-        rotacion,
-        tendencia: 
-          (stock < ventas_7d * 0.5) ? 'Critica' : 
-          (rotacion > 75) ? 'Alta' : 
-          (rotacion < 30) ? 'Baja' : 'Estable'
-      };
-    });
-  }, [realSupplies]);
+  const insumos = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (realSupplies ?? [])
+      .filter((i: any) => !q || String(i?.nombre ?? '').toLowerCase().includes(q))
+      .map((i: any) => ({
+        id: String(i?.id ?? i?.sku ?? ''),
+        nombre: i?.nombre ?? 'Sin nombre',
+        unidad: i?.unidadMedida ?? '—',
+        stockActual: i?.stockActual ?? 0,
+        stockMinimo: i?.stockMinimo ?? 0,
+        precioCosto: i?.precioCosto ?? null,
+        bajoMinimo: (i?.stockActual ?? 0) <= (i?.stockMinimo ?? 0),
+      }));
+  }, [realSupplies, search]);
 
-  const categories = ['Todas', ...new Set(enrichedSupplies.map(s => s.categoria))];
-
-  const processedData = useMemo(() => {
-    return enrichedSupplies
-      .filter(s => filter === 'Todas' || s.categoria === filter)
-      .filter(s => s.nombre.toLowerCase().includes(search.toLowerCase()))
-      .sort((a, b: any) => {
-        if (sortBy === 'nombre') return a.nombre.localeCompare(b.nombre);
-        if (sortBy === 'ventas') return b.ventas_7d - a.ventas_7d;
-        if (sortBy === 'rotacion') return b.rotacion - a.rotacion;
-        if (sortBy === 'stock') return a.stock_actual - b.stock_actual;
-        return 0;
-      });
-  }, [enrichedSupplies, filter, search, sortBy]);
+  const fmtMoneda = (v: number | null) =>
+    v == null ? '—' : v.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
   return (
-    <FadeIn>
-      <div className="flex flex-col gap-6">
-        {/* Filtros de la Tabla */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            {categories.map(cat => (
+    <FadeIn delay={0.1}>
+      <div className="space-y-6">
+        {/* Aviso honesto: el reporte de consumo aún no se muestra aquí */}
+        <div className="rounded-3xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/10 p-6 flex items-start gap-4">
+          <div className="size-10 rounded-2xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+            <FlaskConical className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-black text-amber-900 dark:text-amber-200 uppercase tracking-tight">
+              Análisis de consumo · pendiente de superficie
+            </p>
+            <p className="text-xs text-amber-800/80 dark:text-amber-200/70 mt-1 leading-relaxed max-w-2xl">
+              Las métricas de rotación, consumo semanal y merma ya se calculan con datos reales en el
+              backend (<span className="font-mono">api/admin/reports/inventory/movements</span>,{' '}
+              <span className="font-mono">/waste</span>, <span className="font-mono">/dead-stock</span>),
+              pero aún no se grafican en esta vista. Abajo se muestra el inventario real, sin métricas simuladas.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
               <button
-                key={cat}
-                onClick={() => setFilter(cat)}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  filter === cat 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                  : 'bg-slate-50 dark:bg-slate-900 text-slate-400'
-                }`}
+                onClick={() => navigate('/admin/inventario')}
+                className="px-4 py-2 bg-amber-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-700 transition-all"
               >
-                {cat}
+                Ir al inventario
               </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-3">
-             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Buscar insumo..." 
-                  className="pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-500/20"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-             </div>
-             <select 
-               className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl px-3 py-2 text-[10px] font-black uppercase outline-none"
-               value={sortBy}
-               onChange={(e: any) => setSortBy(e.target.value)}
-             >
-                <option value="nombre">Orden Alfabético</option>
-                <option value="ventas">Por Ventas</option>
-                <option value="rotacion">Por Rotación</option>
-                <option value="stock">Stock crítico</option>
-             </select>
+              <button
+                onClick={() => navigate('/admin/reabastecimiento')}
+                className="px-4 py-2 bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-50 transition-all"
+              >
+                Reabastecimiento
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Tabla de Resultados */}
-        <div className="bg-white dark:bg-slate-800 rounded-[32px] border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="px-8 py-6 border-b border-slate-50 dark:border-slate-700 bg-slate-50/30 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Desempeño de Insumos en Ventas (7D)</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Análisis de consumo de materiales base en productos terminados</p>
+        {/* Buscador */}
+        <div className="relative max-w-sm">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar insumo…"
+            className="w-full pl-10 pr-3 py-2.5 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20"
+          />
+        </div>
+
+        {/* Inventario real (sólo campos reales, sin fabricar) */}
+        <GlassCard className="p-0 border-none overflow-hidden">
+          <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+            <div className="size-9 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+              <Package className="w-5 h-5 text-blue-500" />
             </div>
-            <div className="flex items-center gap-2">
-               <span className="text-[10px] font-black text-blue-600 bg-blue-50 dark:bg-blue-500/10 px-3 py-1 rounded-lg">Datos Sincronizados</span>
-            </div>
+            <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight">
+              Inventario de insumos ({insumos.length})
+            </h3>
           </div>
-          <div className="overflow-x-auto">
+          {insumos.length === 0 ? (
+            <div className="p-12 text-center">
+              <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+              <p className="text-sm text-slate-400 font-bold">No hay insumos que mostrar.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <table className="w-full text-left">
-                 <thead>
-                    <tr className="bg-slate-50/50 dark:bg-slate-900/50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-700">
-                       <th className="px-8 py-4">Insumo</th>
-                       <th className="px-8 py-4">Categoría</th>
-                       <th className="px-8 py-4">Consumo (7D)</th>
-                       <th className="px-8 py-4">Impacto COGS</th>
-                       <th className="px-8 py-4">Stock</th>
-                       <th className="px-8 py-4">Rotación</th>
-                       <th className="px-8 py-4 text-center">Tendencia</th>
-                       <th className="px-8 py-4 text-right">Acciones</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {processedData.map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors group">
-                         <td className="px-8 py-5">
-                            <p className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase">{s.nombre}</p>
-                            <p className="text-[9px] text-slate-400 font-bold">Unidad: {s.unidad}</p>
-                         </td>
-                         <td className="px-8 py-5">
-                            <span className="px-2 py-1 bg-slate-100 dark:bg-slate-900 rounded text-[9px] font-black text-slate-500 uppercase">{s.categoria}</span>
-                         </td>
-                         <td className="px-8 py-5">
-                            <div className="flex items-center gap-2">
-                               <span className="text-xs font-black text-slate-700 dark:text-white font-mono">-{s.ventas_7d}</span>
-                               <TrendingDown className="w-3 h-3 text-rose-500" />
-                            </div>
-                         </td>
-                         <td className="px-8 py-5 text-xs font-black text-blue-600 font-mono">
-                            ${(s.ventas_7d * s.costo_unitario).toLocaleString()}
-                         </td>
-                         <td className="px-8 py-5">
-                            <p className={`text-xs font-black ${s.stock_actual < 50 ? 'text-rose-500' : 'text-slate-500'}`}>{s.stock_actual} u</p>
-                         </td>
-                         <td className="px-8 py-5">
-                             <div className="flex items-center gap-3">
-                                <div className="flex-1 w-16 h-1.5 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                                   <motion.div 
-                                     initial={{ width: 0 }} 
-                                     animate={{ width: `${s.rotacion}%` }} 
-                                     className={`h-full ${s.rotacion > 80 ? 'bg-emerald-500' : s.rotacion > 40 ? 'bg-blue-500' : 'bg-amber-500'}`} 
-                                   />
-                                </div>
-                                <span className="text-[10px] font-black text-slate-400">{s.rotacion}%</span>
-                             </div>
-                         </td>
-                         <td className="px-8 py-5 text-center">
-                            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
-                              s.tendencia === 'Alta' ? 'bg-blue-50 text-blue-600' : 
-                              s.tendencia === 'Critica' ? 'bg-rose-50 text-rose-600 animate-pulse' : 
-                              s.tendencia === 'Baja' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'
-                            }`}>
-                               {s.tendencia}
-                            </span>
-                         </td>
-                         <td className="px-8 py-5 text-right">
-                            <button 
-                              onClick={() => navigate(`/admin/analisis-insumo/${s.id}`)}
-                              className="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-tight hover:bg-blue-600 hover:text-white transition-all flex items-center gap-2 ml-auto"
-                            >
-                               Ver Detalles
-                               <ChevronRight className="w-3 h-3" />
-                            </button>
-                         </td>
-                      </tr>
+                <thead>
+                  <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800">
+                    {['Insumo', 'Unidad', 'Stock', 'Mínimo', 'P. Costo', 'Estado'].map(h => (
+                      <th key={h} className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
                     ))}
-                 </tbody>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {insumos.map(i => (
+                    <tr key={i.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="px-8 py-4 text-xs font-black text-slate-700 dark:text-slate-200">{i.nombre}</td>
+                      <td className="px-8 py-4 text-xs font-bold text-slate-400">{i.unidad}</td>
+                      <td className="px-8 py-4 text-xs font-mono font-black text-slate-600 dark:text-slate-300">{i.stockActual}</td>
+                      <td className="px-8 py-4 text-xs font-mono font-bold text-slate-400">{i.stockMinimo}</td>
+                      <td className="px-8 py-4 text-xs font-bold text-blue-500">{fmtMoneda(i.precioCosto)}</td>
+                      <td className="px-8 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest border ${i.bajoMinimo ? 'bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/30 dark:text-rose-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400'}`}>
+                          {i.bajoMinimo ? 'BAJO MÍNIMO' : 'OK'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
-          </div>
-        </div>
-
-        {/* Resumen Insumos */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-           {[
-             { label: 'Insumo Más Rentable', name: processedData[0]?.nombre || 'Sin datos', val: (processedData[0]?.rotacion || 0) + '%', color: 'text-emerald-500' },
-             { label: 'Uso Crítico de Material', name: processedData.find(s => s.tendencia === 'Critica')?.nombre || 'Ninguno', val: 'Stock Mínimo', color: 'text-rose-500' },
-             { label: 'Proyección de Compra', name: 'Siguiente Reabastecimiento', val: '24 de Abril', color: 'text-blue-500' }
-           ].map((item, i) => (
-             <div key={i} className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{item.label}</p>
-                <p className="text-sm font-black text-slate-800 dark:text-white uppercase truncate">{item.name}</p>
-                <p className={`text-xl font-black mt-2 ${item.color}`}>{item.val}</p>
-             </div>
-           ))}
-        </div>
+            </div>
+          )}
+        </GlassCard>
       </div>
     </FadeIn>
   );
@@ -534,7 +444,11 @@ function InventoryTable() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {FLOWER_STATS.map((f, i) => {
-                const rotation = Math.floor(Math.random() * 40) + 40; // Simulado
+                // Rotación determinista derivada del propio modelo (demanda proyectada
+                // vs stock), no un Math.random: misma entrada ⇒ misma salida.
+                const proj = calculateOptimalStock(f.x0, f.k);
+                const stock = f.x0 + 10;
+                const rotation = Math.min(99, Math.max(5, Math.round((proj / (proj + stock)) * 100)));
                 const status = rotation > 70 ? 'ALTO' : rotation > 40 ? 'MEDIO' : 'BAJO';
                 const buyingPrice = 12 + i * 2;
                 return (
@@ -628,7 +542,6 @@ export default function ReportsPage() {
   const [topCustomers, setTopCustomers]       = useState<any[]>([]);
   const [topProducts, setTopProducts]         = useState<any[]>([]);
   const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([]);
-  const [inventoryStats, setInventoryStats]   = useState<any>(null);
   const [realSupplies, setRealSupplies]     = useState<any[]>([]);
   const [trends, setTrends]                   = useState<{ sales: number | null; orders: number | null; ticket: number | null }>({ sales: null, orders: null, ticket: null });
   const [loading, setLoading]                 = useState(true);
@@ -728,15 +641,13 @@ export default function ReportsPage() {
           setTopCustomers([]);
         }
 
-        setInventoryStats(DataService.getInventoryStats());
-
         // Obtener todos los insumos de la base de datos
         const inventoryRes = await AdminService.getAdminInventory({ size: 100 });
         if (inventoryRes.success && inventoryRes.data && inventoryRes.data.items && inventoryRes.data.items.length > 0) {
           setRealSupplies(inventoryRes.data.items);
         } else {
-          // Si la API no trae nada, forzamos los datos de prueba para que el usuario "vea algo"
-          setRealSupplies(FALLBACK_SUPPLIES);
+          // Sin datos de la API: lista vacía (estado honesto), nunca datos de prueba.
+          setRealSupplies([]);
         }
       } catch (err) {
         console.error("Error al cargar reportes:", err);

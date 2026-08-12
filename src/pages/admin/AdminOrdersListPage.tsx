@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Search, RefreshCw, AlertTriangle, ChevronRight,
   ChevronLeft, Filter, X, Eye, Calendar, Clock, LayoutGrid, List,
-  User as UserIcon, Tag, MapPin, ReceiptText, Archive
+  User as UserIcon, Tag, MapPin, ReceiptText, Archive, CheckCircle2,
+  ChevronDown, Palette
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
-import { FadeIn, StaggerContainer, AnimatedButton } from '../../components/Animations';
-import { parseApiDate } from '../../utils/date';
+import { FadeIn, AnimatedButton } from '../../components/Animations';
+import { parseApiDate, todayISO } from '../../utils/date';
+import { ESTADO_PEDIDO, type EstadoPedidoUi } from '../../utils/labels';
 
 // Estos son los estados reales que usa el backend (ver Transiciones en Backend/Services/OrderService.cs)
 const ESTADOS = [
@@ -17,24 +19,71 @@ const ESTADOS = [
 ];
 const PAGE_SIZE = 20;
 
-const ESTADO_STYLE: Record<string, { bg: string; text: string; dot: string; label: string; border: string }> = {
-  PENDIENTE_VALIDACION: { bg: 'bg-amber-50 dark:bg-amber-500/10',   text: 'text-amber-700 dark:text-amber-400',   dot: 'bg-amber-400',   label: 'Pendiente', border: 'border-amber-100 dark:border-amber-500/20' },
-  EN_PREPARACION:       { bg: 'bg-purple-50 dark:bg-purple-500/10',  text: 'text-purple-700 dark:text-purple-400',  dot: 'bg-purple-400',  label: 'En preparación', border: 'border-purple-100 dark:border-purple-500/20' },
-  EN_RUTA:              { bg: 'bg-indigo-50 dark:bg-indigo-500/10',  text: 'text-indigo-700 dark:text-indigo-400',  dot: 'bg-indigo-400',  label: 'En camino', border: 'border-indigo-100 dark:border-indigo-500/20' },
-  ENTREGADO:            { bg: 'bg-emerald-50 dark:bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Entregado', border: 'border-emerald-100 dark:border-emerald-500/20' },
-  CANCELADO:            { bg: 'bg-red-50 dark:bg-red-500/10',     text: 'text-red-700 dark:text-red-400',     dot: 'bg-red-400',     label: 'Cancelado', border: 'border-red-100 dark:border-red-500/20' },
-  PENDIENTE_ANULACION:  { bg: 'bg-orange-50 dark:bg-orange-500/10', text: 'text-orange-700 dark:text-orange-400', dot: 'bg-orange-400', label: 'Pend. anulación', border: 'border-orange-100 dark:border-orange-500/20' },
-  NO_COMPLETADO:        { bg: 'bg-slate-100 dark:bg-slate-700/30', text: 'text-slate-600 dark:text-slate-400', dot: 'bg-slate-400',   label: 'No completado', border: 'border-slate-200 dark:border-slate-600/40' },
-};
+// Semáforo por estado. Además del badge, cada entrada define cómo se pinta la
+// fila/tarjeta completa: `bar` es la barra lateral (tabla) o superior (tarjeta) y
+// `tint` un fondo muy tenue reservado a los estados que exigen que alguien actúe.
+// Todo vive en utils/labels.ts para que un estado se llame y se pinte igual aquí,
+// en el dashboard, en el panel del empleado y en la cuenta del cliente.
+const ESTADO_STYLE: Record<string, EstadoPedidoUi> = ESTADO_PEDIDO;
+
+// Un pedido ya cerrado no urge, por más que su fecha de entrega esté encima.
+const ESTADOS_CERRADOS = ['ENTREGADO', 'CANCELADO'];
+
+const MS_DIA = 86_400_000;
 
 function formatDate(iso: string) {
   const d = parseApiDate(iso);
   return d ? d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 }
 
-function formatTime(iso: string) {
+/** "18:30:00" → "18:30". El resumen del backend puede no traer hora de entrega. */
+function formatHoraEntrega(hora?: string | null) {
+  const m = hora ? /^(\d{1,2}):(\d{2})/.exec(hora) : null;
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '';
+}
+
+/** Días entre hoy y la entrega: 0 = hoy, 1 = mañana, negativo = ya pasó. */
+function diasHastaEntrega(iso?: string | null): number | null {
+  const entrega = parseApiDate(iso);
+  const hoy = parseApiDate(todayISO());
+  if (!entrega || !hoy || Number.isNaN(entrega.getTime())) return null;
+  entrega.setHours(0, 0, 0, 0); // fechaEntrega es DateOnly, pero por si llega con hora
+  return Math.round((entrega.getTime() - hoy.getTime()) / MS_DIA);
+}
+
+function diaSemana(iso: string) {
   const d = parseApiDate(iso);
-  return d ? d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
+  if (!d) return '';
+  const s = d.toLocaleDateString('es-MX', { weekday: 'long' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+type Urgencia = { label: string; text: string; dot?: string; pulse?: boolean };
+
+/**
+ * Segunda capa de color: qué tan encima está la entrega. Se apaga en el archivo
+ * (ahí todo es pasado) y en los pedidos ya cerrados.
+ */
+function urgenciaEntrega(order: Order, activa: boolean): Urgencia | null {
+  if (!activa || ESTADOS_CERRADOS.includes(order.estadoPedido)) return null;
+  const dias = diasHastaEntrega(order.fechaEntrega);
+  if (dias === null) return null;
+  if (dias < 0)   return { label: 'Atrasado', text: 'text-red-600 dark:text-red-400', dot: 'bg-red-500' };
+  if (dias === 0) return { label: 'HOY', text: 'text-red-600 dark:text-red-400', dot: 'bg-red-500', pulse: true };
+  if (dias === 1) return { label: 'Mañana', text: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-400' };
+  if (dias <= 7)  return { label: diaSemana(order.fechaEntrega), text: 'text-slate-600 dark:text-slate-300' };
+  return { label: '', text: 'text-slate-400 dark:text-slate-500' };
+}
+
+/** Punto de urgencia; el de "HOY" late para que salte a la vista. */
+function UrgenciaDot({ urg }: { urg: Urgencia }) {
+  if (!urg.dot) return null;
+  return (
+    <span className="relative flex w-1.5 h-1.5">
+      {urg.pulse && <span className={`absolute inline-flex w-full h-full rounded-full ${urg.dot} opacity-75 animate-ping`} />}
+      <span className={`relative inline-flex w-1.5 h-1.5 rounded-full ${urg.dot}`} />
+    </span>
+  );
 }
 
 export default function AdminOrdersListPage() {
@@ -44,6 +93,7 @@ export default function AdminOrdersListPage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [verArchivo, setVerArchivo] = useState(false);
+  const [verLeyenda, setVerLeyenda] = useState(false);
 
   const [estado, setEstado] = useState('');
   const [desde, setDesde] = useState('');
@@ -92,6 +142,9 @@ export default function AdminOrdersListPage() {
 
   const clearFilters = () => { setEstado(''); setDesde(''); setHasta(''); setBusqueda(''); setPage(1); };
 
+  // OJO: estos dos conteos son de la página actual (PAGE_SIZE registros), no del
+  // total filtrado. El backend solo agrega `sumaTotal` en PagedResultDto; mientras
+  // no exponga conteos por estado, el label dice explícitamente "en esta página".
   const pendientes = orders.filter(o => o.estadoPedido === 'PENDIENTE_VALIDACION').length;
   const entregados = orders.filter(o => o.estadoPedido === 'ENTREGADO').length;
 
@@ -147,8 +200,8 @@ export default function AdminOrdersListPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
           { label: 'Total pedidos', value: total, icon: <ReceiptText />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
-          { label: 'Pendientes', value: pendientes, icon: <Clock />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por procesar' },
-          { label: 'Entregados hoy', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'completados' },
+          { label: 'Pendientes en esta página', value: pendientes, icon: <Clock />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: `de ${orders.length} visibles` },
+          { label: 'Entregados en esta página', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: `de ${orders.length} visibles` },
           { label: 'Recaudación bruta', value: `$${(sumaTotal ?? orders.reduce((acc, o) => acc + o.total, 0)).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40', trend: `${total} pedidos` },
         ].map((s, idx) => (
           <div key={idx} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
@@ -170,7 +223,7 @@ export default function AdminOrdersListPage() {
         <div className="flex-1 min-w-[280px] relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por cliente o folio..." 
+            placeholder="Buscar por cliente o número de pedido…"
             className="w-full pl-12 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all" />
         </div>
         <select value={estado} onChange={e => setEstado(e.target.value)} 
@@ -195,6 +248,59 @@ export default function AdminOrdersListPage() {
             <LayoutGrid className="w-4 h-4" />
           </button>
         </div>
+      </div>
+
+      {/* Leyenda de colores (colapsable) */}
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+        <button onClick={() => setVerLeyenda(v => !v)}
+          className="w-full flex items-center gap-2 px-4 py-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+          <Palette className="w-4 h-4" />
+          Qué significa cada color
+          <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${verLeyenda ? 'rotate-180' : ''}`} />
+        </button>
+        {verLeyenda && (
+          <div className="px-4 pb-4 flex flex-col gap-4 border-t border-slate-100 dark:border-slate-700/50 pt-4">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Estado del pedido (barra lateral y badge)</p>
+              <div className="flex flex-wrap gap-2">
+                {ESTADOS.filter(Boolean).map(e => {
+                  const st = ESTADO_STYLE[e];
+                  return (
+                    <span key={e} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${st.bg} ${st.text} ${st.border}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                      {st.label}
+                    </span>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-2">
+                El fondo tenue marca los pedidos que esperan una acción tuya:{' '}
+                {ESTADOS.filter(e => e && ESTADO_STYLE[e]?.tint).map(e => ESTADO_STYLE[e].label).join(' y ')}.
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Proximidad de la entrega</p>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                {[
+                  { urg: { label: 'Atrasado', text: 'text-red-600 dark:text-red-400', dot: 'bg-red-500' }, ayuda: 'la fecha ya pasó' },
+                  { urg: { label: 'HOY', text: 'text-red-600 dark:text-red-400', dot: 'bg-red-500', pulse: true }, ayuda: 'se entrega hoy' },
+                  { urg: { label: 'Mañana', text: 'text-amber-600 dark:text-amber-400', dot: 'bg-amber-400' }, ayuda: 'se entrega mañana' },
+                  { urg: { label: 'Día de la semana', text: 'text-slate-600 dark:text-slate-300' }, ayuda: 'dentro de 2 a 7 días' },
+                  { urg: { label: 'Fecha en gris', text: 'text-slate-400 dark:text-slate-500' }, ayuda: 'falta más de una semana' },
+                ].map(({ urg, ayuda }) => (
+                  <span key={urg.label} className="inline-flex items-center gap-1.5 text-[10px] font-bold">
+                    <UrgenciaDot urg={urg} />
+                    <span className={`uppercase tracking-widest ${urg.text}`}>{urg.label}</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-medium normal-case tracking-normal">— {ayuda}</span>
+                  </span>
+                ))}
+              </div>
+              <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-2">
+                Los pedidos entregados o cancelados no muestran urgencia, y en el archivo se apaga por completo.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -222,8 +328,10 @@ export default function AdminOrdersListPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700/50">
-                      {['Folio', 'Cliente', 'Creación', 'Entrega', 'Total', 'Estado', 'Acciones'].map(h => (
-                        <th key={h} className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{h}</th>
+                      {['Cliente', 'Estado', 'Entrega', 'Importe', ''].map((h, i) => (
+                        <th key={i} className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                          {h || <span className="sr-only">Acciones</span>}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -231,25 +339,21 @@ export default function AdminOrdersListPage() {
                     <AnimatePresence mode="popLayout">
                       {orders.map(order => {
                         const st = ESTADO_STYLE[order.estadoPedido];
+                        const urg = urgenciaEntrega(order, !verArchivo);
+                        const hora = formatHoraEntrega(order.horaEntrega);
                         return (
-                          <motion.tr key={order.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors">
-                            <td className="px-6 py-4">
-                               <p className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">#{order.id.slice(0, 8).toUpperCase()}</p>
-                            </td>
-                            <td className="px-6 py-4">
-                               <div className="flex items-center gap-3">
-                                  <div className="size-8 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-[10px] font-black">{order.nombreCliente?.charAt(0) || 'C'}</div>
+                          <motion.tr key={order.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                            className={`${st?.tint ?? ''} hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors`}>
+                            {/* La barra de estado va en la primera celda: en un <tr> el color lo
+                                pisaría el divide-* del tbody, que tiene más especificidad. */}
+                            <td className={`px-6 py-4 border-l-4 ${st?.bar ?? 'border-transparent'}`}>
+                               {/* El id ya no tiene columna propia: vive aquí como tooltip (completo,
+                                   porque los primeros caracteres se repiten entre pedidos). */}
+                               <div className="flex items-center gap-3" title={`Pedido ${order.id}`}>
+                                  <div className="size-8 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-[10px] font-black shrink-0">{order.nombreCliente?.charAt(0) || 'C'}</div>
                                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{order.nombreCliente || 'Público General'}</p>
                                </div>
                             </td>
-                            <td className="px-6 py-4">
-                               <div className="flex flex-col">
-                                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{formatDate(order.fechaCreacion)}</span>
-                                  <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{formatTime(order.fechaCreacion)}</span>
-                               </div>
-                            </td>
-                            <td className="px-6 py-4 text-xs font-bold text-slate-500">{formatDate(order.fechaEntrega)}</td>
-                            <td className="px-6 py-4 text-sm font-black text-slate-900 dark:text-white">${order.total.toLocaleString()}</td>
                             <td className="px-6 py-4">
                                {st && (
                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${st.bg} ${st.text} ${st.border}`}>
@@ -258,6 +362,19 @@ export default function AdminOrdersListPage() {
                                  </span>
                                )}
                             </td>
+                            <td className="px-6 py-4">
+                               <div className="flex flex-col gap-0.5">
+                                  <span className={`text-xs font-bold ${urg ? urg.text : 'text-slate-500 dark:text-slate-400'}`}>{formatDate(order.fechaEntrega)}</span>
+                                  {hora && <span className="text-[10px] text-slate-400 flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{hora}</span>}
+                                  {urg?.label && (
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${urg.text}`}>
+                                      <UrgenciaDot urg={urg} />
+                                      {urg.label}
+                                    </span>
+                                  )}
+                               </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm font-black text-slate-900 dark:text-white">${order.total.toLocaleString()}</td>
                             <td className="px-6 py-4">
                                <button onClick={() => navigate(`/admin/pedidos/${order.id}`)} className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 rounded-xl transition-all"><Eye className="w-4 h-4" /></button>
                             </td>
@@ -272,10 +389,16 @@ export default function AdminOrdersListPage() {
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xxl:grid-cols-5 gap-6 flex-1 bg-slate-50/20 dark:bg-slate-900/10">
                 {orders.map((order, idx) => {
                   const st = ESTADO_STYLE[order.estadoPedido];
+                  const urg = urgenciaEntrega(order, !verArchivo);
+                  const hora = formatHoraEntrega(order.horaEntrega);
                   return (
                     <motion.div key={order.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.02 }}
-                      className="group bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm hover:shadow-2xl hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-all cursor-pointer relative overflow-hidden"
+                      className={`group bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 ${st?.tint ?? ''} p-5 pt-6 shadow-sm hover:shadow-2xl hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-all cursor-pointer relative overflow-hidden`}
                       onClick={() => navigate(`/admin/pedidos/${order.id}`)}>
+
+                      {/* Barra superior con el color del estado */}
+                      {st && <div className={`absolute top-0 inset-x-0 h-1.5 ${st.dot}`} />}
+
                       
                       <div className="flex items-start justify-between mb-4">
                          <div className="flex flex-col">
@@ -299,9 +422,19 @@ export default function AdminOrdersListPage() {
                       </div>
 
                       <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-700 mb-4 h-24 flex flex-col justify-center">
-                         <div className="flex items-center justify-between mb-2">
+                         <div className="flex items-center justify-between mb-2 gap-2">
                             <span className="text-[9px] font-black text-slate-400 uppercase">Entrega</span>
-                            <span className="text-[10px] font-black text-slate-700 dark:text-slate-200">{formatDate(order.fechaEntrega)}</span>
+                            <span className="flex items-center gap-1.5 text-right">
+                               <span className={`text-[10px] font-black ${urg ? urg.text : 'text-slate-700 dark:text-slate-200'}`}>
+                                  {formatDate(order.fechaEntrega)}{hora && ` · ${hora}`}
+                               </span>
+                               {urg?.label && (
+                                 <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest ${urg.text}`}>
+                                   <UrgenciaDot urg={urg} />
+                                   {urg.label}
+                                 </span>
+                               )}
+                            </span>
                          </div>
                          <div className="flex items-center justify-between">
                             <span className="text-[9px] font-black text-slate-400 uppercase">Total</span>
@@ -343,7 +476,3 @@ export default function AdminOrdersListPage() {
     </div>
   );
 }
-
-const CheckCircle2 = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
-);

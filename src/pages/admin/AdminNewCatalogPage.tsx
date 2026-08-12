@@ -202,7 +202,7 @@ export default function AdminNewCatalogPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-20">
+    <div className="space-y-6 w-full pb-20">
       {/* Header */}
       <FadeIn>
         <div className="flex items-center justify-between">
@@ -254,14 +254,14 @@ export default function AdminNewCatalogPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
               <div>
                 <label className={labelBase}>Temporada / Época</label>
                 <input
                   type="text"
                   value={form.temporada}
                   onChange={e => setForm({ ...form, temporada: e.target.value })}
-                  placeholder="Ej. Mayo, Primavera, Navidad..."
+                  placeholder="Ej. Mayo, Primavera..."
                   className={inputBase}
                 />
               </div>
@@ -272,14 +272,11 @@ export default function AdminNewCatalogPage() {
                   onChange={e => setForm({ ...form, estado: e.target.value as any })}
                   className={inputBase}
                 >
-                  <option value="ACTIVO">Activo (Visible en tienda)</option>
-                  <option value="PROGRAMADO">Programado (Aparecerá después)</option>
+                  <option value="ACTIVO">Activo (Visible)</option>
+                  <option value="PROGRAMADO">Programado</option>
                   <option value="INACTIVO">Inactivo (Oculto)</option>
                 </select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className={labelBase}>Fecha Inicio</label>
                 <div className="relative">
@@ -406,7 +403,7 @@ export default function AdminNewCatalogPage() {
                     <p className="text-xs text-slate-400 font-medium">No has agregado productos a este catálogo</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {form.productosIds.map(pid => {
                       const prod = productos.find(p => p.id === pid);
                       return (

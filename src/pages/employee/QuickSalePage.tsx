@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import {
   ShoppingBasket,
   Search,
@@ -11,12 +10,17 @@ import {
   DollarSign,
   AlertTriangle,
   RefreshCw,
-  Settings,
   ShoppingBag,
+  Sparkles,
+  Leaf,
+  Gift,
+  Heart,
+  Calendar,
+  Layout,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
-import { Product, AdminCatalogo } from '../../types';
+import { Product, QuickSaleTemplate, QuickSaleTemplateItem } from '../../types';
 import { useToast } from '../../hooks/useToast';
 import { todayISO } from '../../utils/date';
 
@@ -27,14 +31,38 @@ interface CartItem {
   cantidad: number;
 }
 
+/* Mapas de presentación (deben coincidir con el editor de plantillas del admin). */
+const ICON_MAP: Record<string, React.ReactNode> = {
+  Sparkles: <Sparkles />,
+  Leaf: <Leaf />,
+  Gift: <Gift />,
+  Heart: <Heart />,
+  Calendar: <Calendar />,
+  Layout: <Layout />,
+  ShoppingBag: <ShoppingBag />,
+};
+
+const COLOR_TINT: Record<string, string> = {
+  emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+  rose: 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400',
+  amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
+  blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  indigo: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+  slate: 'bg-slate-50 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400',
+};
+
+const renderIcon = (iconName: string, className = 'w-8 h-8') => {
+  const icon = ICON_MAP[iconName] || ICON_MAP.Sparkles;
+  return React.cloneElement(icon as React.ReactElement, { className });
+};
+
 export default function QuickSalePage() {
+  // Buscador global (incluye productos SOLO_SUCURSAL) como respaldo.
   const [products, setProducts] = useState<Product[]>([]);
-  // Las "plantillas" de venta rápida ahora son los catálogos: cada catálogo es
-  // una pestaña y sus productos se muestran para agregarlos con un solo toque.
-  const [catalogs, setCatalogs] = useState<AdminCatalogo[]>([]);
-  const [activeCatalogId, setActiveCatalogId] = useState<string | null>(null);
-  const [catalogProducts, setCatalogProducts] = useState<Record<string, Product[]>>({});
-  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  // Las plantillas de venta las diseña y publica el administrador; aquí solo se
+  // consumen las que están activas. Cada plantilla es una pestaña de botones.
+  const [templates, setTemplates] = useState<QuickSaleTemplate[]>([]);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -46,8 +74,6 @@ export default function QuickSalePage() {
     setLoading(true);
     setError(null);
     try {
-      // Catálogo completo de empleado (incluye productos SOLO_SUCURSAL) para la
-      // búsqueda global.
       const productsRes = await AdminService.getEmployeeProducts({ size: 500 });
       setProducts(productsRes.data.items);
     } catch (err: any) {
@@ -57,54 +83,28 @@ export default function QuickSalePage() {
     }
     setLoading(false);
 
-    // Los catálogos alimentan las plantillas; si fallan, la búsqueda global
-    // sigue funcionando.
+    // Las plantillas alimentan las pestañas; si fallan, la búsqueda global sigue
+    // funcionando.
     try {
-      const catalogosData = await AdminService.getPublicCatalogos();
-      setCatalogs(catalogosData);
-      setActiveCatalogId(prev => {
-        if (prev && catalogosData.some(c => c.id === prev)) return prev;
-        // Preferir el catálogo pensado para venta rápida de mostrador (queda
-        // precargado al entrar); si no existe, el primero disponible.
-        const ventaRapida = catalogosData.find(c =>
-          /b[aá]sica|venta r[aá]pida|mostrador|expr[eé]s|express/i.test(c.nombre)
-        );
-        return (ventaRapida ?? catalogosData[0])?.id ?? null;
+      const res = await AdminService.getQuickSaleTemplates(true);
+      const activas = res.data ?? [];
+      setTemplates(activas);
+      setActiveTemplateId(prev => {
+        if (prev && activas.some(t => t.id === prev)) return prev;
+        return activas[0]?.id ?? null;
       });
     } catch (err) {
-      console.error('Error loading catalogs:', err);
-      setCatalogs([]);
+      console.error('Error loading quick sale templates:', err);
+      setTemplates([]);
     }
   };
 
   useEffect(() => { load(); }, []);
 
-  // Carga perezosa de los productos del catálogo activo (se cachean por id para
-  // no re-consultar al cambiar de pestaña).
-  useEffect(() => {
-    const catalog = catalogs.find(c => c.id === activeCatalogId);
-    if (!catalog || catalogProducts[catalog.id]) return;
-    let cancelled = false;
-    (async () => {
-      setLoadingCatalog(true);
-      try {
-        const res = await AdminService.getEmployeeProducts({ catalogo: catalog.nombre, size: 200 });
-        if (!cancelled) setCatalogProducts(prev => ({ ...prev, [catalog.id]: res.data.items }));
-      } catch (err) {
-        console.error('Error loading catalog products:', err);
-        if (!cancelled) setCatalogProducts(prev => ({ ...prev, [catalog.id]: [] }));
-      } finally {
-        if (!cancelled) setLoadingCatalog(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [activeCatalogId, catalogs, catalogProducts]);
-
-  const activeCatalog = useMemo(
-    () => catalogs.find(c => c.id === activeCatalogId) ?? null,
-    [catalogs, activeCatalogId]
+  const activeTemplate = useMemo(
+    () => templates.find(t => t.id === activeTemplateId) ?? null,
+    [templates, activeTemplateId]
   );
-  const activeCatalogProducts = activeCatalogId ? catalogProducts[activeCatalogId] : undefined;
 
   const resultadosBusqueda = useMemo(() => {
     if (!search.trim()) return [];
@@ -112,17 +112,21 @@ export default function QuickSalePage() {
     return products.filter(p => p.nombre.toLowerCase().includes(q)).slice(0, 12);
   }, [products, search]);
 
-  const addItemToCart = (id: string, nombre: string, precio: number) => {
+  const addItemToCart = (id: string, nombre: string, precio: number, cantidad = 1) => {
     setCart(prev => {
       const existing = prev.find(i => i.id === id);
       if (existing) {
-        return prev.map(i => i.id === id ? { ...i, cantidad: i.cantidad + 1 } : i);
+        return prev.map(i => i.id === id ? { ...i, cantidad: i.cantidad + cantidad } : i);
       }
-      return [...prev, { id, nombre, precio, cantidad: 1 }];
+      return [...prev, { id, nombre, precio, cantidad }];
     });
   };
 
-  const addToCart = (product: Product) => addItemToCart(product.id, product.nombre, product.precioBase);
+  const addProduct = (product: Product) =>
+    addItemToCart(product.id, product.nombre, product.precioBase, 1);
+
+  const addTemplateItem = (item: QuickSaleTemplateItem) =>
+    addItemToCart(item.productId, item.nombre, item.precio, item.cantidad || 1);
 
   const updateQuantity = (id: string, delta: number) => {
     setCart(prev => prev.map(item => {
@@ -188,10 +192,7 @@ export default function QuickSalePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/empleado/venta-rapida/config" className="p-2.5 bg-white border border-slate-100 rounded-xl text-[#1e3a5f] hover:bg-slate-50 transition-colors shadow-sm" title="Configurar plantillas">
-            <Settings className="w-4 h-4" />
-          </Link>
-          <button onClick={load} className="p-2.5 bg-white border border-slate-100 rounded-xl text-[#1e3a5f] hover:bg-slate-50 transition-colors shadow-sm">
+          <button onClick={load} className="p-2.5 bg-white border border-slate-100 rounded-xl text-[#1e3a5f] hover:bg-slate-50 transition-colors shadow-sm" title="Recargar">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -209,20 +210,20 @@ export default function QuickSalePage() {
         />
       </div>
 
-      {/* Catalog tabs (plantillas) */}
-      {!search.trim() && catalogs.length > 0 && (
+      {/* Template tabs (plantillas de venta activas) */}
+      {!search.trim() && templates.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
-          {catalogs.map(c => (
+          {templates.map(t => (
             <button
-              key={c.id}
-              onClick={() => setActiveCatalogId(c.id)}
+              key={t.id}
+              onClick={() => setActiveTemplateId(t.id)}
               className={`shrink-0 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                activeCatalogId === c.id
+                activeTemplateId === t.id
                   ? 'bg-[#1e3a5f] text-white shadow-lg'
                   : 'bg-white/70 dark:bg-slate-800/40 text-slate-400 border border-slate-100 dark:border-white/5 hover:text-[#1e3a5f]'
               }`}
             >
-              {c.nombre}
+              {t.nombre}
             </button>
           ))}
         </div>
@@ -236,35 +237,43 @@ export default function QuickSalePage() {
                 <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Resultados de búsqueda</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
                   {resultadosBusqueda.map(p => (
-                    <ProductoBoton key={p.id} producto={p} onClick={() => addToCart(p)} />
+                    <ProductoBoton
+                      key={p.id}
+                      nombre={p.nombre}
+                      precio={p.precioBase}
+                      onClick={() => addProduct(p)}
+                    />
                   ))}
                   {resultadosBusqueda.length === 0 && (
                     <p className="col-span-full text-center text-slate-400 text-sm py-10">Sin resultados para "{search}".</p>
                   )}
                 </div>
               </>
-            ) : catalogs.length === 0 ? (
+            ) : templates.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 gap-4">
                 <ShoppingBag className="w-12 h-12 text-slate-200 dark:text-slate-700" />
-                <p className="text-slate-400 dark:text-slate-500 text-sm font-bold">Aún no hay catálogos disponibles para venta rápida.</p>
-                <p className="text-slate-400 dark:text-slate-500 text-xs">Crea un catálogo activo desde administración y asígnale productos.</p>
+                <p className="text-slate-400 dark:text-slate-500 text-sm font-bold">Aún no hay plantillas de venta publicadas.</p>
+                <p className="text-slate-400 dark:text-slate-500 text-xs">El administrador debe crear y activar una plantilla, o usa el buscador de arriba.</p>
               </div>
             ) : (
               <>
-                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">{activeCatalog?.nombre}</h3>
-                {loadingCatalog && !activeCatalogProducts ? (
-                  <div className="flex-1 flex flex-col items-center justify-center py-16 gap-3">
-                    <Loader2 className="w-8 h-8 text-[#1e3a5f] animate-spin" />
-                    <p className="text-slate-400 text-sm font-bold">Cargando productos del catálogo...</p>
-                  </div>
-                ) : activeCatalogProducts && activeCatalogProducts.length > 0 ? (
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">{activeTemplate?.nombre}</h3>
+                {activeTemplate && activeTemplate.items.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {activeCatalogProducts.map(p => (
-                      <ProductoBoton key={p.id} producto={p} onClick={() => addToCart(p)} />
+                    {activeTemplate.items.map(item => (
+                      <ProductoBoton
+                        key={item.id}
+                        nombre={item.nombre}
+                        precio={item.precio}
+                        cantidad={item.cantidad}
+                        icono={item.icono}
+                        color={item.color}
+                        onClick={() => addTemplateItem(item)}
+                      />
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-slate-400 text-sm py-10">Este catálogo todavía no tiene productos asignados.</p>
+                  <p className="text-center text-slate-400 text-sm py-10">Esta plantilla todavía no tiene botones configurados.</p>
                 )}
               </>
             )}
@@ -352,7 +361,24 @@ export default function QuickSalePage() {
   );
 }
 
-function ProductoBoton({ producto, onClick }: { producto: Product; onClick: () => void }) {
+interface ProductoBotonProps {
+  nombre: string;
+  precio: number;
+  cantidad?: number;
+  icono?: string;
+  color?: string;
+  onClick: () => void;
+}
+
+const ProductoBoton: React.FC<ProductoBotonProps> = ({
+  nombre,
+  precio,
+  cantidad,
+  icono = 'ShoppingBag',
+  color = 'blue',
+  onClick,
+}) => {
+  const tint = COLOR_TINT[color] || COLOR_TINT.blue;
   return (
     <motion.button
       whileHover={{ scale: 1.05, y: -4 }}
@@ -360,12 +386,16 @@ function ProductoBoton({ producto, onClick }: { producto: Product; onClick: () =
       onClick={onClick}
       className="group relative flex flex-col items-center justify-center p-6 rounded-2xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 hover:bg-white dark:hover:bg-slate-800 transition-all text-center"
     >
-      <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 mb-4 shadow-sm transition-transform group-hover:scale-110">
-        <ShoppingBasket className="w-8 h-8" />
+      {cantidad && cantidad > 1 && (
+        <span className="absolute top-2 right-2 text-[10px] font-black text-white bg-[#1e3a5f] dark:bg-[#eab308] dark:text-[#1e3a5f] px-2 py-0.5 rounded-full shadow">
+          ×{cantidad}
+        </span>
+      )}
+      <div className={`p-4 rounded-2xl ${tint} mb-4 shadow-sm transition-transform group-hover:scale-110`}>
+        {renderIcon(icono)}
       </div>
-      <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest leading-none h-6 flex items-center justify-center w-full">{producto.nombre}</span>
-      <span className="text-base font-black text-[#1e3a5f] dark:text-[#eab308] mt-3 italic">${producto.precioBase}</span>
+      <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest leading-none h-6 flex items-center justify-center w-full">{nombre}</span>
+      <span className="text-base font-black text-[#1e3a5f] dark:text-[#eab308] mt-3 italic">${precio}</span>
     </motion.button>
   );
-}
-
+};

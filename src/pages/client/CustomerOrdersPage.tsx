@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Package, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  ChevronRight, 
-  Eye, 
-  Calendar, 
-  Receipt, 
-  RefreshCw, 
-  Truck, 
+  Package,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ChevronRight,
+  ChevronLeft,
+  Eye,
+  Calendar,
+  Receipt,
+  RefreshCw,
+  Truck,
   CreditCard,
   Heart
 } from 'lucide-react';
@@ -22,6 +23,8 @@ export default function CustomerOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 5;
 
   useEffect(() => {
     const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
@@ -75,6 +78,9 @@ export default function CustomerOrdersPage() {
     );
   }
 
+  const totalPages = Math.max(1, Math.ceil(orders.length / ordersPerPage));
+  const paginatedOrders = orders.slice((currentPage - 1) * ordersPerPage, currentPage * ordersPerPage);
+
   return (
     <div className="font-display bg-[#f0f7ff] text-slate-900 min-h-screen py-12 pt-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -102,9 +108,10 @@ export default function CustomerOrdersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left Column: Order List */}
-            <div className="lg:col-span-4 flex flex-col gap-4">
-              {orders.map((order) => (
+            {/* Left Column: Order List (paginada + sticky para no crecer sin fin) */}
+            <div className="lg:col-span-4 lg:sticky lg:top-32 flex flex-col gap-4">
+              <div className="flex flex-col gap-4 overflow-y-auto pr-1 max-h-[calc(100vh-16rem)]">
+              {paginatedOrders.map((order) => (
                 <motion.div 
                   key={order.id}
                   onClick={() => setSelectedOrder(order)}
@@ -135,6 +142,32 @@ export default function CustomerOrdersPage() {
                   </div>
                 </motion.div>
               ))}
+              </div>
+
+              {/* Controles de paginación: solo si hay más pedidos de los que caben en una página */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between gap-2 mt-1 bg-white rounded-2xl border border-slate-100 shadow-sm px-3 py-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Anterior
+                  </button>
+                  <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Siguiente
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Right Column: Order Detail */}
@@ -148,32 +181,32 @@ export default function CustomerOrdersPage() {
                   className="lg:col-span-8 bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden"
                 >
                   {/* Detail Header */}
-                  <div className="p-8 border-b border-slate-50 flex flex-wrap justify-between items-center gap-6 bg-slate-50/50">
+                  <div className="p-6 border-b border-slate-50 flex flex-wrap justify-between items-center gap-4 bg-slate-50/50">
                     <div>
-                      <h3 className="text-2xl font-black text-[#1a3b5b]">Detalle del Pedido #FB-{selectedOrder.id}</h3>
+                      <h3 className="text-xl font-black text-[#1a3b5b]">Detalle del Pedido</h3>
                       <p className="text-sm text-slate-500">
                         Realizado el {new Date(selectedOrder.fechaCreacion ?? selectedOrder.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })} a las {new Date(selectedOrder.fechaCreacion ?? selectedOrder.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <div className="flex gap-3">
-                      <button className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-white hover:shadow-sm transition-all">
+                      <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-white hover:shadow-sm transition-all">
                         <Receipt className="w-4 h-4" />
                         Factura
                       </button>
-                      <button className="flex items-center gap-2 px-5 py-2.5 bg-[#ec5b13] text-white rounded-xl text-sm font-bold hover:bg-opacity-90 shadow-lg shadow-[#ec5b13]/20 transition-all">
+                      <button className="flex items-center gap-2 px-4 py-2 bg-[#ec5b13] text-white rounded-xl text-sm font-bold hover:bg-opacity-90 shadow-lg shadow-[#ec5b13]/20 transition-all">
                         <RefreshCw className="w-4 h-4" />
                         Repetir Pedido
                       </button>
                     </div>
                   </div>
 
-                  <div className="p-8 space-y-10">
+                  <div className="p-6 space-y-6">
                     {/* Products List */}
                     <div className="space-y-6">
                       <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Productos</h4>
                       {(selectedOrder.items ?? []).map((item: any, i: number) => (
-                        <div key={i} className="flex flex-col md:flex-row gap-6 pb-6 border-b border-slate-50 last:border-0 last:pb-0">
-                          <div className="w-full md:w-32 h-32 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 flex items-center justify-center">
+                        <div key={i} className="flex flex-col md:flex-row gap-4 pb-4 border-b border-slate-50 last:border-0 last:pb-0">
+                          <div className="w-full md:w-24 h-24 rounded-2xl overflow-hidden bg-slate-100 flex-shrink-0 flex items-center justify-center">
                             {item.productImage ? (
                               <img
                                 className="w-full h-full object-cover"
@@ -181,14 +214,14 @@ export default function CustomerOrdersPage() {
                                 alt={item.productName}
                               />
                             ) : (
-                              <Package className="w-10 h-10 text-slate-300" />
+                              <Package className="w-8 h-8 text-slate-300" />
                             )}
                           </div>
                           <div className="flex-grow flex flex-col justify-between">
                             <div>
                               <div className="flex justify-between items-start mb-2">
-                                <h5 className="text-lg font-bold text-slate-900">{item.productName}</h5>
-                                <span className="text-xl font-black text-[#ec5b13]">${(item.price * item.quantity).toLocaleString()}</span>
+                                <h5 className="text-base font-bold text-slate-900">{item.productName}</h5>
+                                <span className="text-lg font-black text-[#ec5b13]">${(item.price * item.quantity).toLocaleString()}</span>
                               </div>
                               <p className="text-slate-500 text-sm leading-relaxed mb-4">
                                 {item.description || 'Arreglo floral exclusivo diseñado con las flores más frescas de la temporada.'}

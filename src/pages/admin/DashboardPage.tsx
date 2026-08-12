@@ -11,15 +11,34 @@ import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
+import { formatApiDate } from '../../utils/date';
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
+// Claves = valores reales del enum del backend (ver OrdersController / OrdersPage).
+// Mismos colores que el resto del panel admin, para que un estado siempre se
+// identifique con el mismo color en toda la aplicación.
 const statusLabel: Record<string, string> = {
-  pending:    'Pendiente', pendiente:  'Pendiente',
-  shipped:    'Enviado',   enviado:    'Enviado',   procesando: 'Procesando',
-  delivered:  'Entregado', entregado:  'Entregado',
-  cancelled:  'Cancelado', cancelado:  'Cancelado',
+  PENDIENTE_VALIDACION: 'Pendiente',
+  EN_PREPARACION:       'En Preparación',
+  EN_RUTA:              'En Ruta',
+  ENTREGADO:            'Entregado',
+  CANCELADO:            'Cancelado',
+  PENDIENTE_ANULACION:  'Pend. Anulación',
+  NO_COMPLETADO:        'No Completado',
+  // Alias en minúsculas / inglés por si algún flujo antiguo aún los usa.
+  pending: 'Pendiente', pendiente: 'Pendiente',
+  shipped: 'Enviado', enviado: 'Enviado', procesando: 'Procesando',
+  delivered: 'Entregado', entregado: 'Entregado',
+  cancelled: 'Cancelado', cancelado: 'Cancelado',
 };
 const statusStyle: Record<string, string> = {
+  PENDIENTE_VALIDACION: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
+  EN_PREPARACION:       'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20',
+  EN_RUTA:              'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
+  ENTREGADO:            'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
+  CANCELADO:            'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20',
+  PENDIENTE_ANULACION:  'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-500/20',
+  NO_COMPLETADO:        'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600',
   pending:    'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
   pendiente:  'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
   shipped:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
@@ -27,14 +46,21 @@ const statusStyle: Record<string, string> = {
   procesando: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
   delivered:  'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
   entregado:  'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
-  cancelled:  'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600',
-  cancelado:  'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-600',
+  cancelled:  'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20',
+  cancelado:  'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20',
 };
 const statusDot: Record<string, string> = {
-  pending:    'bg-amber-400', pendiente:  'bg-amber-400',
-  shipped:    'bg-blue-500',  enviado:    'bg-blue-500',  procesando: 'bg-blue-500',
-  delivered:  'bg-emerald-500', entregado: 'bg-emerald-500',
-  cancelled:  'bg-slate-300', cancelado:  'bg-slate-300',
+  PENDIENTE_VALIDACION: 'bg-amber-400',
+  EN_PREPARACION:       'bg-indigo-500',
+  EN_RUTA:              'bg-blue-500',
+  ENTREGADO:            'bg-emerald-500',
+  CANCELADO:            'bg-rose-500',
+  PENDIENTE_ANULACION:  'bg-orange-400',
+  NO_COMPLETADO:        'bg-slate-400',
+  pending: 'bg-amber-400', pendiente: 'bg-amber-400',
+  shipped: 'bg-blue-500', enviado: 'bg-blue-500', procesando: 'bg-blue-500',
+  delivered: 'bg-emerald-500', entregado: 'bg-emerald-500',
+  cancelled: 'bg-rose-500', cancelado: 'bg-rose-500',
 };
 
 export default function DashboardPage() {
@@ -215,76 +241,80 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* Stock Alerts */}
-          <FadeIn delay={0.2} className="lg:col-span-1 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                Alertas de Stock
-              </h2>
-              {alerts.length > 0 && (
-                <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-lg border border-rose-100 dark:border-rose-500/20">
-                  {alerts.length} críticos
-                </span>
-              )}
-            </div>
+          <FadeIn delay={0.2} className="lg:col-span-1">
+            <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-2xl p-6 h-full shadow-sm flex flex-col gap-4">
+              <div className="flex items-center justify-between shrink-0">
+                <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  Alertas de Stock
+                </h2>
+                {alerts.length > 0 && (
+                  <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-lg border border-rose-100 dark:border-rose-500/20">
+                    {alerts.length} críticos
+                  </span>
+                )}
+              </div>
 
-            <div className="flex flex-col gap-3">
-              {alerts.length > 0 ? (
-                <>
-                  <AnimatePresence mode="popLayout">
-                    {displayedAlerts.map((p) => (
-                      <motion.div key={p.itemId} layout
-                        initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }}
-                        className="p-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-sm hover:shadow-md transition-all group">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-rose-600 transition-colors">{p.nombre}</p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                                <div className="h-full bg-rose-400 rounded-full"
-                                  style={{ width: `${Math.min((p.stockActual / p.stockMinimo) * 100, 100)}%` }} />
+              <div className="flex-1 flex flex-col justify-between gap-3">
+                {alerts.length > 0 ? (
+                  <>
+                    <div className="flex flex-col gap-3">
+                      <AnimatePresence mode="popLayout">
+                        {displayedAlerts.map((p) => (
+                          <motion.div key={p.itemId} layout
+                            initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }}
+                            className="p-4 bg-slate-50/60 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-700 rounded-2xl hover:border-rose-200 dark:hover:border-rose-500/30 transition-all group">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-rose-600 transition-colors">{p.nombre}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-rose-400 rounded-full"
+                                      style={{ width: `${Math.min((p.stockActual / p.stockMinimo) * 100, 100)}%` }} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 shrink-0">{p.stockActual}/{p.stockMinimo}</span>
+                                </div>
                               </div>
-                              <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400 shrink-0">{p.stockActual}/{p.stockMinimo}</span>
+                              <button
+                                onClick={() => navigate(`/admin/inventario/editar/${p.itemId}`)}
+                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold rounded-lg shadow-sm shadow-rose-600/20 transition-all shrink-0"
+                              >
+                                Reabastecer
+                              </button>
                             </div>
-                          </div>
-                          <button
-                            onClick={() => navigate(`/admin/inventario/editar/${p.itemId}`)}
-                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold rounded-lg shadow-sm shadow-rose-600/20 transition-all shrink-0"
-                          >
-                            Reabastecer
-                          </button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-
-                  {totalPages > 1 && (
-                    <div className="flex justify-center items-center gap-4 pt-1">
-                      <button onClick={() => setCurrentPage(p => (p - 1 + totalPages) % totalPages)}
-                        className="size-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all">
-                        <ChevronRight className="w-4 h-4 rotate-180" />
-                      </button>
-                      <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{currentPage + 1} / {totalPages}</span>
-                      <button onClick={() => setCurrentPage(p => (p + 1) % totalPages)}
-                        className="size-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all">
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                     </div>
-                  )}
-                </>
-              ) : (
-                <div className="p-8 text-center bg-white dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-                  <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">Todo bajo control.</p>
-                </div>
-              )}
+
+                    {totalPages > 1 && (
+                      <div className="flex justify-center items-center gap-4 pt-1 shrink-0">
+                        <button onClick={() => setCurrentPage(p => (p - 1 + totalPages) % totalPages)}
+                          className="size-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all">
+                          <ChevronRight className="w-4 h-4 rotate-180" />
+                        </button>
+                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{currentPage + 1} / {totalPages}</span>
+                        <button onClick={() => setCurrentPage(p => (p + 1) % totalPages)}
+                          className="size-8 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-all">
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center bg-slate-50/60 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">Todo bajo control.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </FadeIn>
 
           {/* Monthly Sales */}
           <FadeIn delay={0.3} className="lg:col-span-2">
             <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-2xl p-6 h-full shadow-sm">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-2">
                 <div>
                   <h2 className="text-base font-black text-slate-900 dark:text-white">Ventas Mensuales</h2>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimos 30 días</p>
@@ -295,38 +325,97 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="flex items-end justify-between gap-1 h-32 overflow-x-auto">
-                {monthlySales.map((item, idx) => {
-                  const maxTotal = Math.max(...monthlySales.map(d => d.total));
-                  const pct = maxTotal > 0 ? (item.total / maxTotal) * 100 : 5;
-                  const isToday = item.day === 'HOY';
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
-                      <div className="relative w-full flex flex-col items-center justify-end h-full">
-                        {/* Tooltip */}
-                        <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                          <span className="text-[10px] font-bold bg-slate-900 text-white px-2 py-1 rounded-lg whitespace-nowrap">
-                            ${item.total}
-                          </span>
-                        </div>
-                        <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: `${pct}%` }}
-                          transition={{ delay: idx * 0.05 + 0.2, duration: 0.5, ease: 'easeOut' }}
-                          className={`w-full max-w-[36px] rounded-t-xl ${
-                            isToday
-                            ? 'bg-blue-600 shadow-lg shadow-blue-600/20'
-                              : 'bg-slate-100 dark:bg-slate-700/50 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'
-                          } transition-colors`}
-                        />
+              {(() => {
+                const maxTotal = Math.max(...monthlySales.map(d => d.total), 1);
+                const totalPeriodo = monthlySales.reduce((sum, d) => sum + d.total, 0);
+                const diasConVenta = monthlySales.filter(d => d.total > 0).length;
+                const promedio = diasConVenta > 0 ? totalPeriodo / diasConVenta : 0;
+                const gridLines = [1, 0.75, 0.5, 0.25, 0];
+
+                return (
+                  <>
+                    <div className="flex items-center gap-6 mb-6 pb-4 border-b border-slate-50 dark:border-slate-700/50">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total del período</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">${totalPeriodo.toLocaleString()}</p>
                       </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${isToday ? 'text-blue-600' : 'text-slate-400'}`}>
-                        {item.day}
-                      </span>
+                      <div className="w-px h-8 bg-slate-100 dark:bg-slate-700" />
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Promedio por venta</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">${promedio.toFixed(0)}</p>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    <div className="flex gap-3">
+                      {/* Y-axis */}
+                      <div className="flex flex-col justify-between h-40 text-[9px] font-bold text-slate-300 dark:text-slate-600 text-right pb-6 shrink-0">
+                        {gridLines.map(p => (
+                          <span key={p}>${(maxTotal * p) >= 1000 ? `${((maxTotal * p) / 1000).toFixed(1)}k` : (maxTotal * p).toFixed(0)}</span>
+                        ))}
+                      </div>
+
+                      <div className="relative flex-1 min-w-0">
+                        {/* Grid lines */}
+                        <div className="absolute inset-x-0 top-0 h-40 flex flex-col justify-between pointer-events-none">
+                          {gridLines.map(p => (
+                            <div key={p} className="border-t border-dashed border-slate-100 dark:border-slate-700/50" />
+                          ))}
+                        </div>
+
+                        <div className="relative flex items-end justify-between gap-[3px] h-40">
+                          {monthlySales.map((item, idx) => {
+                            const pct = item.total > 0 ? Math.max((item.total / maxTotal) * 100, 4) : 0;
+                            const isToday = item.day === 'HOY';
+                            const intensity = 40 + Math.min((item.total / maxTotal) * 60, 60);
+                            return (
+                              <div key={idx} className="relative flex-1 min-w-0 h-full flex flex-col items-center justify-end group">
+                                {item.total > 0 && (
+                                  <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                                    <span className="text-[10px] font-bold bg-slate-900 dark:bg-slate-950 text-white px-2 py-1 rounded-lg whitespace-nowrap shadow-lg">
+                                      ${item.total.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                                <motion.div
+                                  initial={{ height: 0 }}
+                                  animate={{ height: `${pct}%` }}
+                                  transition={{ delay: idx * 0.02 + 0.15, duration: 0.5, ease: 'easeOut' }}
+                                  className={`w-full rounded-t-md transition-all ${
+                                    isToday
+                                      ? 'bg-gradient-to-t from-amber-500 to-amber-400 shadow-md shadow-amber-500/30'
+                                      : 'bg-gradient-to-t from-blue-600 to-blue-400 group-hover:shadow-md group-hover:shadow-blue-500/20'
+                                  }`}
+                                  style={!isToday ? { opacity: item.total > 0 ? intensity / 100 : 0.12 } : undefined}
+                                />
+                                {item.total === 0 && (
+                                  <div className="w-full h-[3px] rounded-full bg-slate-100 dark:bg-slate-700/40" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* X-axis labels: todos los días, en orden, sin saltos */}
+                        <div className="flex justify-between gap-[3px] mt-2">
+                          {monthlySales.map((item, idx) => {
+                            const isToday = item.day === 'HOY';
+                            return (
+                              <span
+                                key={idx}
+                                className={`flex-1 min-w-0 text-center text-[8px] font-bold uppercase tracking-tight truncate ${
+                                  isToday ? 'text-amber-500' : 'text-slate-400'
+                                }`}
+                              >
+                                {item.day}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </FadeIn>
         </div>
@@ -402,7 +491,7 @@ export default function DashboardPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5 text-slate-400">
                           <Clock className="w-3.5 h-3.5" />
-                          <span className="text-xs">{new Date(order.fechaCreacion).toLocaleDateString()}</span>
+                          <span className="text-xs">{formatApiDate(order.fechaCreacion, { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right relative">

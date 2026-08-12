@@ -11,7 +11,6 @@ import {
   ArrowUpRight,
   Filter,
   ChevronRight,
-  PackagePlus,
   Loader2,
   LayoutGrid,
   List,
@@ -128,10 +127,6 @@ export default function QuickInventoryPage() {
           >
             <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
             Sincronizar
-          </button>
-          <button className="flex items-center gap-3 px-6 py-4 bg-[#1e3a5f] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#eab308] hover:text-[#1e3a5f] active:scale-95 transition-all shadow-xl shadow-blue-900/10">
-            <PackagePlus size={18} />
-            Registrar Nuevo
           </button>
         </div>
       </div>

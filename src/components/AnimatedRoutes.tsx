@@ -33,7 +33,7 @@ import QuickInventoryPage from '../pages/employee/QuickInventoryPage';
 import QuickSalePage from '../pages/employee/QuickSalePage';
 import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
 import EmployeeSettingsPage from '../pages/employee/EmployeeSettingsPage';
-import QuickSaleTemplatesPage from '../pages/employee/QuickSaleTemplatesPage';
+import AdminQuickSaleTemplatesPage from '../pages/admin/AdminQuickSaleTemplatesPage';
 
 // ── Client ────────────────────────────────────────
 import HomePage from '../pages/client/HomePage';
@@ -106,7 +106,7 @@ export default function AnimatedRoutes() {
         <Route path="/empleado/entregas" element={<PageTransition><DailyDeliveriesPage /></PageTransition>} />
         <Route path="/empleado/inventario" element={<PageTransition><QuickInventoryPage /></PageTransition>} />
         <Route path="/empleado/venta-rapida" element={<PageTransition><QuickSalePage /></PageTransition>} />
-        <Route path="/empleado/venta-rapida/config" element={<PageTransition><QuickSaleTemplatesPage /></PageTransition>} />
+        <Route path="/empleado/venta-rapida/config" element={<PageTransition><AdminQuickSaleTemplatesPage /></PageTransition>} />
         <Route path="/empleado/configuracion" element={<PageTransition><EmployeeSettingsPage /></PageTransition>} />
 
       </Routes>

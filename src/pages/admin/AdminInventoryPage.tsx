@@ -12,6 +12,7 @@ import { AdminService } from '../../services/adminService';
 import { ImportProductsResult, InventoryItem, InventoryKpis, SingleResponse } from '../../types';
 import { FadeIn, ScaleIn, AnimatedButton } from '../../components/Animations';
 import ImportModal from '../../components/ImportModal';
+import MovementsModal from '../../components/MovementsModal';
 import { useToast } from '../../hooks/useToast';
 import { filterCSV } from '../../utils/exportUtils';
 
@@ -28,7 +29,6 @@ export default function AdminInventoryPage() {
   const [kpis, setKpis]                     = useState<InventoryKpis | null>(null);
   const [viewMode, setViewMode]             = useState<'table' | 'grid'>('table');
   const [invBusqueda, setInvBusqueda]       = useState('');
-  const [invSucursal, setInvSucursal]       = useState('');
   const [invBajoMin, setInvBajoMin]         = useState<boolean | undefined>(undefined);
   const [isImportModalOpen, setIsImportModalOpen]     = useState(false);
   const [isExportModalOpen, setIsExportModalOpen]     = useState(false);
@@ -37,6 +37,7 @@ export default function AdminInventoryPage() {
   const [sortConfig, setSortConfig] = useState<{ field: keyof InventoryItem; order: 'asc' | 'desc' }>({ field: 'nombre', order: 'asc' });
   const [invCategoria, setInvCategoria] = useState('');
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
+  const [availableUnits, setAvailableUnits] = useState<string[]>([]);
 
   // ── Carga ────────────────────────────────────────────────────────────────────
   const loadInventory = useCallback(async () => {
@@ -53,18 +54,17 @@ export default function AdminInventoryPage() {
     try {
       const res = await AdminService.getAdminInventory({
         busqueda:   invBusqueda  || undefined,
-        sucursal:   invSucursal  || undefined,
         bajoMinimo: invBajoMin,
         page:       invPage,
         size:       40,
       });
       let items = res.data.items;
-      
-      // Filtro de Categoría (basado en unidadMedida según solicitud del usuario)
+
+      // Filtro de Categoría (basado en la unidadMedida real del insumo)
       if (invCategoria) {
-        items = items.filter(i => i.unidadMedida.toLowerCase().includes(invCategoria.toLowerCase()));
+        items = items.filter(i => i.unidadMedida.toLowerCase() === invCategoria.toLowerCase());
       }
-      
+
       const sortedItems = [...items].sort((a, b) => {
         const aVal = a[sortConfig.field];
         const bVal = b[sortConfig.field];
@@ -85,10 +85,28 @@ export default function AdminInventoryPage() {
       setLoading(false);
     }
     await kpisPromise;
-  }, [invBusqueda, invSucursal, invBajoMin, invPage, invCategoria, showToast, sortConfig]);
+  }, [invBusqueda, invBajoMin, invPage, invCategoria, showToast, sortConfig]);
 
   useEffect(() => { loadInventory(); }, [loadInventory]);
-  useEffect(() => { setInvPage(1); }, [invBusqueda, invSucursal, invBajoMin, invCategoria]);
+  useEffect(() => { setInvPage(1); }, [invBusqueda, invBajoMin, invCategoria]);
+
+  // ── Unidades disponibles (para el filtro de Categoría) ─────────────────────────
+  useEffect(() => {
+    AdminService.getAdminInventory({ size: 1000 })
+      .then(res => {
+        const unidades = Array.from(
+          new Set(
+            res.data.items
+              .map(i => i.unidadMedida?.trim())
+              .filter((u): u is string => !!u)
+          )
+        ).sort((a, b) => a.localeCompare(b, 'es'));
+        setAvailableUnits(unidades);
+        // Si la categoría seleccionada ya no existe, reiniciarla
+        setInvCategoria(prev => (prev && !unidades.includes(prev) ? '' : prev));
+      })
+      .catch(err => console.error('Error al cargar unidades de inventario:', err));
+  }, []);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleImportConfirm = async (_data: any[], file: File) => {
@@ -224,8 +242,6 @@ export default function AdminInventoryPage() {
           <input type="text" placeholder="Buscar por nombre..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20" value={invBusqueda} onChange={e => setInvBusqueda(e.target.value)} />
         </div>
         
-        <input type="text" placeholder="Sucursal..." className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium dark:text-slate-200 outline-none w-32 focus:ring-2 focus:ring-blue-500/20" value={invSucursal} onChange={e => setInvSucursal(e.target.value)} />
-        
         <button onClick={() => setInvBajoMin(prev => prev === true ? undefined : true)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${invBajoMin ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 text-amber-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 text-slate-600 dark:text-slate-400'}`}>
           <AlertTriangle className="w-4 h-4" /> Bajo mín.
         </button>
@@ -242,11 +258,14 @@ export default function AdminInventoryPage() {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsCategoryMenuOpen(false)} />
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute left-0 top-full mt-2 w-52 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl shadow-2xl z-20 py-2">
-                  {['Todas', 'Pieza', 'Tallo', 'Pliego', 'Paquete', 'Caja', 'Rollo', 'Kilo', 'Metro'].map(cat => (
+                  {['Todas', ...availableUnits].map(cat => (
                     <button key={cat} onClick={() => { setInvCategoria(cat === 'Todas' ? '' : cat); setIsCategoryMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex justify-between items-center transition-colors">
                       <span className={invCategoria === (cat === 'Todas' ? '' : cat) ? 'font-bold text-blue-600' : ''}>{cat}</span>
                     </button>
                   ))}
+                  {availableUnits.length === 0 && (
+                    <p className="px-4 py-2.5 text-xs text-slate-400">Sin unidades registradas</p>
+                  )}
                 </motion.div>
               </>
             )}
@@ -360,6 +379,8 @@ export default function AdminInventoryPage() {
       </motion.div>
 
       <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onConfirm={handleImportConfirm} title="Importar Insumos" />
+
+      <MovementsModal isOpen={isMovementsModalOpen} onClose={() => setIsMovementsModalOpen(false)} onRegistered={loadInventory} />
     </div>
   );
 }

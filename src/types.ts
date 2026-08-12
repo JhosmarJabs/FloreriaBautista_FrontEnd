@@ -24,6 +24,7 @@ export interface QuickSaleTemplateItem {
   precio: number;
   icono: string;
   color: string;
+  cantidad: number;
 }
 
 export interface QuickSaleTemplate {
@@ -32,6 +33,7 @@ export interface QuickSaleTemplate {
   descripcion: string | null;
   icono: string;
   orden: number;
+  activa: boolean;
   items: QuickSaleTemplateItem[];
 }
 
@@ -39,6 +41,7 @@ export interface SaveQuickSaleTemplateItemBody {
   productId: string;
   icono: string;
   color: string;
+  cantidad: number;
 }
 
 export interface SaveQuickSaleTemplateBody {
@@ -46,6 +49,7 @@ export interface SaveQuickSaleTemplateBody {
   descripcion?: string | null;
   icono: string;
   orden?: number;
+  activa?: boolean;
   items: SaveQuickSaleTemplateItemBody[];
 }
 
@@ -68,6 +72,8 @@ export interface Order {
   id: string;
   estadoPedido: string;
   fechaEntrega: string;
+  /** Hora de entrega "HH:mm:ss". Opcional: OrderSummaryDto aún no la envía. */
+  horaEntrega?: string | null;
   total: number;
   nombreCliente: string;
   fechaCreacion: string;
@@ -377,6 +383,27 @@ export interface InventoryItem {
   bajoMinimo: boolean;
 }
 
+export type MovementType = 'ENTRADA' | 'SALIDA' | 'AJUSTE';
+
+export interface InventoryMovement {
+  id: string;
+  inventoryItemId: string;
+  nombreItem: string;
+  tipo: MovementType;
+  cantidad: number;
+  stockAntes: number;
+  stockDespues: number;
+  motivo?: string | null;
+  fechaHora: string;
+}
+
+export interface RegisterMovementRequest {
+  inventoryItemId: string;
+  tipo: MovementType;
+  cantidad: number;
+  motivo?: string;
+}
+
 export interface OrderItem {
   productoId: string;
   productoNombre: string;
@@ -447,7 +474,8 @@ export interface ProductKpis {
   borradores: number;
 }
 
-export interface CatalogKpis {
+// KPIs de los catálogos de temporada (festividades), no de la lista de productos.
+export interface SeasonalCatalogKpis {
   catalogosActivos: number;
   totalProductosListados: number;
   totalCatalogos: number;
