@@ -18,9 +18,18 @@
           <img src="/Logo-sm.webp" alt="" width="32" height="40" style="width:32px;height:40px" />
           <span style="font-size:1.4rem;font-weight:700;color:#1a3b5b;font-family:serif">Florería <span style="color:#D4AF37">Bautista</span></span>
         </header>
-        <section style="padding:160px 24px 80px;background:#1a3b5b;color:white;text-align:center">
-          <h1 style="font-size:2.2rem;font-weight:700;margin:0 auto 16px;max-width:640px;line-height:1.2;font-family:serif">Flores elegantes y coloridas para cada momento especial</h1>
-          <p style="font-size:1rem;opacity:0.85;max-width:520px;margin:0 auto">Arreglos premium diseñados artesanalmente para celebrar la vida.</p>
+        <section id="skeleton-hero" style="position:relative;overflow:hidden;min-height:100vh;box-sizing:border-box;padding:160px 24px 80px;background:#1a3b5b;color:white;text-align:center">
+          <script>
+            // Solo en la landing: pinta el hero antes de que cargue React, así el LCP
+            // no espera al montaje (element render delay).
+            if (location.pathname === '/') {
+              document.getElementById('skeleton-hero').insertAdjacentHTML('afterbegin',
+                '<img src="/img/landing/hero.webp" alt="" fetchpriority="high" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />' +
+                '<div style="position:absolute;inset:0;background:rgba(26,59,91,0.6)"></div>');
+            }
+          </script>
+          <h1 style="position:relative;font-size:2.2rem;font-weight:700;margin:0 auto 16px;max-width:640px;line-height:1.2;font-family:serif">Flores elegantes y coloridas para cada momento especial</h1>
+          <p style="position:relative;font-size:1rem;opacity:0.85;max-width:520px;margin:0 auto">Arreglos premium diseñados artesanalmente para celebrar la vida.</p>
         </section>
       </div>
     </div>
