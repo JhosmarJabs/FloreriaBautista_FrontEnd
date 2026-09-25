@@ -3,35 +3,35 @@
     "id": 1,
     "title": "Cumpleaños",
     "description": "Celebra un año más con alegría.",
-    "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuBbt0xEE-ms_R2vt_mSUM3Hx0Jtbl9h97IMiOyhe7sZ4zR4HMZfartuCiBvy2fI6crAHu2bYwGuj_eCeln78xVBjXjgY5Gru3PKkqVkcvzAeRc5T28LXD17bIw4n32fqarmBcq82yY_rfCJ19I3yvcOegiJO-55iFIL8chZNiwHUYzOHLg3OMscWEQBSw2C6_jbgOIpMuXl0AfNLg_5SnuHFewnsaoJ6bTbIYkoUh4iguSg39OAKYyPy_rCsQvR5SM7S2HdirdqMqNT",
+    "image": "/img/landing/categoria-1.webp",
     "link": "#"
   },
   {
     "id": 2,
     "title": "Aniversarios",
     "description": "Renueva tu amor con flores.",
-    "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuB5cIv0tnMSrKh3d_i5SthfMBtYZH2pBxb9UfIPxC4m4citXlHZzNXf3NTIuEwE9e_ZinKqp5D2MS8H-9AZ47mzQr8DK7Bu0cihTieT0_kMmu0vIoMyfEo1I3DO7t_rtx1r6sFadVJYhRzo34SdKqw6c0Iycg6V2O6TMf35k1GRe7rIOMpQ3i1K8MSYyb3hM2BTGU8y08TjfbnVA4iE8NPwzFyBbAQgZUo-VVt-yuA8XOSF2pfG3zpg7yZe0-7f5Q0PJDWooZNrKrnv",
+    "image": "/img/landing/categoria-2.webp",
     "link": "#"
   },
   {
     "id": 3,
     "title": "Funerales",
     "description": "Acompañamiento y respeto.",
-    "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuChZU1kccSIdeZrt6uzLJj3KIaRah1wkk8o1qlREHBrPJPl6o4zkuTemQGRCUHwb313uQSceGu-W_tV703gxilrxecbBmQA4OZa8_QfyEMC4hTEd0q4sa8VcZl7t817KnGfD89mk2Vu1HaW3stNzVXKXEQczOOvy6ytPFW7PsDjymghFfNsW_FnUBQNHGluJDY70_Ixgn6mCeRhhiFk2gKTJDhVGd_wVfzms3skA4KvN-Q_Pl3cHBGK3oMbIxgfRsvn1s3iwJGcpcTY",
+    "image": "/img/landing/categoria-3.webp",
     "link": "#"
   },
   {
     "id": 4,
     "title": "Arreglos románticos",
     "description": "Detalles que enamoran.",
-    "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuB5cIv0tnMSrKh3d_i5SthfMBtYZH2pBxb9UfIPxC4m4citXlHZzNXf3NTIuEwE9e_ZinKqp5D2MS8H-9AZ47mzQr8DK7Bu0cihTieT0_kMmu0vIoMyfEo1I3DO7t_rtx1r6sFadVJYhRzo34SdKqw6c0Iycg6V2O6TMf35k1GRe7rIOMpQ3i1K8MSYyb3hM2BTGU8y08TjfbnVA4iE8NPwzFyBbAQgZUo-VVt-yuA8XOSF2pfG3zpg7yZe0-7f5Q0PJDWooZNrKrnv",
+    "image": "/img/landing/categoria-2.webp",
     "link": "#"
   },
   {
     "id": 5,
     "title": "Nacimientos / Bebés",
     "description": "Bienvenida al nuevo integrante.",
-    "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuB46EL8pNbw9GcvIPOhYvfb0GRL1po-7r8t6lvlVy0gIlvKWKZz80f-dsHy9WsNMxa6R9GdYoQ3cTzCDx8hKOeGtXieVjlnKz9EPnsvj5zLDk-ijG4zMl3NP6wDhvm4KoV23IMDMapxmy0Jn5uYsjnwTXp6YUY_H_UNDfpdk9tvOk2fChXSgR5kY8z5MfWGzYPVZSwVjm_RfvShF1b5fY2kSi5w2lYlNJ-E0e-PgP-2uTqgUuJqwtYXm4FY_QVvx1kdyMSyxdV7Yl9y",
+    "image": "/img/landing/categoria-5.webp",
     "link": "#"
   }
 ]

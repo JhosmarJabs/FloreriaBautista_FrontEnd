@@ -20,7 +20,7 @@ export default function HeroSection() {
   return (
     <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-40 overflow-hidden" id="inicio">
       <div className="absolute inset-0 z-0">
-        <img alt="Floral background" className="w-full h-full object-cover" fetchPriority="high" width="1920" height="1080" decoding="async" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCs65epsGO_LKOAph_UJAp9GbP8KiiEYiiSuZeNMjfyEvp352BwPZIFUiFI0i4K6CChSdM5P3qLtJvcqVvAnPNszNkaexLej_PdjKUtYCA0JHL1Mgc_zV75MkVtdyOHG7u1KY-qvfvTd8GaJif_5Isj33F1hGi2IShqcmdP-2Rl-cNwjPOeleNcgxVbT5BJlJyVvud_zSEiEECvGSGotSNsmyZNTCtkNzNWgLr50bbCGKNl_e_LVGZ-8f_jEr3l1-wfolEfrJPbZrLZ" />
+        <img alt="Floral background" className="w-full h-full object-cover" fetchPriority="high" width="1920" height="1080" decoding="async" src="/img/landing/hero.webp" />
         <div className="absolute inset-0 bg-brand-deep/60"></div>
       </div>
       <div className="container mx-auto px-4 relative z-10 text-center lg:text-left">

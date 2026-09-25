@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => {
       compression({ algorithm: 'gzip', threshold: 1024, deleteOriginalAssets: false }),
       VitePWA({
         registerType: 'autoUpdate',
+        // defer: el <script src="registerSW.js"> por defecto bloquea el renderizado.
+        injectRegister: 'script-defer',
         includeAssets: ['Logo.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           name: 'Florería Bautista',

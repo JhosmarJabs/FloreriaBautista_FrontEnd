@@ -25,7 +25,7 @@ export default function EventsSection() {
         <div className="flex overflow-x-auto snap-x no-scrollbar gap-0 pb-0 animate-[fadeIn_0.8s_ease-out_both]">
           {/* Bodas */}
           <div className="min-w-[100vw] md:min-w-[50vw] lg:min-w-[25vw] snap-start group relative overflow-hidden h-[600px]">
-            <img alt="Bodas" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFqWzNXPQnbik_i7cW-yIz5STPC_NWElW1XWH2XS4jSmAOG59ap5m_X6gvJvR5SLz3p4PSdbbdk_mGjJWz_FZ5GvQ7_4TwsxfX9xQ_qE44pnbczNfnJGo4Q8V2DbTvHmX0mZTeLt-_ov2g_k6zXNwjLvvZirQj4Yr3oDOIKT2xxl8L35a3qaP2N0xTIZSqao3CPk5oeg2J72-HoM8dCqWCM5oV54F7OpQrQQ7rbFnEKxHt5LqhRtPCMxXXaOf2qJsVlhCS8y20fQYb" />
+            <img alt="Bodas" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="/img/landing/evento-bodas.webp" />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/30 to-transparent"></div>
             <div className="absolute bottom-0 left-0 p-10 w-full">
               <h3 className="text-3xl font-serif font-bold mb-3 text-white">Bodas</h3>
@@ -35,7 +35,7 @@ export default function EventsSection() {
           </div>
           {/* XV Años */}
           <div className="min-w-[100vw] md:min-w-[50vw] lg:min-w-[25vw] snap-start group relative overflow-hidden h-[600px]">
-            <img alt="XV Años" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4unNMcu9esz_cCLaNAPajhZBPWn9_QV66CeF0sNO-zF95zVSkAM4YKty-q5vTC70j8z0pOKV2YUiT5xAI7ycyMov7P6F4qa7BGqguJBrrhoUIW7YC-Srof_IQdeM1CV_rgFUmGce3mNLxX3fA8qn4wH7BV5iDUCdV3bKGJh8n5YMdZBE8B2RI8BTZ31IdobyigAIsvPkgWJdHXx45iLDO1Fd4_FHbofJtQiGe3w5iZAyUS8FQG2VXKsJCWGmTtVtro8J0j7emTm9s" />
+            <img alt="XV Años" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="/img/landing/evento-xv-anos.webp" />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/30 to-transparent"></div>
             <div className="absolute bottom-0 left-0 p-10 w-full">
               <h3 className="text-3xl font-serif font-bold mb-3 text-white">XV Años</h3>
@@ -45,7 +45,7 @@ export default function EventsSection() {
           </div>
           {/* Cumpleaños */}
           <div className="min-w-[100vw] md:min-w-[50vw] lg:min-w-[25vw] snap-start group relative overflow-hidden h-[600px]">
-            <img alt="Cumpleaños" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkV6P7Q-_KBBw4RByBn_YkMBg5T3ECf2o_EHx06uOuz3ppfuoNjq5aiKpPe3NFgpaPCuf2U8batEjY4pf974v2MGac861QIwGxKjIZYfUnc29zy09xYnKAn6L_tfefvftSWxYdsuMnxOpZjb2EoPw0B_7ttXrZXxmrliG-DYKs-Il2SiPW0ZRQonxS4qN3x1yhPgWOC-GPyMEMErmRgEg1J_mTQZsFztzA0ZSuOafVWIfv0yDYCBEdPtwyA8JOKQgCeRjuPWKLqW0l" />
+            <img alt="Cumpleaños" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="/img/landing/evento-cumpleanos.webp" />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/30 to-transparent"></div>
             <div className="absolute bottom-0 left-0 p-10 w-full">
               <h3 className="text-3xl font-serif font-bold mb-3 text-white">Cumpleaños</h3>
@@ -55,7 +55,7 @@ export default function EventsSection() {
           </div>
           {/* Bautizos */}
           <div className="min-w-[100vw] md:min-w-[50vw] lg:min-w-[25vw] snap-start group relative overflow-hidden h-[600px]">
-            <img alt="Bautizos" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLpcMBSdrLr9N32GADIeP2KZ-AXQYlatgjHcNixqMNtuLY4z1zJHgMYfGtZ1Xycx5VafPwQqT4fd2MxOwZ6gYg51jPZePhNxDWSHOCoUGYvi5QUqvwxb2dwiWFKwCGwzsdZAtZjSq293Lkqh7rE1Cs-Eb9ji_jyZGC_4wdvF76_XH-mkaJlNjrToI454RifxzuiWDEIBfmcXZMB4Yx5-W1Cg6uEI9GdafeUqtVF7_X-KcJOaVcHtN1a6hg7nkgQh2aeCM4Ck9cofcX" />
+            <img alt="Bautizos" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" decoding="async" width={400} height={600} src="/img/landing/evento-bautizos.webp" />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/30 to-transparent"></div>
             <div className="absolute bottom-0 left-0 p-10 w-full">
               <h3 className="text-3xl font-serif font-bold mb-3 text-white">Bautizos</h3>
