@@ -22,8 +22,11 @@ import {
   Tag,
   UsersRound,
   Truck,
+  Calculator,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useAuth } from '../hooks/useAuth';
+import { NotificationsService } from '../services/notificationsService';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -46,6 +49,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
   const [isTechOpsOpen, setIsTechOpsOpen] = useState(
     TECH_OPS_ITEMS.some((item) => location.pathname.startsWith(item.to)),
   );
+  const [notifNoLeidas, setNotifNoLeidas] = useState(0);
 
   useEffect(() => {
     if (
@@ -59,11 +63,15 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
     }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("usuario");
-    window.location.href = "/";
-  };
+  useEffect(() => {
+    let cancelled = false;
+    NotificationsService.contarNoLeidas()
+      .then(c => { if (!cancelled) setNotifNoLeidas(c); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+
+  const { logout: handleLogout } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
   const isTechActive = TECH_OPS_ITEMS.some((item) =>
@@ -137,7 +145,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 custom-scrollbar">
-          {/* 1. Dashboard */}
+          {/* Dashboard */}
           <Link
             to="/admin/dashboard"
             className={linkCls(isActive("/admin/dashboard"))}
@@ -146,27 +154,25 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Dashboard</Label>
           </Link>
 
-          {/* 3. Inventario */}
+          {/* Pedidos */}
           <Link
-            to="/admin/inventario"
-            className={linkCls(
-              location.pathname.startsWith("/admin/inventario"),
-            )}
+            to="/admin/pedidos"
+            className={linkCls(location.pathname.startsWith("/admin/pedidos"))}
           >
-            <Package className="w-5 h-5 flex-shrink-0" />
-            <Label>Inventario</Label>
+            <ShoppingCart className="w-5 h-5 flex-shrink-0" />
+            <Label>Pedidos</Label>
           </Link>
 
-          {/* 3.5 Reabastecimiento */}
+          {/* Control de caja */}
           <Link
-            to="/admin/reabastecimiento"
-            className={linkCls(isActive("/admin/reabastecimiento"))}
+            to="/admin/caja"
+            className={linkCls(location.pathname.startsWith("/admin/caja"))}
           >
-            <Truck className="w-5 h-5 flex-shrink-0" />
-            <Label>Reabastecimiento</Label>
+            <Calculator className="w-5 h-5 flex-shrink-0" />
+            <Label>Control de caja</Label>
           </Link>
 
-          {/* 4. Productos */}
+          {/* Productos */}
           <Link
             to="/admin/catalogo"
             className={linkCls(
@@ -178,7 +184,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Productos</Label>
           </Link>
 
-          {/* 5. Catálogos */}
+          {/* Catálogos */}
           <Link
             to="/admin/catalogos"
             className={linkCls(
@@ -189,7 +195,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Catálogos</Label>
           </Link>
 
-          {/* 6. Promociones */}
+          {/* Promociones */}
           <Link
             to="/admin/promociones"
             className={linkCls(
@@ -200,7 +206,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Promociones</Label>
           </Link>
 
-          {/* 6.5 Plantillas de venta */}
+          {/* Plantillas de venta */}
           <Link
             to="/admin/plantillas-venta"
             className={linkCls(
@@ -211,25 +217,27 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Plantillas de venta</Label>
           </Link>
 
-          {/* 2. Pedidos */}
+          {/* Inventario */}
           <Link
-            to="/admin/pedidos"
-            className={linkCls(location.pathname.startsWith("/admin/pedidos"))}
+            to="/admin/inventario"
+            className={linkCls(
+              location.pathname.startsWith("/admin/inventario"),
+            )}
           >
-            <ShoppingCart className="w-5 h-5 flex-shrink-0" />
-            <Label>Pedidos</Label>
+            <Package className="w-5 h-5 flex-shrink-0" />
+            <Label>Inventario</Label>
           </Link>
 
-          {/* 8. Reportes */}
+          {/* Reabastecimiento */}
           <Link
-            to="/admin/reportes"
-            className={linkCls(isActive("/admin/reportes"))}
+            to="/admin/reabastecimiento"
+            className={linkCls(isActive("/admin/reabastecimiento"))}
           >
-            <BarChart3 className="w-5 h-5 flex-shrink-0" />
-            <Label>Reportes</Label>
+            <Truck className="w-5 h-5 flex-shrink-0" />
+            <Label>Reabastecimiento</Label>
           </Link>
 
-          {/* Clientes: módulo con pestañas (segmentos + todos los usuarios) */}
+          {/* Clientes */}
           <Link
             to="/admin/clientes"
             className={linkCls(
@@ -241,13 +249,22 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Clientes</Label>
           </Link>
 
-          {/* 9. CMS — Personalizar */}
+          {/* Personalizar Sitio */}
           <Link to="/admin/cms" className={linkCls(isActive("/admin/cms"))}>
             <LayoutIcon className="w-5 h-5 flex-shrink-0" />
             <Label>Personalizar Sitio</Label>
           </Link>
 
-          {/* 10. Configuración */}
+          {/* Reportes */}
+          <Link
+            to="/admin/reportes"
+            className={linkCls(isActive("/admin/reportes"))}
+          >
+            <BarChart3 className="w-5 h-5 flex-shrink-0" />
+            <Label>Reportes</Label>
+          </Link>
+
+          {/* Configuración */}
           <Link
             to="/admin/configuracion"
             className={linkCls(isActive("/admin/configuracion"))}
@@ -367,10 +384,22 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             </AnimatePresence>
           </div>
 
+          {/* Ir a Empleado */}
+          <Link
+            to="/empleado/dashboard"
+            title={!isSidebarOpen ? 'Ir a Empleado' : undefined}
+            className={`flex items-center rounded-xl text-sm font-medium transition-colors duration-150 text-blue-300 hover:bg-blue-500/10 hover:text-blue-400 py-2.5 mt-4 ${
+              isSidebarOpen ? "px-3 gap-3" : "justify-center px-0"
+            }`}
+          >
+            <ArrowLeftRight className="w-5 h-5 flex-shrink-0" />
+            <Label>Ir a Empleado</Label>
+          </Link>
+
           {/* Cerrar sesión */}
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center rounded-xl text-sm font-medium transition-colors duration-150 text-red-400 hover:bg-red-900/20 py-2.5 mt-4 ${
+            className={`w-full flex items-center rounded-xl text-sm font-medium transition-colors duration-150 text-red-400 hover:bg-red-900/20 py-2.5 mt-2 ${
               isSidebarOpen ? "px-3 gap-3" : "justify-center px-0"
             }`}
           >
@@ -420,11 +449,15 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           </div>
           <div className="flex items-center gap-6">
             <Link
-              to="/notificaciones"
-              className="relative p-2 text-gray-400 hover:text-[#1e3a5f] transition-colors"
+              to="/empleado/notificaciones"
+              className="relative p-2 text-gray-400 dark:text-slate-400 hover:text-[#1e3a5f] dark:hover:text-white transition-colors"
             >
               <Bell className="w-6 h-6" />
-              <span className="absolute top-2 right-2 block h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white" />
+              {notifNoLeidas > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full border-2 border-white dark:border-slate-900">
+                  {notifNoLeidas > 99 ? '99+' : notifNoLeidas}
+                </span>
+              )}
             </Link>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">

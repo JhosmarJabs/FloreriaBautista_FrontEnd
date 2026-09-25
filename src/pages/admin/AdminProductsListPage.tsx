@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShoppingBag, Search, RefreshCw, AlertTriangle, ChevronRight,
@@ -7,9 +7,12 @@ import {
 } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
 import { Product, ProductKpis } from '../../types';
+import { useDatasetEnMemoria } from '../../hooks/useDatasetEnMemoria';
+import { useLocalSort } from '../../hooks/useLocalSort';
+import { SortableColumnHeader } from '../../components/SortableColumnHeader';
 
 const ESTADOS = ['', 'ACTIVO', 'INACTIVO', 'BORRADOR'];
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 100;
 
 const ESTADO_STYLE: Record<string, string> = {
   ACTIVO:   'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20',
@@ -29,56 +32,54 @@ const TIPO_MAP: Record<string, string> = {
   'ACCESORIOS':    'Accesorios',
 };
 
+const datasetConfig = {
+  cargarTodo: AdminService.getProductsIndex,
+  cargarDelta: AdminService.getProductsDelta,
+  getId: (p: Product) => p.id,
+};
+
 export default function AdminProductsListPage() {
   const navigate = useNavigate();
-  const [products, setProducts] = useState<Product[]>([]);
   const [kpis, setKpis] = useState<ProductKpis | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const [busqueda, setBusqueda] = useState('');
   const [estado, setEstado] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [soloReales, setSoloReales] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
-  const activeFilters = [busqueda, estado].filter(Boolean).length;
+  const { datos, cargando, error, recargarCompleto } = useDatasetEnMemoria(datasetConfig);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [res, kpisRes] = await Promise.all([
-        AdminService.getAdminProducts({
-          busqueda: busqueda || undefined,
-          estado: estado || undefined,
-          page,
-          size: PAGE_SIZE,
-        }),
-        AdminService.getAdminProductsKpis()
-      ]);
-      setProducts(res.data.items);
-      setTotal(res.data.total);
-      setTotalPages(res.data.totalPaginas || 1);
-      setKpis(kpisRes.data);
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar productos');
-    } finally {
-      setLoading(false);
-    }
-  }, [busqueda, estado, page]);
+  useEffect(() => {
+    AdminService.getAdminProductsKpis().then(r => setKpis(r.data)).catch(() => {});
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [busqueda, estado]);
+  const filtros = useMemo(() => {
+    const f: ((p: Product) => boolean)[] = [];
+    if (estado) f.push(p => p.estado === estado);
+    if (soloReales) f.push(p => p.esReal === true);
+    return f;
+  }, [estado, soloReales]);
 
-  const clearFilters = () => { setBusqueda(''); setEstado(''); setPage(1); };
+  const camposBusqueda = useMemo(() => ['nombre' as keyof Product], []);
+
+  const {
+    datosPaginados: products,
+    totalFiltrados,
+    page, setPage, totalPages,
+    sortConfig, toggleSort,
+  } = useLocalSort<Product>({
+    datos,
+    busqueda,
+    camposBusqueda,
+    filtros,
+    pageSize: PAGE_SIZE,
+  });
+
+  const activeFilters = [busqueda, estado, soloReales].filter(Boolean).length;
+  const clearFilters = () => { setBusqueda(''); setEstado(''); setSoloReales(false); };
 
   return (
     <div className="w-full flex flex-col gap-5">
-
-      {/* Breadcrumb */}
-
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -90,7 +91,7 @@ export default function AdminProductsListPage() {
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Productos</h1>
             <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xl">
               Los arreglos y artículos que vendes, con su precio y su receta.
-              {' — '}{loading ? '...' : `${total} registros`}
+              {' — '}{cargando ? '...' : `${datos.length} registros`}
             </p>
           </div>
         </div>
@@ -103,11 +104,11 @@ export default function AdminProductsListPage() {
             Gestión de recetas
           </button>
           <button
-            onClick={load}
-            disabled={loading}
+            onClick={() => recargarCompleto()}
+            disabled={cargando}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 px-3 py-2 rounded-xl transition-all"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />
             Actualizar
           </button>
           <button
@@ -123,9 +124,9 @@ export default function AdminProductsListPage() {
       {/* KPI Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: 'Total productos', value: loading || !kpis ? '—' : String(kpis.totalProductos), icon: <ShoppingBag />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
-          { label: 'Activos', value: loading || !kpis ? '—' : String(kpis.activos), icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'en catálogo' },
-          { label: 'Borradores', value: loading || !kpis ? '—' : String(kpis.borradores), icon: <AlertTriangle />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por publicar' },
+          { label: 'Total productos', value: cargando || !kpis ? '—' : String(kpis.totalProductos), icon: <ShoppingBag />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
+          { label: 'Activos', value: cargando || !kpis ? '—' : String(kpis.activos), icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'en catálogo' },
+          { label: 'Borradores', value: cargando || !kpis ? '—' : String(kpis.borradores), icon: <AlertTriangle />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'por publicar' },
         ].map((s, i) => (
           <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">
@@ -150,13 +151,20 @@ export default function AdminProductsListPage() {
             <input
               type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar por nombre..."
-              className={`px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400 outline-none transition-all pl-9 w-full`}
+              className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400 outline-none transition-all pl-9 w-full"
             />
           </div>
           <select value={estado} onChange={e => setEstado(e.target.value)} className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-blue-400/40 focus:border-blue-400 outline-none transition-all">
             <option value="">Todos los estados</option>
             {ESTADOS.filter(Boolean).map(e => <option key={e} value={e}>{e.charAt(0) + e.slice(1).toLowerCase()}</option>)}
           </select>
+          <button
+            onClick={() => setSoloReales(prev => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${soloReales ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Solo reales
+          </button>
           {activeFilters > 0 && (
             <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-100 dark:border-red-800/50 px-3 py-2 rounded-xl transition-all">
               <X className="w-3.5 h-3.5" />Limpiar ({activeFilters})
@@ -182,7 +190,7 @@ export default function AdminProductsListPage() {
 
       {/* Content Container */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden min-h-[400px] flex flex-col">
-        {loading ? (
+        {cargando && datos.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 py-20">
             <RefreshCw className="w-7 h-7 animate-spin text-blue-400" />
             <p className="text-sm">Cargando productos...</p>
@@ -191,7 +199,7 @@ export default function AdminProductsListPage() {
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-red-400 py-20">
             <AlertTriangle className="w-8 h-8" />
             <p className="text-sm font-medium">{error}</p>
-            <button onClick={load} className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
+            <button onClick={() => recargarCompleto()} className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
               <RefreshCw className="w-3.5 h-3.5" />Reintentar
             </button>
           </div>
@@ -214,9 +222,13 @@ export default function AdminProductsListPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/60 dark:bg-slate-800/80">
-                      {['Producto', 'Tipo', 'Precio', 'Stock', 'Estado', 'Acciones'].map(h => (
-                        <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">{h}</th>
-                      ))}
+                      <SortableColumnHeader label="Producto" field="nombre" sortConfig={sortConfig} onToggle={toggleSort} />
+                      <SortableColumnHeader label="Tipo" field="tipo" sortConfig={sortConfig} onToggle={toggleSort} />
+                      <SortableColumnHeader label="Precio" field="precioBase" sortConfig={sortConfig} onToggle={toggleSort} />
+                      <SortableColumnHeader label="Stock" field="stock" sortConfig={sortConfig} onToggle={toggleSort} />
+                      <SortableColumnHeader label="Estado" field="estado" sortConfig={sortConfig} onToggle={toggleSort} />
+                      <SortableColumnHeader label="Real" field="esReal" sortConfig={sortConfig} onToggle={toggleSort} />
+                      <th className="px-5 py-3.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -257,6 +269,12 @@ export default function AdminProductsListPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${p.esReal ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${p.esReal ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            {p.esReal ? 'Sí' : 'No'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5">
                           <div className="flex items-center gap-1.5">
                             <button onClick={() => navigate(`/admin/productos/${p.id}`)} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded-xl transition-all"><Eye className="w-4 h-4" /></button>
                             <button onClick={() => navigate(`/admin/productos/editar/${p.id}`)} className="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 rounded-xl transition-all"><Edit className="w-4 h-4" /></button>
@@ -286,7 +304,7 @@ export default function AdminProductsListPage() {
                     <div className="p-5">
                       <p className="text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-[0.2em] mb-1">{TIPO_MAP[p.tipo] ?? p.tipo}</p>
                       <h3 className="font-bold text-slate-900 dark:text-white text-base leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate mb-4">{p.nombre}</h3>
-                      
+
                       <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
                         <div>
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Precio base</p>
@@ -306,34 +324,34 @@ export default function AdminProductsListPage() {
             {/* Pagination Footer */}
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
               <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                {products.length} de {total} registros
+                {products.length} de {totalFiltrados} registros
               </span>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setPage(p => Math.max(1, p - 1))} 
-                  disabled={page <= 1 || loading}
+                <button
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page <= 1}
                   className="p-2 text-slate-400 hover:text-blue-500 disabled:opacity-30 transition-all"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    const p = totalPages <= 5 ? i + 1 : Math.max(1, page - 2) + i;
-                    if (p > totalPages) return null;
+                    const pg = totalPages <= 5 ? i + 1 : Math.max(1, page - 2) + i;
+                    if (pg > totalPages) return null;
                     return (
-                      <button 
-                        key={p} 
-                        onClick={() => setPage(p)}
-                        className={`w-9 h-9 text-xs font-black rounded-xl transition-all ${p === page ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                      <button
+                        key={pg}
+                        onClick={() => setPage(pg)}
+                        className={`w-9 h-9 text-xs font-black rounded-xl transition-all ${pg === page ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                       >
-                        {p}
+                        {pg}
                       </button>
                     );
                   })}
                 </div>
-                <button 
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
-                  disabled={page >= totalPages || loading}
+                <button
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page >= totalPages}
                   className="p-2 text-slate-400 hover:text-blue-500 disabled:opacity-30 transition-all"
                 >
                   <ChevronRight className="w-5 h-5" />

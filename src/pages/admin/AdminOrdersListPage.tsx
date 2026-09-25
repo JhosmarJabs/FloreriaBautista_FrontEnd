@@ -1,34 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Search, RefreshCw, AlertTriangle, ChevronRight,
-  ChevronLeft, Filter, X, Eye, Calendar, Clock, LayoutGrid, List,
+  ChevronLeft, X, Eye, Calendar, Clock, LayoutGrid, List,
   User as UserIcon, Tag, MapPin, ReceiptText, Archive, CheckCircle2,
-  ChevronDown, Palette
+  ChevronDown, Palette, Zap, Check, XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AdminService } from '../../services/adminService';
+import { AdminService, type SolicitudVentaInstantaneaAdmin } from '../../services/adminService';
 import { Order } from '../../types';
 import { FadeIn, AnimatedButton } from '../../components/Animations';
 import { parseApiDate, todayISO } from '../../utils/date';
 import { ESTADO_PEDIDO, type EstadoPedidoUi } from '../../utils/labels';
+import { useLocalSort } from '../../hooks/useLocalSort';
+import { SortableColumnHeader } from '../../components/SortableColumnHeader';
 
-// Estos son los estados reales que usa el backend (ver Transiciones en Backend/Services/OrderService.cs)
 const ESTADOS = [
   '', 'PENDIENTE_VALIDACION', 'EN_PREPARACION', 'EN_RUTA', 'ENTREGADO', 'CANCELADO', 'PENDIENTE_ANULACION', 'NO_COMPLETADO',
 ];
 const PAGE_SIZE = 20;
 
-// Semáforo por estado. Además del badge, cada entrada define cómo se pinta la
-// fila/tarjeta completa: `bar` es la barra lateral (tabla) o superior (tarjeta) y
-// `tint` un fondo muy tenue reservado a los estados que exigen que alguien actúe.
-// Todo vive en utils/labels.ts para que un estado se llame y se pinte igual aquí,
-// en el dashboard, en el panel del empleado y en la cuenta del cliente.
 const ESTADO_STYLE: Record<string, EstadoPedidoUi> = ESTADO_PEDIDO;
-
-// Un pedido ya cerrado no urge, por más que su fecha de entrega esté encima.
 const ESTADOS_CERRADOS = ['ENTREGADO', 'CANCELADO'];
-
 const MS_DIA = 86_400_000;
 
 function formatDate(iso: string) {
@@ -36,18 +29,16 @@ function formatDate(iso: string) {
   return d ? d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 }
 
-/** "18:30:00" → "18:30". El resumen del backend puede no traer hora de entrega. */
 function formatHoraEntrega(hora?: string | null) {
   const m = hora ? /^(\d{1,2}):(\d{2})/.exec(hora) : null;
   return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '';
 }
 
-/** Días entre hoy y la entrega: 0 = hoy, 1 = mañana, negativo = ya pasó. */
 function diasHastaEntrega(iso?: string | null): number | null {
   const entrega = parseApiDate(iso);
   const hoy = parseApiDate(todayISO());
   if (!entrega || !hoy || Number.isNaN(entrega.getTime())) return null;
-  entrega.setHours(0, 0, 0, 0); // fechaEntrega es DateOnly, pero por si llega con hora
+  entrega.setHours(0, 0, 0, 0);
   return Math.round((entrega.getTime() - hoy.getTime()) / MS_DIA);
 }
 
@@ -60,10 +51,6 @@ function diaSemana(iso: string) {
 
 type Urgencia = { label: string; text: string; dot?: string; pulse?: boolean };
 
-/**
- * Segunda capa de color: qué tan encima está la entrega. Se apaga en el archivo
- * (ahí todo es pasado) y en los pedidos ya cerrados.
- */
 function urgenciaEntrega(order: Order, activa: boolean): Urgencia | null {
   if (!activa || ESTADOS_CERRADOS.includes(order.estadoPedido)) return null;
   const dias = diasHastaEntrega(order.fechaEntrega);
@@ -75,7 +62,6 @@ function urgenciaEntrega(order: Order, activa: boolean): Urgencia | null {
   return { label: '', text: 'text-slate-400 dark:text-slate-500' };
 }
 
-/** Punto de urgencia; el de "HOY" late para que salte a la vista. */
 function UrgenciaDot({ urg }: { urg: Urgencia }) {
   if (!urg.dot) return null;
   return (
@@ -86,25 +72,82 @@ function UrgenciaDot({ urg }: { urg: Urgencia }) {
   );
 }
 
+const ESTADO_SOLICITUD_STYLE: Record<string, { label: string; bg: string; text: string }> = {
+  PENDIENTE:  { label: 'Pendiente',  bg: 'bg-amber-100 dark:bg-amber-500/20',   text: 'text-amber-700 dark:text-amber-300' },
+  ACEPTADA:   { label: 'Aceptada',   bg: 'bg-emerald-100 dark:bg-emerald-500/20', text: 'text-emerald-700 dark:text-emerald-300' },
+  RECHAZADA:  { label: 'Rechazada',  bg: 'bg-red-100 dark:bg-red-500/20',       text: 'text-red-700 dark:text-red-300' },
+  EXPIRADA:   { label: 'Expirada',   bg: 'bg-slate-100 dark:bg-slate-500/20',   text: 'text-slate-600 dark:text-slate-400' },
+};
+
 export default function AdminOrdersListPage() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [rawOrders, setRawOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [verArchivo, setVerArchivo] = useState(false);
   const [verLeyenda, setVerLeyenda] = useState(false);
 
+  const [verSolicitudes, setVerSolicitudes] = useState(false);
+  const [solicitudes, setSolicitudes] = useState<SolicitudVentaInstantaneaAdmin[]>([]);
+  const [solicitudesLoading, setSolicitudesLoading] = useState(false);
+  const [solicitudesError, setSolicitudesError] = useState<string | null>(null);
+  const [solicitudesTotal, setSolicitudesTotal] = useState(0);
+  const [solicitudesFiltro, setSolicitudesFiltro] = useState('PENDIENTE');
+  const [decidiendo, setDecidiendo] = useState<string | null>(null);
+
+  const loadSolicitudes = useCallback(async () => {
+    setSolicitudesLoading(true);
+    setSolicitudesError(null);
+    try {
+      const res = await AdminService.getAdminSolicitudesInstantaneas({
+        estado: solicitudesFiltro || undefined,
+        page: 1,
+        size: 50,
+      });
+      setSolicitudes(res.data.items);
+      setSolicitudesTotal(res.data.total);
+    } catch (err: any) {
+      setSolicitudesError(err.message || 'Error al cargar solicitudes');
+    } finally {
+      setSolicitudesLoading(false);
+    }
+  }, [solicitudesFiltro]);
+
+  useEffect(() => {
+    if (verSolicitudes) loadSolicitudes();
+  }, [verSolicitudes, loadSolicitudes]);
+
+  const handleAceptar = async (id: string) => {
+    setDecidiendo(id);
+    try {
+      await AdminService.aceptarSolicitudInstantanea(id);
+      await loadSolicitudes();
+    } catch (err: any) {
+      alert(err.message || 'Error al aceptar');
+    } finally {
+      setDecidiendo(null);
+    }
+  };
+
+  const handleRechazar = async (id: string) => {
+    const motivo = prompt('Motivo del rechazo (opcional):');
+    setDecidiendo(id);
+    try {
+      await AdminService.rechazarSolicitudInstantanea(id, motivo || undefined);
+      await loadSolicitudes();
+    } catch (err: any) {
+      alert(err.message || 'Error al rechazar');
+    } finally {
+      setDecidiendo(null);
+    }
+  };
+
   const [estado, setEstado] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [busqueda, setBusqueda] = useState('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  // Recaudación bruta que calcula el backend sobre TODOS los filtrados. Si el
-  // backend aún no la envía (undefined), el card cae a sumar los pedidos
-  // cargados, para no mostrar $0 falso.
   const [sumaTotal, setSumaTotal] = useState<number | undefined>(undefined);
 
   const activeFilters = [estado, desde, hasta, busqueda].filter(Boolean).length;
@@ -117,42 +160,43 @@ export default function AdminOrdersListPage() {
         estado: estado || undefined,
         desde: desde || undefined,
         hasta: hasta || undefined,
-        page,
-        size: PAGE_SIZE,
+        page: 1,
+        size: 500,
         archivado: verArchivo,
       });
-      let items = res.data.items;
-      if (busqueda.trim()) {
-        const q = busqueda.trim().toLowerCase();
-        items = items.filter(o => o.nombreCliente?.toLowerCase().includes(q) || o.id.toLowerCase().includes(q));
-      }
-      setOrders(items);
+      setRawOrders(res.data.items);
       setTotal(res.data.total);
       setSumaTotal(res.data.sumaTotal);
-      setTotalPages(res.data.totalPaginas || 1);
     } catch (err: any) {
       setError(err.message || 'Error al cargar pedidos');
     } finally {
       setLoading(false);
     }
-  }, [estado, desde, hasta, busqueda, page, verArchivo]);
+  }, [estado, desde, hasta, verArchivo]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { setPage(1); }, [estado, desde, hasta, busqueda, verArchivo]);
 
-  const clearFilters = () => { setEstado(''); setDesde(''); setHasta(''); setBusqueda(''); setPage(1); };
+  const clearFilters = () => { setEstado(''); setDesde(''); setHasta(''); setBusqueda(''); };
 
-  // OJO: estos dos conteos son de la página actual (PAGE_SIZE registros), no del
-  // total filtrado. El backend solo agrega `sumaTotal` en PagedResultDto; mientras
-  // no exponga conteos por estado, el label dice explícitamente "en esta página".
+  const camposBusqueda = useMemo(() => ['nombreCliente' as keyof Order, 'id' as keyof Order], []);
+
+  const {
+    datosPaginados: orders,
+    totalFiltrados,
+    page, setPage, totalPages,
+    sortConfig, toggleSort,
+  } = useLocalSort<Order>({
+    datos: rawOrders,
+    busqueda,
+    camposBusqueda,
+    pageSize: PAGE_SIZE,
+  });
+
   const pendientes = orders.filter(o => o.estadoPedido === 'PENDIENTE_VALIDACION').length;
   const entregados = orders.filter(o => o.estadoPedido === 'ENTREGADO').length;
 
   return (
     <div className="w-full flex flex-col gap-6">
-
-      {/* Breadcrumb */}
-
 
       {/* Header */}
       <FadeIn>
@@ -171,7 +215,16 @@ export default function AdminOrdersListPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <AnimatedButton onClick={() => setVerArchivo(v => !v)}
+            <AnimatedButton onClick={() => { setVerSolicitudes(v => !v); if (verArchivo) setVerArchivo(false); }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all border ${
+                verSolicitudes
+                  ? 'bg-amber-600 dark:bg-amber-500 text-white border-amber-600 dark:border-amber-500'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}>
+              <Zap className="w-4 h-4" />
+              {verSolicitudes ? 'Ver Pedidos' : 'Solicitudes Instantaneas'}
+            </AnimatedButton>
+            <AnimatedButton onClick={() => { setVerArchivo(v => !v); if (verSolicitudes) setVerSolicitudes(false); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all border ${
                 verArchivo
                   ? 'bg-slate-800 dark:bg-slate-600 text-white border-slate-800 dark:border-slate-600'
@@ -196,13 +249,135 @@ export default function AdminOrdersListPage() {
         </div>
       )}
 
+      {/* ── Panel de solicitudes de venta instantanea ────────────── */}
+      {verSolicitudes && (
+        <FadeIn>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              {['', 'PENDIENTE', 'ACEPTADA', 'RECHAZADA', 'EXPIRADA'].map(e => (
+                <button key={e} onClick={() => setSolicitudesFiltro(e)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                    solicitudesFiltro === e
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  }`}>
+                  {e || 'Todas'}
+                </button>
+              ))}
+              <button onClick={loadSolicitudes} disabled={solicitudesLoading}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                <RefreshCw className={`w-3.5 h-3.5 ${solicitudesLoading ? 'animate-spin' : ''}`} />
+                Actualizar
+              </button>
+            </div>
+
+            {solicitudesError && (
+              <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-xs font-bold text-red-600 dark:text-red-400">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                {solicitudesError}
+              </div>
+            )}
+
+            {solicitudesLoading ? (
+              <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500 font-bold">
+                Cargando solicitudes...
+              </div>
+            ) : solicitudes.length === 0 ? (
+              <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500 font-bold">
+                No hay solicitudes {solicitudesFiltro ? `en estado ${solicitudesFiltro}` : ''}.
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/80 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                      <th className="px-4 py-3 text-left">Cliente</th>
+                      <th className="px-4 py-3 text-left">Producto</th>
+                      <th className="px-4 py-3 text-center">Cant.</th>
+                      <th className="px-4 py-3 text-center">Estado</th>
+                      <th className="px-4 py-3 text-left">Creada</th>
+                      <th className="px-4 py-3 text-left">Decidida por</th>
+                      <th className="px-4 py-3 text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {solicitudes.map(s => {
+                      const est = ESTADO_SOLICITUD_STYLE[s.estado] ?? ESTADO_SOLICITUD_STYLE.PENDIENTE;
+                      const creada = new Date(s.creadaEn);
+                      const minutosDesdeCreacion = Math.floor((Date.now() - creada.getTime()) / 60000);
+                      return (
+                        <tr key={s.id} className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-800 dark:text-white text-xs">{s.nombreCliente}</div>
+                            {s.telefonoCliente && <div className="text-[10px] text-slate-400">{s.telefonoCliente}</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {s.imagenProducto && (
+                                <img src={s.imagenProducto} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                              )}
+                              <span className="font-medium text-xs text-slate-700 dark:text-slate-300">{s.nombreProducto}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-slate-700 dark:text-slate-300">{s.cantidad}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded-lg text-[10px] font-bold ${est.bg} ${est.text}`}>
+                              {est.label}
+                            </span>
+                            {s.estado === 'PENDIENTE' && minutosDesdeCreacion >= 2 && (
+                              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold mt-0.5">
+                                {s.escaladaAEmpleadoEn ? 'Escalada' : `${minutosDesdeCreacion} min`}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                            {creada.toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                            {s.decididaPorNombre ?? (s.motivoExpiracion ? s.motivoExpiracion.replace(/_/g, ' ') : '---')}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {s.estado === 'PENDIENTE' ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button onClick={() => handleAceptar(s.id)} disabled={decidiendo === s.id}
+                                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white transition-colors disabled:opacity-50">
+                                  <Check className="w-3 h-3" /> Aceptar
+                                </button>
+                                <button onClick={() => handleRechazar(s.id)} disabled={decidiendo === s.id}
+                                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50">
+                                  <XCircle className="w-3 h-3" /> Rechazar
+                                </button>
+                              </div>
+                            ) : s.orderId ? (
+                              <button onClick={() => navigate(`/admin/orders/${s.orderId}`)}
+                                className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                                Ver pedido
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-slate-400">---</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold text-right">
+              {solicitudesTotal} solicitud(es) en total
+            </div>
+          </div>
+        </FadeIn>
+      )}
+
       {/* KPI Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
           { label: 'Total pedidos', value: total, icon: <ReceiptText />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'registrados' },
-          { label: 'Pendientes en esta página', value: pendientes, icon: <Clock />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: `de ${orders.length} visibles` },
-          { label: 'Entregados en esta página', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: `de ${orders.length} visibles` },
-          { label: 'Recaudación bruta', value: `$${(sumaTotal ?? orders.reduce((acc, o) => acc + o.total, 0)).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40', trend: `${total} pedidos` },
+          { label: 'Pendientes en página', value: pendientes, icon: <Clock />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: `de ${orders.length} visibles` },
+          { label: 'Entregados en página', value: entregados, icon: <CheckCircle2 />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: `de ${orders.length} visibles` },
+          { label: 'Recaudación bruta', value: `$${(sumaTotal ?? rawOrders.reduce((acc, o) => acc + o.total, 0)).toLocaleString()}`, icon: <Tag />, color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-100/70 dark:bg-indigo-500/20', border: 'border-indigo-200 dark:border-indigo-500/40', trend: `${total} pedidos` },
         ].map((s, idx) => (
           <div key={idx} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">
@@ -226,7 +401,7 @@ export default function AdminOrdersListPage() {
             placeholder="Buscar por cliente o número de pedido…"
             className="w-full pl-12 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all" />
         </div>
-        <select value={estado} onChange={e => setEstado(e.target.value)} 
+        <select value={estado} onChange={e => setEstado(e.target.value)}
           className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-600 dark:text-slate-300 outline-none cursor-pointer">
           <option value="">Todos los estados</option>
           {ESTADOS.filter(Boolean).map(e => (
@@ -239,6 +414,12 @@ export default function AdminOrdersListPage() {
            <span className="text-slate-300">|</span>
            <input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 outline-none w-28" />
         </div>
+
+        {activeFilters > 0 && (
+          <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-100 dark:border-red-800/50 px-3 py-2 rounded-xl transition-all">
+            <X className="w-3.5 h-3.5" />Limpiar ({activeFilters})
+          </button>
+        )}
 
         <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1 rounded-xl ml-auto">
           <button onClick={() => setViewMode('table')} className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-white dark:bg-slate-800 text-emerald-500 shadow-sm' : 'text-slate-400'}`}>
@@ -328,11 +509,13 @@ export default function AdminOrdersListPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700/50">
-                      {['Cliente', 'Estado', 'Entrega', 'Importe', ''].map((h, i) => (
-                        <th key={i} className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                          {h || <span className="sr-only">Acciones</span>}
-                        </th>
-                      ))}
+                      <SortableColumnHeader label="Cliente" field="nombreCliente" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Estado" field="estadoPedido" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Entrega" field="fechaEntrega" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Importe" field="total" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                        <span className="sr-only">Acciones</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -344,11 +527,7 @@ export default function AdminOrdersListPage() {
                         return (
                           <motion.tr key={order.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                             className={`${st?.tint ?? ''} hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors`}>
-                            {/* La barra de estado va en la primera celda: en un <tr> el color lo
-                                pisaría el divide-* del tbody, que tiene más especificidad. */}
                             <td className={`px-6 py-4 border-l-4 ${st?.bar ?? 'border-transparent'}`}>
-                               {/* El id ya no tiene columna propia: vive aquí como tooltip (completo,
-                                   porque los primeros caracteres se repiten entre pedidos). */}
                                <div className="flex items-center gap-3" title={`Pedido ${order.id}`}>
                                   <div className="size-8 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-[10px] font-black shrink-0">{order.nombreCliente?.charAt(0) || 'C'}</div>
                                   <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{order.nombreCliente || 'Público General'}</p>
@@ -396,10 +575,8 @@ export default function AdminOrdersListPage() {
                       className={`group bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 ${st?.tint ?? ''} p-5 pt-6 shadow-sm hover:shadow-2xl hover:border-emerald-200 dark:hover:border-emerald-800/50 transition-all cursor-pointer relative overflow-hidden`}
                       onClick={() => navigate(`/admin/pedidos/${order.id}`)}>
 
-                      {/* Barra superior con el color del estado */}
                       {st && <div className={`absolute top-0 inset-x-0 h-1.5 ${st.dot}`} />}
 
-                      
                       <div className="flex items-start justify-between mb-4">
                          <div className="flex flex-col">
                             <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none mb-1">Folio</p>
@@ -453,7 +630,6 @@ export default function AdminOrdersListPage() {
                          </div>
                       </div>
 
-                      {/* Tick decoration */}
                       <div className="absolute -bottom-2 -left-2 size-8 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700" />
                       <div className="absolute -bottom-2 -right-2 size-8 bg-slate-50 dark:bg-slate-800 rounded-full border border-slate-100 dark:border-slate-700" />
                     </motion.div>
@@ -463,11 +639,11 @@ export default function AdminOrdersListPage() {
             )}
             {/* Footer */}
             <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
-               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{orders.length} de {total} registros</span>
+               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{orders.length} de {totalFiltrados} registros</span>
                <div className="flex items-center gap-2">
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || loading} className="p-2 text-slate-400 hover:text-emerald-500 disabled:opacity-30 transition-all"><ChevronLeft className="w-5 h-5"/></button>
+                  <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1 || loading} className="p-2 text-slate-400 hover:text-emerald-500 disabled:opacity-30 transition-all"><ChevronLeft className="w-5 h-5"/></button>
                   <span className="text-xs font-black px-4">{page} / {totalPages}</span>
-                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || loading} className="p-2 text-slate-400 hover:text-emerald-500 disabled:opacity-30 transition-all"><ChevronRight className="w-5 h-5"/></button>
+                  <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages || loading} className="p-2 text-slate-400 hover:text-emerald-500 disabled:opacity-30 transition-all"><ChevronRight className="w-5 h-5"/></button>
                </div>
             </div>
           </>

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
 import api from '../../services/api';
-import { notificarCambioDeSesion } from '../../utils/userScope';
+import { useAuth } from '../../hooks/useAuth';
+import { rutaInicialPorRol } from '../../utils/auth';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     nombre: '',
@@ -62,18 +64,11 @@ export default function RegisterPage() {
         ...(form.fechaNacimiento && { fechaNacimiento: form.fechaNacimiento }),
       });
 
-      const { accessToken, refreshToken, usuario } = res.data.data;
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('usuario', JSON.stringify({
-        ...usuario,
-        role: usuario.roles?.[0]?.toLowerCase() ?? 'cliente',
-      }));
+      // Guarda tokens y usuario normalizado, y aísla el carrito por usuario
+      // (cuenta nueva parte de un carrito propio).
+      const roles = login(res.data.data);
 
-      // Aísla el carrito por usuario (cuenta nueva parte de un carrito propio).
-      notificarCambioDeSesion();
-
-      navigate('/');
+      navigate(rutaInicialPorRol(roles), { replace: true });
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Error al crear la cuenta. Intenta de nuevo.';
       setError(msg);

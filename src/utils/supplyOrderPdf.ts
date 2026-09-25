@@ -1,19 +1,23 @@
-import jsPDF from 'jspdf';
-import { autoTable } from 'jspdf-autotable';
+import type jsPDF from 'jspdf';
 import type { SupplyOrderDetail, SupplyOrderLinea } from '../services/adminService';
 import { formatApiDate } from './date';
 
-const AZUL: [number, number, number] = [30, 58, 95]; // #1e3a5f, el azul de la marca
+const AZUL: [number, number, number] = [30, 58, 95];
 const GRIS: [number, number, number] = [120, 130, 145];
 
 const moneda = (valor: number) =>
   valor.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
-/**
- * Solicitud de reabastecimiento en PDF, pensada para imprimirse y llenarse a mano:
- * la columna "Recibido" va en blanco para que quien recibe anote ahí la cantidad real.
- */
-export function generarSolicitudPdf(solicitud: SupplyOrderDetail): jsPDF {
+async function loadPdfLibs() {
+  const [{ default: jsPDF }, { autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+  return { jsPDF, autoTable };
+}
+
+export async function generarSolicitudPdf(solicitud: SupplyOrderDetail): Promise<jsPDF> {
+  const { jsPDF, autoTable } = await loadPdfLibs();
   const doc = new jsPDF();
   const anchoPagina = doc.internal.pageSize.getWidth();
   const margen = 14;
@@ -125,9 +129,9 @@ export function generarSolicitudPdf(solicitud: SupplyOrderDetail): jsPDF {
   return doc;
 }
 
-/** Descarga la solicitud como "REAB-2026-0007.pdf". */
-export function descargarSolicitudPdf(solicitud: SupplyOrderDetail): void {
-  generarSolicitudPdf(solicitud).save(`${solicitud.folio}.pdf`);
+export async function descargarSolicitudPdf(solicitud: SupplyOrderDetail): Promise<void> {
+  const doc = await generarSolicitudPdf(solicitud);
+  doc.save(`${solicitud.folio}.pdf`);
 }
 
 /** Texto plano de la solicitud, para copiar o mandar por WhatsApp. */

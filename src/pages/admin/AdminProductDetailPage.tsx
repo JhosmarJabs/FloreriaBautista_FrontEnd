@@ -20,11 +20,11 @@ const TIPO_MAP: Record<string, string> = {
   'ACCESORIOS':    'Accesorios',
 };
 
+// Valores reales de la restricción products_visibilidad_check en BD.
 const VISIBILIDAD_MAP: Record<string, string> = {
-  'PUBLICO': 'Público (Web)',
-  'PRIVADO': 'Privado (Solo Admin)',
-  'CATALOGO': 'Solo Catálogo PDF',
-  'AMBOS': 'Ambos (Web y Catálogo)',
+  'WEB': 'Público (Solo Web)',
+  'SOLO_SUCURSAL': 'Privado (Solo Sucursal)',
+  'AMBOS': 'Ambos (Web y Sucursal)',
 };
 
 export default function AdminProductDetailPage() {
@@ -172,6 +172,15 @@ export default function AdminProductDetailPage() {
                   <p className={lbl}>Visibilidad</p>
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                     {VISIBILIDAD_MAP[product.visibilidad ?? ''] ?? product.visibilidad ?? 'No especificada'}
+                  </span>
+                </div>
+                <div>
+                  <p className={lbl}>Venta Instantanea</p>
+                  <span className={`text-xs font-bold ${product.permiteVentaInstantanea ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                    {product.permiteVentaInstantanea ? 'Habilitada' : 'No'}
+                    {product.permiteVentaInstantanea && product.limiteVentaInstantanea != null && (
+                      <span className="ml-1 text-slate-400 dark:text-slate-500">(max. {product.limiteVentaInstantanea})</span>
+                    )}
                   </span>
                 </div>
               </div>
@@ -354,6 +363,7 @@ export default function AdminProductDetailPage() {
                   { label: 'Costo base', value: receta.length > 0 ? `$${costoBase.toFixed(2)}` : '—' },
                   { label: 'Insumos', value: String(receta.length) },
                   { label: 'Personalizable', value: product.esPersonalizable ? 'Sí' : 'No' },
+                  { label: 'Venta Inst.', value: product.permiteVentaInstantanea ? (product.limiteVentaInstantanea != null ? `Sí (max ${product.limiteVentaInstantanea})` : 'Sí') : 'No' },
                   { label: 'Stock', value: product.stock != null ? String(product.stock) : '—' },
                 ].map(r => (
                   <div key={r.label} className="flex justify-between">

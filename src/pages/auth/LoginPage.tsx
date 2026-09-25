@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle, Wrench } from "lucide-react";
-import { notificarCambioDeSesion } from "../../utils/userScope";
+import { useAuth } from "../../hooks/useAuth";
+import { rutaInicialPorRol } from "../../utils/auth";
 
 const DEV_ACCOUNTS = [
   { label: "Admin", correo: "admin@gmail.com", contrasena: "J@bs1234" },
@@ -11,6 +12,9 @@ const DEV_ACCOUNTS = [
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { login } = useAuth();
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [error, setError] = useState("");
@@ -36,39 +40,26 @@ export default function LoginPage() {
       const json = await res.json();
       const payload = json.data ?? json;
 
-      localStorage.setItem(
-        "accessToken",
-        payload.accessToken ?? payload.token ?? "",
-      );
-      if (payload.refreshToken)
-        localStorage.setItem("refreshToken", payload.refreshToken);
-      const usuarioBase = payload.usuario ?? payload.user ?? payload;
+      // `login` guarda tokens y usuario normalizado, y devuelve los roles ya
+      // resueltos (del JWT, no del cuerpo de la respuesta).
+      const roles = login(payload);
 
-      const roles: string[] = (
-        payload.usuario?.roles ??
-        payload.user?.roles ??
-        payload.roles ??
-        []
-      ).map((r: string) => r.toLowerCase());
-
-      // Guardar también `role` (string) para mantener consistencia con el registro
-      // y que las validaciones de rol (p. ej. añadir al carrito) funcionen.
-      localStorage.setItem(
-        "usuario",
-        JSON.stringify({ ...usuarioBase, role: roles[0] ?? "cliente" }),
-      );
-
-      // Aísla el carrito por usuario: recarga el del nuevo usuario y fusiona
-      // lo que se hubiera agregado como invitado.
-      notificarCambioDeSesion();
-
-      if (roles.includes("administrador") || roles.includes("admin")) {
-        navigate("/admin/dashboard");
-      } else if (roles.includes("empleado") || roles.includes("staff")) {
-        navigate("/empleado/dashboard");
-      } else {
-        navigate("/");
+      if (roles.length === 0) {
+        // Antes esto se degradaba en silencio a "cliente" y mandaba al inicio
+        // público: un admin sin rol legible terminaba atrapado en la tienda.
+        setError(
+          "Tu cuenta no tiene un rol asignado. Contacta al administrador.",
+        );
+        return;
       }
+
+      const destino =
+        searchParams.get('redirect') ??
+        (location.state as { from?: { pathname: string } } | null)?.from?.pathname ??
+        rutaInicialPorRol(roles);
+
+      // `replace` para que el botón Atrás no regrese al formulario de login.
+      navigate(destino, { replace: true });
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
     } finally {

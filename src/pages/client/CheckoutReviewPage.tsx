@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   MapPin,
@@ -12,11 +11,15 @@ import {
   ShoppingBag,
   Clock,
   Calendar,
-  Loader2
+  Loader2,
+  Tag,
+  X,
+  CheckCircle2,
 } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
 import { getDraft, saveCompletedOrder, generarFolio } from '../../utils/checkout';
 import { AdminService } from '../../services/adminService';
+import type { PricingBreakdown } from '../../types';
 
 export default function CheckoutReviewPage() {
   const navigate = useNavigate();
@@ -25,19 +28,70 @@ export default function CheckoutReviewPage() {
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState('');
 
-  // Todo el pedido se arma desde el borrador guardado en la pantalla de Datos.
+  const [cuponInput, setCuponInput] = useState('');
+  const [cuponAplicado, setCuponAplicado] = useState<string | null>(null);
+  const [cuponError, setCuponError] = useState('');
+  const [cuponLoading, setCuponLoading] = useState(false);
+  const [breakdown, setBreakdown] = useState<PricingBreakdown | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+
   const draft = getDraft();
 
-  // Si no hay borrador (entraron directo a esta URL), regresamos a capturar datos.
   useEffect(() => {
     if (!draft) navigate('/checkout/datos', { replace: true });
   }, [draft, navigate]);
 
-  const dedicatoria = (draft?.dedicatoria || '').trim();
   const shippingCost = draft?.shippingCost ?? 0;
-  const total = cartTotal + shippingCost;
-
+  const dedicatoria = (draft?.dedicatoria || '').trim();
   const esAnticipado = draft?.orderType === 'anticipado';
+
+  const pricingItems = cart.map(i => ({ productId: i.id, cantidad: i.quantity }));
+
+  const cargarPricing = useCallback(async (cupon?: string) => {
+    if (cart.length === 0) return;
+    setPricingLoading(true);
+    try {
+      const res = await AdminService.calcularPricing(pricingItems, cupon || undefined);
+      setBreakdown(res.data);
+    } catch {
+      setBreakdown(null);
+    } finally {
+      setPricingLoading(false);
+    }
+  }, [cart]);
+
+  useEffect(() => {
+    cargarPricing(cuponAplicado || undefined);
+  }, [cart.length]);
+
+  const aplicarCupon = async () => {
+    const code = cuponInput.trim().toUpperCase();
+    if (!code) return;
+    setCuponError('');
+    setCuponLoading(true);
+    try {
+      const res = await AdminService.aplicarCupon(pricingItems, code);
+      setBreakdown(res.data);
+      setCuponAplicado(code);
+      setCuponError('');
+    } catch (err: any) {
+      setCuponError(err.message || 'Cupón inválido');
+    } finally {
+      setCuponLoading(false);
+    }
+  };
+
+  const quitarCupon = async () => {
+    setCuponAplicado(null);
+    setCuponInput('');
+    setCuponError('');
+    await cargarPricing();
+  };
+
+  const subtotalDisplay = breakdown ? breakdown.subtotal : cartTotal;
+  const totalDescuentos = breakdown ? breakdown.totalDescuentos : 0;
+  const totalProductos = breakdown ? breakdown.total : cartTotal;
+  const totalFinal = totalProductos + shippingCost;
 
   const formatearFecha = (iso: string) => {
     if (!iso) return '';
@@ -47,17 +101,16 @@ export default function CheckoutReviewPage() {
     });
   };
 
-  // Crea el pedido real en el backend y redirige a Mercado Pago (Checkout Pro).
   const confirmarPedido = async () => {
     if (!draft || cart.length === 0 || procesando) return;
     setError('');
     setProcesando(true);
     try {
-      // 1) Crear la orden real en el backend (el Total lo calcula el servidor).
       const orden = await AdminService.createWebOrder({
         fechaEntrega: draft.deliveryDate,
         tipoPedido: draft.orderType === 'anticipado' ? 'ANTICIPADO' : 'INSTANTANEO',
         costoEnvio: draft.shippingCost,
+        codigoCupon: cuponAplicado || undefined,
         notas: [
           draft.timeSlot ? `Horario: ${draft.timeSlot}` : '',
           dedicatoria ? `Dedicatoria: ${dedicatoria}` : '',
@@ -73,19 +126,17 @@ export default function CheckoutReviewPage() {
         items: cart.map(i => ({ productId: i.id, cantidad: i.quantity })),
       });
 
-      // 2) Guardar el snapshot del pedido para la pantalla de Éxito.
       saveCompletedOrder({
         ...draft,
         orderNumber: generarFolio(),
         backendOrderId: orden.id,
         createdAt: new Date().toISOString(),
         items: cart,
-        subtotal: cartTotal,
-        total,
+        subtotal: subtotalDisplay,
+        total: totalFinal,
         pagado: false,
       });
 
-      // 3) Crear la preferencia de pago y redirigir a Mercado Pago.
       const pref = await AdminService.createMpPreference(orden.id);
       if (!pref.initPoint) throw new Error('No se recibió la URL de pago.');
       window.location.href = pref.initPoint;
@@ -112,7 +163,7 @@ export default function CheckoutReviewPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* Columna Izquierda: Detalles del pedido */}
+        {/* Left Column: Order Details */}
         <div className="lg:col-span-8 space-y-8">
           {/* Dirección de Envío */}
           <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -121,10 +172,7 @@ export default function CheckoutReviewPage() {
                 <MapPin className="text-[#004A99] w-6 h-6" />
                 <h3 className="text-xl font-serif font-bold text-slate-900">Dirección de Envío</h3>
               </div>
-              <button 
-                onClick={() => navigate('/checkout/datos')}
-                className="text-[#004A99] text-sm font-semibold flex items-center gap-1 hover:underline"
-              >
+              <button onClick={() => navigate('/checkout/datos')} className="text-[#004A99] text-sm font-semibold flex items-center gap-1 hover:underline">
                 <Edit3 className="w-4 h-4" /> Editar
               </button>
             </div>
@@ -146,10 +194,7 @@ export default function CheckoutReviewPage() {
                 {esAnticipado ? <Calendar className="text-[#004A99] w-6 h-6" /> : <Zap className="text-[#004A99] w-6 h-6" />}
                 <h3 className="text-xl font-serif font-bold text-slate-900">Método de Entrega</h3>
               </div>
-              <button
-                onClick={() => navigate('/checkout/datos')}
-                className="text-[#004A99] text-sm font-semibold flex items-center gap-1 hover:underline"
-              >
+              <button onClick={() => navigate('/checkout/datos')} className="text-[#004A99] text-sm font-semibold flex items-center gap-1 hover:underline">
                 <Edit3 className="w-4 h-4" /> Editar
               </button>
             </div>
@@ -171,28 +216,25 @@ export default function CheckoutReviewPage() {
             </div>
           </section>
 
-          {/* Mensaje para la tarjeta: solo se muestra si el cliente agregó una dedicatoria. */}
+          {/* Dedicatoria */}
           {dedicatoria && (
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Mail className="text-[#004A99] w-6 h-6" />
-                <h3 className="text-xl font-serif font-bold text-slate-900">Mensaje para la Tarjeta</h3>
+            <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Mail className="text-[#004A99] w-6 h-6" />
+                  <h3 className="text-xl font-serif font-bold text-slate-900">Mensaje para la Tarjeta</h3>
+                </div>
+                <button onClick={() => navigate('/checkout/datos')} className="text-[#004A99] text-sm font-semibold flex items-center gap-1 hover:underline">
+                  <Edit3 className="w-4 h-4" /> Editar
+                </button>
               </div>
-              <button
-                onClick={() => navigate('/checkout/datos')}
-                className="text-[#004A99] text-sm font-semibold flex items-center gap-1 hover:underline"
-              >
-                <Edit3 className="w-4 h-4" /> Editar
-              </button>
-            </div>
-            <div className="italic text-slate-700 border-l-4 border-[#004A99]/30 pl-4 py-2">
-              "{dedicatoria}"
-            </div>
-          </section>
+              <div className="italic text-slate-700 border-l-4 border-[#004A99]/30 pl-4 py-2">
+                "{dedicatoria}"
+              </div>
+            </section>
           )}
 
-          {/* Políticas de entrega */}
+          {/* Políticas */}
           <div className="bg-slate-100 p-4 rounded-lg border-l-4 border-[#004A99] flex gap-4">
             <Info className="text-[#004A99] w-6 h-6 flex-shrink-0" />
             <div className="text-sm text-slate-600 leading-relaxed">
@@ -202,24 +244,20 @@ export default function CheckoutReviewPage() {
           </div>
         </div>
 
-        {/* Columna Derecha: Resumen */}
+        {/* Right Column: Summary */}
         <div className="lg:col-span-4">
           <div className="lg:sticky lg:top-32 space-y-6">
             <div className="bg-white p-6 rounded-xl shadow-xl border border-slate-100">
               <h3 className="text-xl font-serif font-bold mb-6 border-b border-slate-100 pb-4 text-slate-900">Resumen del Pedido</h3>
-              
-              {/* Lista de Productos */}
+
+              {/* Product List */}
               <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto no-scrollbar">
                 {cart.length > 0 ? (
-                  cart.map((item) => (
+                  cart.map(item => (
                     <div key={item.id} className="flex gap-4">
                       <div className="size-16 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 flex items-center justify-center">
                         {item.image ? (
-                          <img
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                            src={item.image}
-                          />
+                          <img alt={item.name} className="w-full h-full object-cover" src={item.image} />
                         ) : (
                           <ShoppingBag className="w-7 h-7 text-slate-300" />
                         )}
@@ -236,28 +274,87 @@ export default function CheckoutReviewPage() {
                 )}
               </div>
 
-              {/* Totales */}
-              <div className="space-y-3 pt-6 border-t border-slate-100">
+              {/* Coupon Field */}
+              <div className="pt-4 border-t border-slate-100 mb-4">
+                {cuponAplicado ? (
+                  <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span className="text-sm font-bold text-emerald-700">Cupón: {cuponAplicado}</span>
+                    </div>
+                    <button onClick={quitarCupon} className="text-slate-400 hover:text-red-500 transition-colors">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Código de cupón"
+                          value={cuponInput}
+                          onChange={e => setCuponInput(e.target.value.toUpperCase())}
+                          onKeyDown={e => e.key === 'Enter' && aplicarCupon()}
+                          className="w-full pl-9 pr-4 py-2.5 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#004A99]/30 focus:border-[#004A99] outline-none transition-all uppercase"
+                        />
+                      </div>
+                      <button
+                        onClick={aplicarCupon}
+                        disabled={cuponLoading || !cuponInput.trim()}
+                        className="px-4 py-2.5 bg-[#004A99] text-white text-sm font-bold rounded-xl hover:bg-[#004A99]/90 disabled:opacity-50 transition-all flex items-center gap-1"
+                      >
+                        {cuponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Aplicar'}
+                      </button>
+                    </div>
+                    {cuponError && <p className="text-xs text-red-600 font-medium">{cuponError}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Totals */}
+              <div className="space-y-3 pt-4 border-t border-slate-100">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Subtotal</span>
-                  <span className="font-medium text-slate-900">${cartTotal.toFixed(2)}</span>
+                  <span className="font-medium text-slate-900">${subtotalDisplay.toFixed(2)}</span>
                 </div>
+
+                {/* Discount Breakdown */}
+                {breakdown && breakdown.descuentosAplicados.length > 0 && breakdown.descuentosAplicados.map((d, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-emerald-600 flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      {d.nombre}
+                    </span>
+                    <span className="font-medium text-emerald-600">-${d.monto.toFixed(2)}</span>
+                  </div>
+                ))}
+
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Envío</span>
                   <span className={`font-medium ${shippingCost > 0 ? 'text-slate-900' : 'text-green-600'}`}>
                     {shippingCost > 0 ? `$${shippingCost.toFixed(2)}` : '¡Gratis!'}
                   </span>
                 </div>
+
+                {totalDescuentos > 0 && (
+                  <div className="flex justify-between text-sm pt-2 border-t border-dashed border-slate-200">
+                    <span className="text-emerald-600 font-semibold">Ahorras</span>
+                    <span className="font-bold text-emerald-600">-${totalDescuentos.toFixed(2)}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-lg font-bold pt-4 text-slate-900">
                   <span>Total</span>
-                  <span className="text-[#004A99]">${total.toFixed(2)} MXN</span>
+                  <span className="text-[#004A99]">${totalFinal.toFixed(2)} MXN</span>
                 </div>
               </div>
 
-              {/* Botón Principal */}
+              {/* Pay Button */}
               <button
                 onClick={confirmarPedido}
-                disabled={cart.length === 0 || procesando}
+                disabled={cart.length === 0 || procesando || pricingLoading}
                 className="w-full mt-8 bg-[#004A99] hover:bg-[#004A99]/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-[#004A99]/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {procesando ? (
@@ -269,28 +366,19 @@ export default function CheckoutReviewPage() {
                   'PAGAR CON MERCADO PAGO'
                 )}
               </button>
-              {error && (
-                <p className="mt-3 text-sm text-red-600 text-center">{error}</p>
-              )}
+              {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <Lock className="w-3 h-3" />
                 Pago 100% Seguro y Encriptado
               </div>
             </div>
-
-            {/* Cupones o ayuda */}
-            <div className="p-4 border-2 border-dashed border-slate-300 rounded-xl flex items-center gap-3 group cursor-pointer hover:border-[#004A99] transition-colors">
-              <ShoppingBag className="w-5 h-5 text-slate-400 group-hover:text-[#004A99]" />
-              <span className="text-sm font-medium text-slate-600">¿Tienes un cupón de descuento?</span>
-            </div>
           </div>
         </div>
       </div>
-      
+
       <div className="mt-20 pb-10 text-center text-xs text-slate-400">
         © 2024 Florería Bautista. Todos los derechos reservados.
       </div>
     </main>
   );
 }
-

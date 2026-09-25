@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ShoppingCart, Menu, X, Bell, Settings, LogOut, User, ChevronDown, PlusCircle } from "lucide-react";
 import { useCart } from "../hooks/useCart";
 import { motion, AnimatePresence } from "motion/react";
+import { useAuth } from "../hooks/useAuth";
 
 const menuItems = [
   { name: "Inicio", href: "/" },
@@ -18,15 +19,9 @@ export function NavbarCliente() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { cartCount } = useCart();
   const [cartBounce, setCartBounce] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+  // Sesión desde el contexto, no releyendo localStorage por componente.
+  const { usuario: user, esAdmin, esEmpleado, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,9 +42,8 @@ export function NavbarCliente() {
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('usuario');
-    window.location.href = '/';
+    // `logout` borra también refreshToken y la clave heredada 'user'.
+    logout();
   };
 
   useEffect(() => {
@@ -172,7 +166,7 @@ export function NavbarCliente() {
               >
                 <div className="text-right hidden xl:block">
                   <p className="text-xs font-black leading-none text-white group-hover:text-[#FBBF24] transition-colors">
-                    {user?.nombre || user?.name || 'Usuario'}
+                    {user?.nombre || 'Usuario'}
                   </p>
                   {user?.role && (
                     <p className="text-[10px] text-[#FBBF24]/80 font-bold tracking-wider uppercase mt-1">
@@ -182,7 +176,7 @@ export function NavbarCliente() {
                 </div>
                 <div className="relative">
                   <img
-                    src={user?.photoURL || "https://lh3.googleusercontent.com/aida-public/AB6AXuAL5B7o0eYjhGqhLycfFtW4PpBS7W-W4kLefdjYutzUVrqm7FFGlQTTQZr63LG5KENIVBXdC6cEozgkYjclBhMPqRCAg3CWRCSoVAmv3XAWHNfstqdNlme9ASbmfxPUJEDn90cw9OS4oQeoJR0-mDGbooVafT20ymwfX9p-WdnNtFc-CR7KhB7_2qyzIumRFHqiKkSayVBaSRS_dVhwty6IZAk_jlrqC2kDG2Hstoh3mNebr4U-KUTXzCmlhFACxcMhzcrGu105ldvc"}
+                    src={user?.fotoUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuAL5B7o0eYjhGqhLycfFtW4PpBS7W-W4kLefdjYutzUVrqm7FFGlQTTQZr63LG5KENIVBXdC6cEozgkYjclBhMPqRCAg3CWRCSoVAmv3XAWHNfstqdNlme9ASbmfxPUJEDn90cw9OS4oQeoJR0-mDGbooVafT20ymwfX9p-WdnNtFc-CR7KhB7_2qyzIumRFHqiKkSayVBaSRS_dVhwty6IZAk_jlrqC2kDG2Hstoh3mNebr4U-KUTXzCmlhFACxcMhzcrGu105ldvc"}
                     alt="User Profile"
                     className="w-9 h-9 rounded-full border-2 border-white/20 group-hover:border-[#FBBF24] transition-all duration-300 object-cover"
                   />
@@ -204,7 +198,7 @@ export function NavbarCliente() {
                     <div className="px-4 py-2 border-b border-gray-100 mb-2">
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mi Cuenta</p>
                     </div>
-                    {(user?.role === 'empleado' || user?.role === 'staff' || user?.role === 'administrador' || user?.role === 'admin') && (
+                    {(esEmpleado || esAdmin) && (
                       <Link
                         to="/empleado/venta-rapida"
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-primary hover:bg-primary/5 transition-colors"
@@ -327,12 +321,12 @@ export function NavbarCliente() {
                 <div className="bg-white/5 rounded-3xl p-6 border border-white/5">
                   <div className="flex items-center gap-4 mb-6">
                     <img
-                      src={user?.photoURL || "https://lh3.googleusercontent.com/aida-public/AB6AXuAL5B7o0eYjhGqhLycfFtW4PpBS7W-W4kLefdjYutzUVrqm7FFGlQTTQZr63LG5KENIVBXdC6cEozgkYjclBhMPqRCAg3CWRCSoVAmv3XAWHNfstqdNlme9ASbmfxPUJEDn90cw9OS4oQeoJR0-mDGbooVafT20ymwfX9p-WdnNtFc-CR7KhB7_2qyzIumRFHqiKkSayVBaSRS_dVhwty6IZAk_jlrqC2kDG2Hstoh3mNebr4U-KUTXzCmlhFACxcMhzcrGu105ldvc"}
+                      src={user?.fotoUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuAL5B7o0eYjhGqhLycfFtW4PpBS7W-W4kLefdjYutzUVrqm7FFGlQTTQZr63LG5KENIVBXdC6cEozgkYjclBhMPqRCAg3CWRCSoVAmv3XAWHNfstqdNlme9ASbmfxPUJEDn90cw9OS4oQeoJR0-mDGbooVafT20ymwfX9p-WdnNtFc-CR7KhB7_2qyzIumRFHqiKkSayVBaSRS_dVhwty6IZAk_jlrqC2kDG2Hstoh3mNebr4U-KUTXzCmlhFACxcMhzcrGu105ldvc"}
                       alt="User Profile"
                       className="w-12 h-12 rounded-full border-2 border-[#FBBF24]"
                     />
                     <div>
-                      <p className="font-black text-white">{user?.nombre || user?.name || 'Usuario'}</p>
+                      <p className="font-black text-white">{user?.nombre || 'Usuario'}</p>
                       {user?.role && (
                         <p className="text-xs text-[#FBBF24] font-bold uppercase tracking-wider">{user.role === 'cliente' ? 'Cliente Oro' : user.role}</p>
                       )}
@@ -355,7 +349,7 @@ export function NavbarCliente() {
                       <Settings className="w-5 h-5" />
                       <span className="font-bold">Configuración</span>
                     </Link>
-                    {(user?.role === 'empleado' || user?.role === 'staff' || user?.role === 'administrador' || user?.role === 'admin') && (
+                    {(esEmpleado || esAdmin) && (
                       <Link
                         to="/empleado/venta-rapida"
                         className="flex items-center gap-3 p-3 text-[#FBBF24] hover:text-white transition-colors"

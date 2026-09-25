@@ -1,45 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import HeroSection from '../../components/HeroSection';
-import FeaturedCategories from '../../components/FeaturedCategories';
-import HowItWorks from '../../components/HowItWorks';
-import EventsSection from '../../components/EventsSection';
-import Testimonials from '../../components/Testimonials';
-import Shipping from '../../components/Shipping';
-import FAQ from '../../components/FAQ';
-import ClientHomePage from './ClientHomePage';
-import { esCliente } from '../../utils/auth';
+import { useAuth } from '../../hooks/useAuth';
 
-export default function HomePage() {
-  const [user, setUser] = useState<any>(null);
+const ClientHomePage = React.lazy(() => import('./ClientHomePage'));
+const FeaturedCategories = React.lazy(() => import('../../components/FeaturedCategories'));
+const HowItWorks = React.lazy(() => import('../../components/HowItWorks'));
+const EventsSection = React.lazy(() => import('../../components/EventsSection'));
+const Testimonials = React.lazy(() => import('../../components/Testimonials'));
+const Shipping = React.lazy(() => import('../../components/Shipping'));
+const FAQ = React.lazy(() => import('../../components/FAQ'));
+
+function BelowFold() {
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        setUser(null);
-      }
-    } else {
-      setUser(null);
-    }
+    let fired = false;
+    const trigger = () => {
+      if (fired) return;
+      fired = true;
+      setVisible(true);
+      window.removeEventListener('scroll', trigger);
+    };
+    window.addEventListener('scroll', trigger, { passive: true, once: true });
+    const idle = 'requestIdleCallback' in window
+      ? requestIdleCallback(trigger, { timeout: 8000 })
+      : setTimeout(trigger, 4000);
+    return () => {
+      window.removeEventListener('scroll', trigger);
+      if ('requestIdleCallback' in window) cancelIdleCallback(idle as number);
+      else clearTimeout(idle as number);
+    };
   }, []);
 
-  const isClient = esCliente(user);
+  // El min-h reserva al menos una pantalla mientras las secciones cargan: sin él
+  // el footer aparece pegado al hero y salta hacia abajo al montarlas (CLS).
+  return (
+    <div className="min-h-screen">
+      {visible && (
+        <Suspense fallback={null}>
+          <FeaturedCategories />
+          <HowItWorks />
+          <EventsSection />
+          <Testimonials />
+          <Shipping />
+          <FAQ />
+        </Suspense>
+      )}
+    </div>
+  );
+}
 
-  if (isClient) {
-    return <ClientHomePage user={user} />;
+export default function HomePage() {
+  const { esCliente } = useAuth();
+
+  if (esCliente) {
+    return (
+      <Suspense fallback={null}>
+        <ClientHomePage />
+      </Suspense>
+    );
   }
 
   return (
     <main>
       <HeroSection />
-      <FeaturedCategories />
-      <HowItWorks />
-      <EventsSection />
-      <Testimonials />
-      <Shipping />
-      <FAQ />
+      <BelowFold />
     </main>
   );
 }

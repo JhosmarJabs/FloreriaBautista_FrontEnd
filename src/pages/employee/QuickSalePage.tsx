@@ -23,6 +23,8 @@ import { AdminService } from '../../services/adminService';
 import { Product, QuickSaleTemplate, QuickSaleTemplateItem } from '../../types';
 import { useToast } from '../../hooks/useToast';
 import { todayISO } from '../../utils/date';
+import { agregarVenta } from '../../services/offlineSalesQueue';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
 
 interface CartItem {
   id: string;
@@ -139,22 +141,36 @@ export default function QuickSalePage() {
 
   const total = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
+  const { refreshCount } = useOfflineSync();
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setIsProcessing(true);
+    const hoy = todayISO();
+    const idLocalOffline = crypto.randomUUID();
+    const payload = {
+      nombreCliente: 'Cliente Mostrador',
+      fechaEntrega: hoy,
+      tipoPedido: 'INSTANTANEO' as const,
+      notas: 'Venta rápida de mostrador',
+      items: cart.map(item => ({ productId: item.id, cantidad: item.cantidad })),
+      idLocalOffline,
+    };
+
     try {
-      const hoy = todayISO();
-      await AdminService.createPhysicalOrder({
-        nombreCliente: 'Cliente Mostrador',
-        fechaEntrega: hoy,
-        tipoPedido: 'INSTANTANEO',
-        notas: 'Venta rápida de mostrador',
-        items: cart.map(item => ({ productId: item.id, cantidad: item.cantidad })),
-      });
+      await AdminService.createPhysicalOrder(payload);
       showToast('Venta registrada con éxito', 'success');
       setCart([]);
-    } catch (err: any) {
-      showToast(err.message || 'Error al procesar la venta', 'error');
+    } catch {
+      await agregarVenta({
+        idLocalOffline,
+        payload,
+        creadoEn: new Date().toISOString(),
+        intentos: 0,
+      });
+      await refreshCount();
+      showToast('Sin conexión — venta guardada localmente', 'info');
+      setCart([]);
     } finally {
       setIsProcessing(false);
     }

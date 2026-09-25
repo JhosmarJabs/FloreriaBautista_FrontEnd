@@ -162,10 +162,10 @@ export default function AdminSeasonalCatalogsPage() {
           <p className="text-xs text-slate-400 font-medium">No se encontraron catálogos</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full">
           {catalogsFiltrados.map(catalog => (
             <div key={catalog.id} className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden hover:shadow-md hover:border-amber-200 dark:hover:border-amber-800/50 transition-all">
-              <div className="h-28 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center justify-center relative overflow-hidden">
+              <div className="h-20 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center justify-center relative overflow-hidden">
                 {catalog.imagenUrl ? (
                   <img 
                     src={catalog.imagenUrl} 
@@ -186,7 +186,7 @@ export default function AdminSeasonalCatalogsPage() {
                 </div>
               </div>
               
-              <div className="p-5">
+              <div className="p-3">
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h3 className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">{catalog.nombre}</h3>

@@ -7,11 +7,16 @@ import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton } from '../../compone
 import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
 import { Product } from '../../types';
-import { esCliente } from '../../utils/auth';
 import { slugify } from '../../utils/slug';
+import { useAuth } from '../../hooks/useAuth';
 
-export default function ClientHomePage({ user }: { user?: any }) {
-  const userName = user?.name || 'Carlos';
+export default function ClientHomePage() {
+  // Antes esta pantalla recibía una prop `user` que AppRoutes nunca le pasaba:
+  // el saludo caía siempre en el marcador "Carlos" y `esCliente(user)` daba
+  // false, así que a un cliente ya autenticado se le abría el modal de login
+  // al añadir al carrito.
+  const { usuario: user, esCliente } = useAuth();
+  const userName = user?.nombre?.split(' ')[0] || 'invitado';
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -30,7 +35,7 @@ export default function ClientHomePage({ user }: { user?: any }) {
   }, []);
 
   const handleAddToCart = (product: Product) => {
-    if (esCliente(user)) {
+    if (esCliente) {
       addToCart(product);
       showToast(`${product.nombre} añadido al carrito`, 'success');
     } else {

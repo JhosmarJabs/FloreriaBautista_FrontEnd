@@ -17,19 +17,18 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminService } from '../../services/adminService';
+import { estadoPedido } from '../../utils/labels';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function CustomerOrdersPage() {
+  const { usuario: user } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 5;
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (storedUser) setUser(JSON.parse(storedUser));
-
     const loadOrders = async () => {
       try {
         const res = await AdminService.getMyOrders();
@@ -46,16 +45,10 @@ export default function CustomerOrdersPage() {
     loadOrders();
   }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Entregado': return 'bg-green-500 text-white';
-      case 'Pendiente': return 'bg-amber-500 text-white';
-      case 'En Ruta': return 'bg-blue-500 text-white';
-      case 'Cancelado': return 'bg-slate-500 text-white';
-      case 'En Preparación': return 'bg-indigo-500 text-white';
-      default: return 'bg-slate-400 text-white';
-    }
-  };
+  // Antes este switch comparaba contra etiquetas ('En Ruta') pero recibía la clave
+  // cruda del backend ('EN_RUTA'), así que ningún caso coincidía nunca: el badge
+  // salía siempre gris y debajo se imprimía EN_RUTA tal cual. Ahora sale del
+  // diccionario, que sí entiende las claves.
 
   if (loading) {
     return (
@@ -125,8 +118,8 @@ export default function CustomerOrdersPage() {
                     <span className={`text-xs font-bold uppercase tracking-wider ${selectedOrder?.id === order.id ? 'text-[#ec5b13]' : 'text-slate-400'}`}>
                       #FB-{order.id}
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getStatusColor(order.estadoPedido ?? order.status)}`}>
-                      {order.estadoPedido ?? order.status}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${estadoPedido(order.estadoPedido ?? order.status).badge}`}>
+                      {estadoPedido(order.estadoPedido ?? order.status).label}
                     </span>
                   </div>
                   <h3 className="font-bold text-slate-900 truncate mb-1">
@@ -258,7 +251,7 @@ export default function CustomerOrdersPage() {
                           <h5 className="font-black text-slate-900 uppercase text-xs tracking-[0.2em]">Dirección de Envío</h5>
                         </div>
                         <div className="pl-13">
-                          <p className="font-bold text-slate-900 mb-1">{user.fullName || user.nombre}</p>
+                          <p className="font-bold text-slate-900 mb-1">{user.nombre}</p>
                           <p className="text-sm text-slate-500 leading-relaxed">
                             Calle Mayor, 124, 3º Izquierda<br />
                             28013 Madrid, España<br />

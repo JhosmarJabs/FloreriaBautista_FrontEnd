@@ -1,12 +1,23 @@
 import { SiteSettings } from '../types';
+import { apiCache } from './apiCache';
 
-// Servicio público (sin autenticación) para que las páginas del sitio (Footer,
-// Contacto, banner del Home) muestren el mismo contenido configurado en /admin/cms.
 export const CmsService = {
   getSettings: async (): Promise<SiteSettings> => {
-    const res = await fetch('/api/cms');
-    if (!res.ok) throw new Error(`Error ${res.status} al obtener la configuración del sitio`);
-    const json = await res.json();
-    return json.data as SiteSettings;
+    const url = '/api/cms';
+    const hit = apiCache.get(url);
+    if (hit) return (hit as { data: SiteSettings }).data;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const json = await res.json();
+      apiCache.set(url, json);
+      return json.data as SiteSettings;
+    } catch {
+      clearTimeout(timeout);
+      throw new Error('CMS no disponible');
+    }
   },
 };

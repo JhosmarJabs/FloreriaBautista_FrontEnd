@@ -20,6 +20,7 @@ import { Link } from 'react-router-dom';
 import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
 import { parseApiDate } from '../../utils/date';
+import AvisoAlcanceEmpleado from '../../components/AvisoAlcanceEmpleado';
 
 // Estados finales del backend: un pedido en cualquiera de estos ya no cuenta
 // como entrega pendiente (ver Backend/Services/OrderService.cs y OrdersPage).
@@ -106,6 +107,8 @@ export default function EmployeeDashboardPage() {
       animate="visible"
       className="w-full px-4 sm:px-6 py-4 space-y-4"
     >
+      <AvisoAlcanceEmpleado recurso="pedidos" />
+
       {/* ── Welcome Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div>
@@ -247,14 +250,14 @@ export default function EmployeeDashboardPage() {
                     <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all z-10">
                         <Package className="w-5 h-5" />
                     </div>
-                    <span className="font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-[#1e3a5f] transition-colors z-10">Suministros</span>
+                    <span className="font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-[#1e3a5f] dark:group-hover:text-blue-400 transition-colors z-10">Suministros</span>
                 </Link>
                 
                 <Link to="/empleado/pedidos" className="bg-white/70 dark:bg-slate-800/40 backdrop-blur-xl p-5 rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm flex flex-col items-center justify-center gap-2 text-center hover:border-blue-500 hover:shadow-xl transition-all group overflow-hidden relative">
                     <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-all z-10">
                         <ClipboardList className="w-5 h-5" />
                     </div>
-                    <span className="font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-amber-600 transition-colors z-10">Bitácora</span>
+                    <span className="font-black text-[10px] uppercase tracking-[0.1em] text-slate-400 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors z-10">Bitácora</span>
                 </Link>
               </div>
 
@@ -268,7 +271,7 @@ export default function EmployeeDashboardPage() {
                     <p className="text-blue-600 dark:text-blue-400/60 text-[9px] font-black uppercase tracking-widest mt-1 underline underline-offset-2 decoration-[#eab308]">Tickets de entrega</p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#1e3a5f] transition-colors" />
+                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#1e3a5f] dark:group-hover:text-white transition-colors" />
               </button>
             </div>
           </div>
@@ -373,7 +376,7 @@ export default function EmployeeDashboardPage() {
         </div>
         <div className="flex items-center gap-2 text-slate-400/60">
             <span>© 2024 FB</span>
-            <div className="w-1 h-1 bg-slate-200 rounded-full" />
+            <div className="w-1 h-1 bg-slate-200 dark:bg-slate-600 rounded-full" />
             <span className="text-[#1e3a5f] dark:text-blue-400/40">Z-Centro</span>
         </div>
       </footer>

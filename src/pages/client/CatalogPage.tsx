@@ -31,7 +31,7 @@ import {
 } from "../../components/Animations";
 import ImportModal from "../../components/ImportModal";
 import { slugify } from "../../utils/slug";
-import { esCliente } from "../../utils/auth";
+import { useAuth } from "../../hooks/useAuth";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -43,7 +43,7 @@ export default function CatalogPage() {
   const { addToCart } = useCart();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const { esCliente, esAdmin, esEmpleado } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -57,22 +57,13 @@ export default function CatalogPage() {
   const itemsPerPage = 18;
 
   useEffect(() => {
-    let currentUserRole = null;
-    const storedUser = localStorage.getItem("usuario") || localStorage.getItem("user");
-    
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      currentUserRole = parsedUser.role;
-    }
-
     const loadData = async () => {
       setLoading(true);
       try {
         let res;
         // Si es admin o empleado, consume la ruta del inventario administrativo.
         // Si es visitante web o cliente verificado, consume la ruta pública oficial.
-        if (currentUserRole === "administrador" || currentUserRole === "admin" || currentUserRole === "empleado") {
+        if (esAdmin || esEmpleado) {
           res = await AdminService.getAdminProducts({ size: 100 });
         } else {
           res = await AdminService.getProducts({ size: 100 });
@@ -86,7 +77,8 @@ export default function CatalogPage() {
     };
     
     loadData();
-  }, []);
+    // Recarga si cambia el rol: la sesión se hidrata después del primer render.
+  }, [esAdmin, esEmpleado, showToast]);
 
   const handleImportConfirm = async (_data: any[], file: File) => {
     setLoading(true);
@@ -167,7 +159,7 @@ export default function CatalogPage() {
   ] as string[];
 
   const handleAddToCart = (product: Product) => {
-    if (esCliente(user)) {
+    if (esCliente) {
       addToCart(product);
       showToast(`¡${product.nombre} añadido al carrito!`, "success");
     } else {
@@ -176,7 +168,7 @@ export default function CatalogPage() {
   };
 
   // Admin view
-  if (user?.role === "administrador" || user?.role === "admin") {
+  if (esAdmin) {
     return (
       <div className="min-h-full" style={{ zoom: 0.75 }}>
         <div className="w-full space-y-6">

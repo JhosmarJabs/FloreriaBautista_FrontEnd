@@ -23,6 +23,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AdminService, type UserAddress, type AddressInput } from '../../services/adminService';
 import { lookupCp } from '../../services/sepomexService';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
+import { estadoPedido } from '../../utils/labels';
+import { useAuth } from '../../hooks/useAuth';
 
 type Tab = 'perfil' | 'direcciones' | 'pedidos' | 'favoritos' | 'notificaciones';
 
@@ -30,6 +32,8 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>('perfil');
   const [user, setUser] = useState<any>(null);
+  // `logout` centraliza el borrado de la sesión (tokens + clave heredada 'user').
+  const { usuario: usuarioSesion, logout: handleLogout } = useAuth();
   const [showSuccess, setShowSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string>('');
@@ -103,17 +107,12 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Estado del pedido → etiqueta y color legibles.
-  const ESTADO_INFO: Record<string, { label: string; badge: string }> = {
-    PENDIENTE_VALIDACION: { label: 'Pendiente', badge: 'bg-amber-100 text-amber-700' },
-    EN_PREPARACION:       { label: 'En preparación', badge: 'bg-indigo-100 text-indigo-700' },
-    EN_RUTA:              { label: 'En ruta', badge: 'bg-blue-100 text-blue-700' },
-    ENTREGADO:            { label: 'Entregado', badge: 'bg-emerald-100 text-emerald-700' },
-    CANCELADO:            { label: 'Cancelado', badge: 'bg-slate-200 text-slate-600' },
-    PENDIENTE_ANULACION:  { label: 'Por anular', badge: 'bg-red-100 text-red-700' },
-    NO_COMPLETADO:        { label: 'Sin completar', badge: 'bg-slate-200 text-slate-600' },
+  // Estado del pedido → etiqueta y color. Vienen de utils/labels.ts para que el
+  // cliente lea exactamente el mismo nombre que ve el empleado que lo atiende.
+  const estadoInfo = (e: string) => {
+    const ui = estadoPedido(e);
+    return { label: ui.label, badge: ui.badge };
   };
-  const estadoInfo = (e: string) => ESTADO_INFO[e] ?? { label: e, badge: 'bg-slate-200 text-slate-600' };
 
   const tiempoRelativo = (iso: string) => {
     if (!iso) return '';
@@ -242,28 +241,19 @@ export default function SettingsPage() {
           fechaNacimiento: u.fechaNacimiento ? u.fechaNacimiento.split('T')[0] : '',
         });
       } catch {
-        const stored = localStorage.getItem('usuario') || localStorage.getItem('user');
-        if (stored) {
-          const u = JSON.parse(stored);
-          setUser(u);
+        // Si el perfil no carga, al menos muestra lo que ya tiene la sesión.
+        if (usuarioSesion) {
+          setUser(usuarioSesion);
           setProfile(prev => ({
             ...prev,
-            nombre: u.nombre ?? u.name ?? '',
-            correo: u.correo ?? u.email ?? '',
+            nombre: usuarioSesion.nombre,
+            correo: usuarioSesion.correo,
           }));
         }
       }
     };
     loadProfile();
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('usuario');
-    localStorage.removeItem('user');
-    window.location.href = '/';
-  };
+  }, [usuarioSesion]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -364,7 +354,7 @@ export default function SettingsPage() {
                     <Camera className="w-4 h-4" />
                   </button>
                 </div>
-                <h2 className="mt-4 font-serif text-lg font-bold text-slate-800">{profile.nombre || user?.nombre || user?.name || 'Usuario'}</h2>
+                <h2 className="mt-4 font-serif text-lg font-bold text-slate-800">{profile.nombre || user?.nombre || 'Usuario'}</h2>
                 <p className="text-xs text-slate-500">Cliente Premium</p>
               </div>
 

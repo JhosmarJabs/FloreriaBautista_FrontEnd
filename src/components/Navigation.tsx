@@ -1,41 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { LogOut, User } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { rutaInicialPorRol } from '../utils/auth';
 
 export default function Navigation() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      setUser(null);
-    }
-  }, [location.pathname]);
-
-  const getUserDashboard = () => {
-    if (!user) return "/dashboard";
-    const roles: string[] = (user?.roles ?? (user?.role ? [user.role] : []))
-      .map((r: string) => r.toLowerCase());
-    if (roles.some(r => ['administrador', 'admin'].includes(r))) return "/admin/dashboard";
-    if (roles.some(r => ['empleado', 'staff'].includes(r))) return "/empleado/dashboard";
-    return "/dashboard";
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    navigate('/login');
-  };
+  // La sesión viene del contexto: este componente borraba solo la clave 'user'
+  // al salir y dejaba intactos 'usuario' y 'accessToken', así que el botón
+  // "Salir" no cerraba nada.
+  const { usuario, roles, isAuthenticated, logout } = useAuth();
 
   return (
     <header className="fixed top-0 left-0 w-full bg-white/90 backdrop-blur-md shadow-sm z-50">
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/Logo.png" alt="Florería Bautista Logo" className="h-10 w-auto" />
+          <img src="/Logo-sm.webp" alt="Florería Bautista Logo" className="h-10 w-auto" width={32} height={40} />
           <span className="text-2xl font-serif font-bold text-brand-deep tracking-tight">
             Florería <span className="text-[#D4AF37]">Bautista</span>
           </span>
@@ -43,7 +22,7 @@ export default function Navigation() {
         {/* Desktop Menu */}
         <div className="hidden lg:flex items-center gap-8 font-semibold text-sm uppercase tracking-wide">
           <Link className="nav-link" to="/">Inicio</Link>
-          {user && <Link className="nav-link" to={getUserDashboard()}>Panel</Link>}
+          {isAuthenticated && <Link className="nav-link" to={rutaInicialPorRol(roles)}>Panel</Link>}
           <Link className="nav-link" to="/catalogo">Catálogo</Link>
           <Link className="nav-link" to="/testimonios">Testimonios</Link>
           <Link className="nav-link" to="/nosotros">Nosotros</Link>
@@ -51,14 +30,14 @@ export default function Navigation() {
         </div>
         {/* CTA */}
         <div className="flex items-center gap-4">
-          {user ? (
+          {isAuthenticated ? (
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-brand-deep font-semibold">
                 <User className="w-5 h-5" />
-                <span>{user.name}</span>
+                <span>{usuario?.nombre}</span>
               </div>
               <button 
-                onClick={handleLogout}
+                onClick={logout}
                 className="text-red-500 hover:text-red-600 font-bold flex items-center gap-1"
               >
                 <LogOut className="w-5 h-5" />

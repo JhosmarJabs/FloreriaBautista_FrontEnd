@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Search, 
-  Package, 
-  Plus, 
-  Minus, 
-  Save, 
-  AlertCircle, 
+import React, { useState, useMemo } from 'react';
+import {
+  Search,
+  Package,
+  Plus,
+  Minus,
+  Save,
+  AlertCircle,
   RefreshCw,
   History,
   ArrowUpRight,
@@ -19,53 +19,32 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { InventoryItem } from '../../types';
 import { useToast } from '../../hooks/useToast';
+import { useDatasetEnMemoria } from '../../hooks/useDatasetEnMemoria';
+import { coincideTexto } from '../../utils/textSearch';
+
+const datasetConfig = {
+  cargarTodo: AdminService.getInventoryIndex,
+  cargarDelta: AdminService.getInventoryDelta,
+  getId: (i: InventoryItem) => i.id,
+};
 
 export default function QuickInventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { datos: items, cargando: loading, recargarCompleto, aplicarParche } = useDatasetEnMemoria(datasetConfig);
   const [saving, setSaving] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sucursalFilter, setSucursalFilter] = useState('Todas');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
 
-  const loadData = useCallback(async () => {
-    if (!refreshing) setLoading(true);
-    try {
-      const res = await AdminService.getAdminInventory({ size: 100 });
-      setItems(res.data.items);
-    } catch (error) {
-      showToast('Error al conectar con la API de inventario', 'error');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [refreshing, showToast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    loadData();
-  };
-
-  const filteredItems = items.filter(p => {
-    const matchesSearch = p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         p.id.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredItems = useMemo(() => items.filter(p => {
+    const matchesSearch = coincideTexto(p.nombre, searchTerm) || coincideTexto(p.id, searchTerm);
     const matchesSucursal = sucursalFilter === 'Todas' || p.sucursal === sucursalFilter;
     return matchesSearch && matchesSucursal;
-  });
+  }), [items, searchTerm, sucursalFilter]);
 
   const handleAdjust = (id: string, delta: number) => {
-    setItems(prev => prev.map(p => {
-      if (p.id === id) {
-        return { ...p, stockActual: Math.max(0, p.stockActual + delta) };
-      }
-      return p;
-    }));
+    const item = items.find(p => p.id === id);
+    if (item) aplicarParche({ ...item, stockActual: Math.max(0, item.stockActual + delta) });
   };
 
   const handleSave = async (id: string) => {
@@ -92,9 +71,9 @@ export default function QuickInventoryPage() {
     }
   };
 
-  const sucursales = ['Todas', ...new Set(items.map(p => p.sucursal))];
+  const sucursales = useMemo(() => ['Todas', ...new Set(items.map(p => p.sucursal))], [items]);
 
-  if (loading && !refreshing) {
+  if (loading && items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
         <div className="relative">
@@ -120,12 +99,12 @@ export default function QuickInventoryPage() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={handleRefresh}
-            disabled={refreshing}
+          <button
+            onClick={() => recargarCompleto()}
+            disabled={loading}
             className="flex items-center gap-3 px-6 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-white/5 text-[#1e3a5f] dark:text-slate-300 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50"
           >
-            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
             Sincronizar
           </button>
         </div>

@@ -238,7 +238,10 @@ export default function AdminQuickSaleTemplatesPage() {
   const loadProductsFromEndpoint = async (): Promise<any[]> => {
     setLoadingProducts(true);
     try {
-      const response = await AdminService.getProducts({ size: 500 });
+      // getProducts() es el catálogo público y excluye "SOLO_SUCURSAL" (privados).
+      // Aquí se arma la botonera del POS, así que necesitamos también esos productos
+      // internos que no se venden por la web.
+      const response = await AdminService.getEmployeeProducts({ size: 500 });
       const items = response.data.items || [];
       setProducts(items);
       return items;

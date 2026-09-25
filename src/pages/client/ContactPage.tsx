@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Phone, Mail, Send, MessageSquare } from 'lucide-react';
+import { MapPin, Phone, Mail, Send, MessageSquare, Navigation, Loader2 } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { CmsService } from '../../services/cmsService';
 import { AdminService } from '../../services/adminService';
+import { useAuth } from '../../hooks/useAuth';
 import { SiteSettings } from '../../types';
 import { groupHorarios } from '../../utils/horarios';
 
 export default function ContactPage() {
   const { showToast } = useToast();
+  const { usuario } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,6 +21,8 @@ export default function ContactPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
   useEffect(() => {
     CmsService.getSettings().then(setSettings).catch(() => { /* usa los valores por defecto del markup */ });
@@ -32,15 +36,12 @@ export default function ContactPage() {
         const res = await AdminService.getCurrentUser();
         u = res.data;
       } catch {
-        const stored = localStorage.getItem('usuario') || localStorage.getItem('user');
-        if (stored) {
-          try { u = JSON.parse(stored); } catch { u = null; }
-        }
+        u = usuario;
       }
       if (!u) return;
 
-      const nombre = [u.nombre, u.apellido].filter(Boolean).join(' ').trim() || u.name || '';
-      const correo = u.correo || u.email || '';
+      const nombre = [u.nombre, u.apellido].filter(Boolean).join(' ').trim();
+      const correo = u.correo || '';
       const telefono = u.telefono || u.phone || '';
 
       // Solo rellena campos vacíos para no sobreescribir lo que el usuario escriba.
@@ -52,7 +53,43 @@ export default function ContactPage() {
       }));
     };
     prefillUser();
-  }, []);
+  }, [usuario]);
+
+  const handleComoLlegar = () => {
+    if (!settings?.latitud || !settings?.longitud) {
+      if (settings?.direccionUrl) window.open(settings.direccionUrl, '_blank');
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      window.open(
+        `https://www.google.com/maps/dir/?api=1&destination=${settings.latitud},${settings.longitud}`,
+        '_blank',
+      );
+      return;
+    }
+
+    setGeoLoading(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoLoading(false);
+        window.open(
+          `https://www.google.com/maps/dir/?api=1&origin=${pos.coords.latitude},${pos.coords.longitude}&destination=${settings.latitud},${settings.longitud}`,
+          '_blank',
+        );
+      },
+      () => {
+        setGeoLoading(false);
+        setGeoError('No se pudo obtener tu ubicación.');
+        window.open(
+          `https://www.google.com/maps/dir/?api=1&destination=${settings.latitud},${settings.longitud}`,
+          '_blank',
+        );
+      },
+      { timeout: 10000 },
+    );
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -131,6 +168,23 @@ export default function ContactPage() {
                     <p className="text-slate-600 text-sm leading-relaxed">
                       {settings?.direccion || 'Av. Principal S/N, Centro, Huitzitzilingo, Hidalgo, México'}
                     </p>
+                  )}
+                  {(settings?.latitud && settings?.longitud || settings?.direccionUrl) && (
+                    <button
+                      onClick={handleComoLlegar}
+                      disabled={geoLoading}
+                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-deep bg-brand-deep/5 hover:bg-brand-deep/10 rounded-lg transition-colors disabled:opacity-60"
+                    >
+                      {geoLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Navigation className="w-3.5 h-3.5" />
+                      )}
+                      Cómo llegar
+                    </button>
+                  )}
+                  {geoError && (
+                    <p className="text-xs text-amber-600 mt-1">{geoError}</p>
                   )}
                 </div>
               </div>

@@ -3,7 +3,7 @@ import {
   Users, UserPlus, Search, Shield, ShoppingBag,
   Mail, Phone, CheckCircle2, XCircle,
   RefreshCw, LayoutGrid, List, ChevronRight, ChevronDown,
-  User as UserIcon, AlertTriangle, type LucideIcon
+  User as UserIcon, AlertTriangle, Crown, type LucideIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { FadeIn, AnimatedButton } from '../../components/Animations';
@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { AdminService } from '../../services/adminService';
 import { formatApiDate } from '../../utils/date';
 import { User } from '../../types';
+import { SortableColumnHeader } from '../../components/SortableColumnHeader';
+import type { SortConfig } from '../../hooks/useLocalSort';
 
 const ROLE_OPTIONS = [
   { label: 'Todos los Roles', value: '' },
@@ -94,6 +96,51 @@ export default function AdminUsersPage() {
   const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: '', order: null });
+  const toggleSort = useCallback((field: string) => {
+    setSortConfig(prev => {
+      if (prev.field !== field) return { field, order: 'asc' };
+      if (prev.order === 'asc') return { field, order: 'desc' };
+      return { field: '', order: null };
+    });
+  }, []);
+
+  // Responsable de turno
+  const [responsableId, setResponsableId] = useState<string | null>(null);
+  const [loadingResponsable, setLoadingResponsable] = useState(false);
+
+  const loadResponsable = useCallback(async () => {
+    try {
+      const res = await AdminService.getResponsableTurno();
+      setResponsableId(res.data?.id ?? null);
+    } catch { /* silencioso: no bloquea la pantalla */ }
+  }, []);
+
+  const handleAsignarResponsable = useCallback(async (userId: string) => {
+    setLoadingResponsable(true);
+    try {
+      await AdminService.asignarResponsableTurno(userId);
+      setResponsableId(userId);
+      showToast('Responsable de turno asignado', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Error al asignar responsable', 'error');
+    } finally {
+      setLoadingResponsable(false);
+    }
+  }, [showToast]);
+
+  const handleQuitarResponsable = useCallback(async () => {
+    setLoadingResponsable(true);
+    try {
+      await AdminService.quitarResponsableTurno();
+      setResponsableId(null);
+      showToast('Privilegio de responsable retirado', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Error al quitar responsable', 'error');
+    } finally {
+      setLoadingResponsable(false);
+    }
+  }, [showToast]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -161,7 +208,8 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     loadUsers();
-  }, [loadUsers]);
+    loadResponsable();
+  }, [loadUsers, loadResponsable]);
 
   /**
    * Con el filtro de rol activo el backend ya devolvio solo usuarios de ese rol,
@@ -173,10 +221,21 @@ export default function AdminUsersPage() {
     const forced = ROLE_GROUPS.find(g => g.key === roleFilter)?.key;
     users.forEach(u => buckets.get(forced ?? groupKeyFor(u))!.push(u));
 
+    const sortFn = (a: User, b: User): number => {
+      if (!sortConfig.field || !sortConfig.order) return byName(a, b);
+      const dir = sortConfig.order === 'asc' ? 1 : -1;
+      switch (sortConfig.field) {
+        case 'nombre': return byName(a, b) * dir;
+        case 'creadoEn': return ((a.creadoEn ?? '').localeCompare(b.creadoEn ?? '')) * dir;
+        case 'estado': return ((a.estado ?? '').localeCompare(b.estado ?? '')) * dir;
+        default: return byName(a, b);
+      }
+    };
+
     return ROLE_GROUPS
-      .map(g => ({ ...g, users: (buckets.get(g.key) ?? []).sort(byName) }))
+      .map(g => ({ ...g, users: (buckets.get(g.key) ?? []).sort(sortFn) }))
       .filter(g => g.users.length > 0);
-  }, [users, roleFilter]);
+  }, [users, roleFilter, sortConfig]);
 
   const cargados = users.length;
   const stats = [
@@ -226,6 +285,11 @@ export default function AdminUsersPage() {
                 </span>
               );
             })}
+            {responsableId === user.id && (
+              <span className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-500/20 flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Resp. Turno
+              </span>
+            )}
           </div>
         </td>
         <td className="px-6 py-4 text-xs font-bold text-slate-400">
@@ -236,6 +300,28 @@ export default function AdminUsersPage() {
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
             {isActive ? 'Activo' : 'Inactivo'}
           </span>
+        </td>
+        <td className="px-6 py-4">
+          {/* Accion responsable de turno: solo visible para EMPLEADOS activos */}
+          {isActive && (user.roles ?? []).includes('EMPLEADO') && (
+            responsableId === user.id ? (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleQuitarResponsable(); }}
+                disabled={loadingResponsable}
+                className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-all disabled:opacity-50"
+              >
+                Quitar turno
+              </button>
+            ) : (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleAsignarResponsable(user.id); }}
+                disabled={loadingResponsable}
+                className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-amber-300 hover:text-amber-600 dark:hover:text-amber-400 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+              >
+                Asignar turno
+              </button>
+            )
+          )}
         </td>
       </tr>
     );
@@ -317,6 +403,16 @@ export default function AdminUsersPage() {
         </div>
       )}
 
+      {/* Banner de advertencia: sin responsable de turno */}
+      {!loading && responsableId === null && (
+        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10">
+          <Crown className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400" />
+          <p className="text-xs font-bold text-red-700 dark:text-red-300">
+            No hay responsable de turno asignado. Las solicitudes de venta instantanea no podran escalarse. Asigna uno desde la fila de un empleado.
+          </p>
+        </div>
+      )}
+
       {/* Content */}
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl overflow-hidden min-h-[400px] shadow-sm flex flex-col">
         {loading ? (
@@ -338,9 +434,12 @@ export default function AdminUsersPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700/50">
-                      {['Usuario', 'Contacto', 'Rol', 'Registro', 'Estado'].map(h => (
-                        <th key={h} className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{h}</th>
-                      ))}
+                      <SortableColumnHeader label="Usuario" field="nombre" sortConfig={sortConfig} onToggle={toggleSort} className="px-6" />
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Contacto</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Rol</th>
+                      <SortableColumnHeader label="Registro" field="creadoEn" sortConfig={sortConfig} onToggle={toggleSort} className="px-6" />
+                      <SortableColumnHeader label="Estado" field="estado" sortConfig={sortConfig} onToggle={toggleSort} className="px-6" />
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
@@ -352,7 +451,7 @@ export default function AdminUsersPage() {
                           <tr>
                             {/* El fondo opaco va en la celda: el tinte del rol es
                                 translucido en dark y dejaria ver las filas debajo. */}
-                            <td colSpan={5} className="p-0 sticky top-0 z-20 bg-white dark:bg-slate-800">
+                            <td colSpan={6} className="p-0 sticky top-0 z-20 bg-white dark:bg-slate-800">
                               <button
                                 type="button"
                                 onClick={() => toggleGroup(group.key)}
@@ -414,6 +513,11 @@ export default function AdminUsersPage() {
                                          </span>
                                        );
                                      })}
+                                     {responsableId === user.id && (
+                                       <span className="px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-500/20 flex items-center gap-0.5">
+                                         <Crown className="w-2.5 h-2.5" /> Turno
+                                       </span>
+                                     )}
                                      <span className={`size-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                                    </div>
                                 </div>
@@ -436,7 +540,22 @@ export default function AdminUsersPage() {
                                       <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] mb-0.5">Miembro desde</p>
                                       <p className="text-[10px] font-black text-slate-400 uppercase">{formatApiDate(user.creadoEn, { month: 'long', year: 'numeric' })}</p>
                                    </div>
-                                   <div className={`size-8 rounded-full border-2 border-white dark:border-slate-700 shadow-sm ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                   <div className="flex items-center gap-2">
+                                     {isActive && roles.includes('EMPLEADO') && (
+                                       responsableId === user.id ? (
+                                         <button onClick={() => handleQuitarResponsable()} disabled={loadingResponsable}
+                                           className="px-2 py-1 rounded-lg text-[8px] font-black uppercase border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 transition-all disabled:opacity-50">
+                                           Quitar turno
+                                         </button>
+                                       ) : (
+                                         <button onClick={() => handleAsignarResponsable(user.id)} disabled={loadingResponsable}
+                                           className="px-2 py-1 rounded-lg text-[8px] font-black uppercase border border-slate-200 dark:border-slate-600 text-slate-400 hover:border-amber-300 hover:text-amber-600 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50">
+                                           Asignar turno
+                                         </button>
+                                       )
+                                     )}
+                                     <div className={`size-8 rounded-full border-2 border-white dark:border-slate-700 shadow-sm ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                   </div>
                                 </div>
                               </motion.div>
                             );

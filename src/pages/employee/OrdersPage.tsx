@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Search,
   Filter,
@@ -20,17 +20,13 @@ import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { useToast } from '../../hooks/useToast';
 import { parseApiDate } from '../../utils/date';
+import { estadoPedido, ESTADO_PEDIDO, ESTADOS_PEDIDO } from '../../utils/labels';
+import AvisoAlcanceEmpleado from '../../components/AvisoAlcanceEmpleado';
+import { useDatasetEnMemoria } from '../../hooks/useDatasetEnMemoria';
 
-// Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs)
-const ESTADO_STYLE: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  PENDIENTE_VALIDACION: { label: 'Pendiente',      color: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-100 dark:bg-amber-900/30',   border: 'border-amber-200 dark:border-amber-800' },
-  EN_PREPARACION:       { label: 'En Preparación',  color: 'text-indigo-700 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-900/30', border: 'border-indigo-200 dark:border-indigo-800' },
-  EN_RUTA:              { label: 'En Ruta',         color: 'text-blue-700 dark:text-blue-400',     bg: 'bg-blue-100 dark:bg-blue-900/30',     border: 'border-blue-200 dark:border-blue-800' },
-  ENTREGADO:            { label: 'Entregado',       color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30', border: 'border-emerald-200 dark:border-emerald-800' },
-  CANCELADO:            { label: 'Cancelado',       color: 'text-rose-700 dark:text-rose-400',     bg: 'bg-rose-100 dark:bg-rose-900/30',     border: 'border-rose-200 dark:border-rose-800' },
-  PENDIENTE_ANULACION:  { label: 'Pend. Anulación', color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', border: 'border-orange-200 dark:border-orange-800' },
-  NO_COMPLETADO:        { label: 'No Completado',   color: 'text-slate-600 dark:text-slate-400',   bg: 'bg-slate-100 dark:bg-slate-800',      border: 'border-slate-200 dark:border-slate-700' },
-};
+// Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs).
+// Etiqueta y color salen de utils/labels.ts; esta vista usa los tonos fuertes
+// porque las tarjetas van sobre fondo de color.
 
 // Siguiente estado permitido segun la maquina de estados del backend
 const SIGUIENTE_ESTADO: Record<string, string | null> = {
@@ -40,38 +36,31 @@ const SIGUIENTE_ESTADO: Record<string, string | null> = {
   ENTREGADO:            null,
 };
 
-// Estados finales: se ocultan en la vista "Activos" (por defecto), pero siguen
-// accesibles seleccionandolos individualmente o con "Todos los Estados".
 const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CANCELADO', 'NO_COMPLETADO'];
 
+const datasetConfig = {
+  cargarTodo: async () => {
+    const res = await AdminService.getAdminOrders({ size: 500 });
+    return { items: res.data.items, sincronizadoEn: new Date().toISOString() };
+  },
+  cargarDelta: AdminService.getOrdersDelta,
+  getId: (o: Order) => o.id,
+};
+
 function estiloDe(estado: string) {
-  return ESTADO_STYLE[estado] ?? { label: estado, color: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200' };
+  const ui = estadoPedido(estado);
+  return { label: ui.label, color: ui.text, bg: ui.bgFuerte, border: ui.borderFuerte };
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { datos: orders, cargando: loading, error, recargarCompleto, aplicarParche } = useDatasetEnMemoria(datasetConfig);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [confirmOrder, setConfirmOrder] = useState<Order | null>(null);
   const { showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState('ACTIVOS');
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await AdminService.getAdminOrders({ size: 100 });
-      setOrders(res.data.items);
-    } catch (err: any) {
-      setError(err.message || 'Error al cargar los pedidos');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  const loadData = useCallback(() => recargarCompleto(), [recargarCompleto]);
 
   // Paso 1: el boton solo abre el modal de confirmacion (evita avances accidentales)
   const requestStatusChange = (order: Order) => {
@@ -98,7 +87,7 @@ export default function OrdersPage() {
     try {
       await AdminService.updateAdminOrderStatus(order.id, siguiente);
       showToast(`Pedido actualizado a ${estiloDe(siguiente).label}`, 'success');
-      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, estadoPedido: siguiente } : o));
+      aplicarParche({ ...order, estadoPedido: siguiente });
     } catch (err: any) {
       showToast(err.message || 'Error al actualizar el pedido', 'error');
     } finally {
@@ -145,6 +134,7 @@ export default function OrdersPage() {
 
   return (
     <div className="w-full h-full space-y-6 max-w-[1500px] mx-auto px-4 py-2">
+      <AvisoAlcanceEmpleado recurso="pedidos" />
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
         <div>
@@ -173,7 +163,7 @@ export default function OrdersPage() {
         {[
           { label: 'Total', value: stats.total, icon: <ShoppingBag />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30', border: 'border-blue-100 dark:border-blue-800' },
           { label: 'Pendientes', value: stats.pending, icon: <Clock3 />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30', border: 'border-amber-100 dark:border-amber-800' },
-          { label: 'En Ruta', value: stats.enRuta, icon: <Truck />, color: 'text-[#1e3a5f] dark:text-blue-400', bg: 'bg-slate-100 dark:bg-slate-900/30', border: 'border-slate-200 dark:border-slate-800' },
+          { label: ESTADO_PEDIDO.EN_RUTA.label, value: stats.enRuta, icon: <Truck />, color: 'text-[#1e3a5f] dark:text-blue-400', bg: 'bg-slate-100 dark:bg-slate-900/30', border: 'border-slate-200 dark:border-slate-800' },
           { label: 'Entregados', value: stats.delivered, icon: <CheckCircle2 />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30', border: 'border-emerald-100 dark:border-emerald-800' },
         ].map((s, i) => (
           <motion.div
@@ -203,12 +193,9 @@ export default function OrdersPage() {
             >
               <option value="ACTIVOS">Activos</option>
               <option value="Todos">Todos los Estados</option>
-              <option value="PENDIENTE_VALIDACION">Pendientes</option>
-              <option value="EN_PREPARACION">En Preparación</option>
-              <option value="EN_RUTA">En Ruta</option>
-              <option value="ENTREGADO">Entregados</option>
-              <option value="CANCELADO">Cancelados</option>
-              <option value="NO_COMPLETADO">No Completados</option>
+              {ESTADOS_PEDIDO.filter(e => e !== 'PENDIENTE_ANULACION').map(e => (
+                <option key={e} value={e}>{ESTADO_PEDIDO[e].label}</option>
+              ))}
             </select>
           </div>
         </div>

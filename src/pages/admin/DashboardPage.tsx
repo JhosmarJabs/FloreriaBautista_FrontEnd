@@ -12,60 +12,22 @@ import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
 import { formatApiDate } from '../../utils/date';
+import { estadoPedido } from '../../utils/labels';
+import { useAuth } from '../../hooks/useAuth';
 
-// ─── Status helpers ────────────────────────────────────────────────────────────
-// Claves = valores reales del enum del backend (ver OrdersController / OrdersPage).
-// Mismos colores que el resto del panel admin, para que un estado siempre se
-// identifique con el mismo color en toda la aplicación.
-const statusLabel: Record<string, string> = {
-  PENDIENTE_VALIDACION: 'Pendiente',
-  EN_PREPARACION:       'En Preparación',
-  EN_RUTA:              'En Ruta',
-  ENTREGADO:            'Entregado',
-  CANCELADO:            'Cancelado',
-  PENDIENTE_ANULACION:  'Pend. Anulación',
-  NO_COMPLETADO:        'No Completado',
-  // Alias en minúsculas / inglés por si algún flujo antiguo aún los usa.
-  pending: 'Pendiente', pendiente: 'Pendiente',
-  shipped: 'Enviado', enviado: 'Enviado', procesando: 'Procesando',
-  delivered: 'Entregado', entregado: 'Entregado',
-  cancelled: 'Cancelado', cancelado: 'Cancelado',
-};
-const statusStyle: Record<string, string> = {
-  PENDIENTE_VALIDACION: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
-  EN_PREPARACION:       'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20',
-  EN_RUTA:              'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
-  ENTREGADO:            'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
-  CANCELADO:            'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20',
-  PENDIENTE_ANULACION:  'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-500/20',
-  NO_COMPLETADO:        'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600',
-  pending:    'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
-  pendiente:  'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20',
-  shipped:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
-  enviado:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
-  procesando: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20',
-  delivered:  'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
-  entregado:  'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20',
-  cancelled:  'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20',
-  cancelado:  'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20',
-};
-const statusDot: Record<string, string> = {
-  PENDIENTE_VALIDACION: 'bg-amber-400',
-  EN_PREPARACION:       'bg-indigo-500',
-  EN_RUTA:              'bg-blue-500',
-  ENTREGADO:            'bg-emerald-500',
-  CANCELADO:            'bg-rose-500',
-  PENDIENTE_ANULACION:  'bg-orange-400',
-  NO_COMPLETADO:        'bg-slate-400',
-  pending: 'bg-amber-400', pendiente: 'bg-amber-400',
-  shipped: 'bg-blue-500', enviado: 'bg-blue-500', procesando: 'bg-blue-500',
-  delivered: 'bg-emerald-500', entregado: 'bg-emerald-500',
-  cancelled: 'bg-rose-500', cancelado: 'bg-rose-500',
-};
+// Etiqueta y color de cada estado viven en utils/labels.ts. `estadoPedido()`
+// también traduce los valores viejos en minúsculas o en inglés que algún flujo
+// antiguo todavía devuelve, así que aquí no hace falta mantener esa lista.
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [user, setUser]               = useState<any>(null);
+  // El rol lo resuelve el contexto de sesión (una sola copia para toda la app).
+  const {
+    usuario: user,
+    esAdmin: isAdmin,
+    esCliente: isCustomer,
+    esEmpleado: isEmployee,
+  } = useAuth();
   const [stats, setStats]             = useState<any>(null);
   const [alerts, setAlerts]           = useState<any[]>([]);
   const [monthlySales, setMonthlySales] = useState<any[]>([]);
@@ -87,10 +49,6 @@ export default function DashboardPage() {
     return false;
   });
 
-  useEffect(() => {
-    const stored = localStorage.getItem('usuario');
-    if (stored) setUser(JSON.parse(stored));
-  }, []);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -156,11 +114,6 @@ export default function DashboardPage() {
   );
 
   // ── ADMIN DASHBOARD ──────────────────────────────────────────────────────────
-  const userRoles: string[] = (user?.roles ?? (user?.role ? [user.role] : []))
-    .map((r: string) => r.toLowerCase());
-  const isAdmin    = userRoles.some(r => ['admin', 'administrador'].includes(r));
-  const isCustomer = userRoles.some(r => ['customer', 'cliente'].includes(r));
-  const isEmployee = userRoles.some(r => ['staff', 'empleado'].includes(r));
 
   if (isAdmin) {
     return (
@@ -471,15 +424,17 @@ export default function DashboardPage() {
                     </tr>
                   )}
 
-                  {!ordersError && filteredOrders.map((order, idx) => (
+                  {!ordersError && filteredOrders.map((order, idx) => {
+                    const estado = estadoPedido(order.estadoPedido);
+                    return (
                     <tr key={idx} className="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors group">
                       <td className="px-6 py-4">
                         <span className="text-sm font-black text-slate-900 dark:text-white">${order.total}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold ${statusStyle[order.estadoPedido] || ''}`}>
-                          <span className={`size-1.5 rounded-full ${statusDot[order.estadoPedido] || ''}`} />
-                          {statusLabel[order.estadoPedido] || order.estadoPedido}
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${estado.bg} ${estado.text} ${estado.border}`}>
+                          <span className={`size-1.5 rounded-full ${estado.dot}`} />
+                          {estado.label}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -524,7 +479,8 @@ export default function DashboardPage() {
                         </AnimatePresence>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -564,7 +520,7 @@ export default function DashboardPage() {
                 Bienvenido de vuelta
               </motion.span>
               <h1 className="text-5xl lg:text-6xl font-black mb-6 leading-[1.1] tracking-tight">
-                Tu próximo detalle, <span className="text-[#facc15]">{(user?.nombre ?? user?.name ?? 'Admin').split(' ')[0]}</span>
+                Tu próximo detalle, <span className="text-[#facc15]">{(user?.nombre || 'Admin').split(' ')[0]}</span>
               </h1>
               <p className="text-lg text-white/75 mb-8 leading-relaxed">
                 Flores frescas seleccionadas para transformar cualquier momento en un recuerdo.
@@ -671,7 +627,7 @@ export default function DashboardPage() {
   const employeeCard = { title: '¡Bienvenido Empleado!', desc: 'Gestiona los pedidos y el inventario del día.', icon: <Briefcase className="w-14 h-14 text-emerald-500" />, color: 'bg-emerald-50', border: 'border-emerald-200' };
 
   const cfg = isEmployee ? employeeCard : {
-    title: `¡Bienvenido ${user?.nombre ?? user?.name ?? 'Administrador'}!`, desc: 'Gracias por visitarnos.',
+    title: `¡Bienvenido ${user?.nombre || 'Administrador'}!`, desc: 'Gracias por visitarnos.',
     icon: <User className="w-14 h-14 text-slate-400" />, color: 'bg-slate-50', border: 'border-slate-200',
   };
 
@@ -688,7 +644,7 @@ export default function DashboardPage() {
           className="text-slate-500 dark:text-slate-400 mb-8">{cfg.desc}</motion.p>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
           className="flex flex-wrap justify-center gap-3">
-          {[['Usuario', user.name], ['Correo', user.email], ['Rol', user.role]].map(([label, val]) => (
+          {[['Usuario', user.nombre], ['Correo', user.correo], ['Rol', user.role]].map(([label, val]) => (
             <div key={label} className="bg-white dark:bg-slate-900 px-5 py-3 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
               <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider mb-0.5">{label}</p>
               <p className="font-bold text-slate-800 dark:text-slate-200 text-sm capitalize">{val}</p>

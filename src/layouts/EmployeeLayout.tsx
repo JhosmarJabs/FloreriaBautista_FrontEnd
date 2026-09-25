@@ -13,8 +13,12 @@ import {
   PanelLeftClose,
   Settings,
   Package,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../hooks/useAuth';
+import { NotificationsService } from '../services/notificationsService';
+import { useOfflineSync } from '../hooks/useOfflineSync';
 
 interface EmployeeLayoutProps {
   children: React.ReactNode;
@@ -26,6 +30,8 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showError, setShowError] = useState(false);
+  const [notifNoLeidas, setNotifNoLeidas] = useState(0);
+  const { isOnline, pendingCount } = useOfflineSync();
 
   useEffect(() => {
     if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -35,12 +41,15 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
     }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('usuario');
-    localStorage.removeItem('user');
-    window.location.href = '/';
-  };
+  useEffect(() => {
+    let cancelled = false;
+    NotificationsService.contarNoLeidas()
+      .then(c => { if (!cancelled) setNotifNoLeidas(c); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [location.pathname]);
+
+  const { logout: handleLogout, esAdmin } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -126,11 +135,6 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
             <Label>Inicio</Label>
           </Link>
 
-          <Link to="/empleado/pedidos" className={linkCls(isActive('/empleado/pedidos'))}>
-            <ShoppingBag className="w-5 h-5 flex-shrink-0" />
-            <Label>Pedidos</Label>
-          </Link>
-
           <Link to="/empleado/venta-rapida" className={linkCls(isActive('/empleado/venta-rapida'))}>
             <PlusCircle className="w-5 h-5 flex-shrink-0" />
             <Label>Venta Rápida</Label>
@@ -139,6 +143,11 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
           <Link to="/empleado/registrar-pedido" className={linkCls(isActive('/empleado/registrar-pedido'))}>
             <ClipboardList className="w-5 h-5 flex-shrink-0" />
             <Label>Pedido Físico</Label>
+          </Link>
+
+          <Link to="/empleado/pedidos" className={linkCls(isActive('/empleado/pedidos'))}>
+            <ShoppingBag className="w-5 h-5 flex-shrink-0" />
+            <Label>Pedidos</Label>
           </Link>
 
           <Link to="/empleado/entregas" className={linkCls(isActive('/empleado/entregas'))}>
@@ -165,12 +174,16 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
           </div>
 
           <Link
-            to="/notificaciones"
-            className={linkCls(isActive('/notificaciones'))}
+            to="/empleado/notificaciones"
+            className={linkCls(isActive('/empleado/notificaciones'))}
           >
             <div className={`relative ${!isSidebarOpen ? 'flex justify-center' : ''}`}>
               <Bell className="w-5 h-5 flex-shrink-0" />
-              <span className="absolute -top-1.5 -right-1.5 bg-[#eab308] text-[#1e3a5f] text-[10px] font-black px-1.5 rounded-full shadow-lg border border-[#1e3a5f]/50">3</span>
+              {notifNoLeidas > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-[#eab308] text-[#1e3a5f] text-[10px] font-black px-1.5 rounded-full shadow-lg border border-[#1e3a5f]/50">
+                  {notifNoLeidas > 99 ? '99+' : notifNoLeidas}
+                </span>
+              )}
             </div>
             <Label>Notificaciones</Label>
           </Link>
@@ -183,9 +196,24 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
             <Label>Configuración</Label>
           </Link>
 
+          {esAdmin && (
+            <Link
+              to="/admin/dashboard"
+              title={!isSidebarOpen ? 'Ir a Administrador' : undefined}
+              className={`flex items-center rounded-xl text-sm font-bold transition-all duration-200 text-blue-300 hover:bg-blue-500/10 hover:text-blue-400 py-3 mt-8 ${
+                isSidebarOpen ? "px-4 gap-3" : "justify-center px-0"
+              }`}
+            >
+              <ArrowLeftRight className="w-5 h-5 flex-shrink-0" />
+              <Label>Ir a Administrador</Label>
+            </Link>
+          )}
+
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center rounded-xl text-sm font-bold transition-all duration-200 text-rose-300 elements hover:bg-rose-500/10 hover:text-rose-400 py-3 mt-8 ${
+            className={`w-full flex items-center rounded-xl text-sm font-bold transition-all duration-200 text-rose-300 hover:bg-rose-500/10 hover:text-rose-400 py-3 ${
+              esAdmin ? 'mt-2' : 'mt-8'
+            } ${
               isSidebarOpen ? "px-4 gap-3" : "justify-center px-0"
             }`}
           >
@@ -220,10 +248,22 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         {/* Top Navbar */}
         <header className="h-16 bg-white/95 dark:bg-[#0b1624]/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 md:px-10 flex-shrink-0 z-10 transition-colors">
-          <div className="flex flex-col">
+          <div className="flex items-center gap-3">
             <h2 className="text-lg font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">
               Panel de ventas
             </h2>
+            {!isOnline && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                Sin conexión{pendingCount > 0 ? ` · ${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}` : ''}
+              </span>
+            )}
+            {isOnline && pendingCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                Sincronizando {pendingCount}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-4">

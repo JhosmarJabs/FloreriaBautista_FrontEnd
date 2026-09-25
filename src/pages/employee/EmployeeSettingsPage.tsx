@@ -18,6 +18,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useAuth } from '../../hooks/useAuth';
 
 const inputClass =
   'w-full px-5 py-4 text-sm border border-slate-200 dark:border-white/5 rounded-2xl focus:outline-none focus:ring-4 focus:ring-[#1e3a5f]/10 focus:border-[#1e3a5f] bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-300 dark:placeholder-slate-600 transition-all font-bold';
@@ -28,15 +29,9 @@ export default function EmployeeSettingsPage() {
   const [activeSection, setActiveSection] = useState('profile');
   const [loading, setLoading]             = useState(true);
   const [isDarkMode, setIsDarkMode]       = useState(false);
-  const [user, setUser]                   = useState<any>(null);
+  const { usuario: user } = useAuth();
 
   useEffect(() => {
-    // Load user data from localStorage
-    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    
     // Check dark mode state from document
     setIsDarkMode(document.documentElement.classList.contains('dark'));
     
@@ -100,7 +95,7 @@ export default function EmployeeSettingsPage() {
   const cardCls = "bg-white/95 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-100 dark:border-white/5 rounded-[3.5rem] shadow-sm transition-all overflow-hidden";
 
   return (
-    <div className="max-w-[1500px] mx-auto space-y-8 pb-20 p-4 md:p-2">
+    <div className="w-full space-y-8 pb-20 p-4 md:p-2">
 
       {/* ── Header ─────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
@@ -171,7 +166,7 @@ export default function EmployeeSettingsPage() {
                     <div className="relative group">
                         <div className="size-32 rounded-[2.5rem] bg-slate-50 dark:bg-slate-900 p-2 border-2 border-dashed border-[#eab308]/30 cursor-pointer overflow-hidden shadow-inner">
                             <img 
-                                src={user?.photoURL || "https://ui-avatars.com/api/?name=" + (user?.nombre || "User") + "&background=1e3a5f&color=fff&size=256&font-size=0.33&bold=true"} 
+                                src={user?.fotoUrl || "https://ui-avatars.com/api/?name=" + (user?.nombre || "User") + "&background=1e3a5f&color=fff&size=256&font-size=0.33&bold=true"} 
                                 alt="Profile" 
                                 className="w-full h-full rounded-[2rem] object-cover shadow-2xl transition-transform duration-1000 group-hover:scale-125"
                             />
@@ -185,10 +180,10 @@ export default function EmployeeSettingsPage() {
                             <User className="w-4 h-4" />
                             <span className="text-[10px] font-black uppercase tracking-[0.3em] leading-none mt-0.5">Ficha de Colaborador</span>
                         </div>
-                        <h2 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter uppercase">{user?.nombre ?? user?.name ?? "Cargando..."}</h2>
+                        <h2 className="text-3xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter uppercase">{user?.nombre ?? "Cargando..."}</h2>
                         <div className="flex items-center justify-center md:justify-start gap-3 text-slate-400 dark:text-slate-500 font-black text-xs uppercase tracking-widest">
                             <div className="w-2 h-2 bg-[#eab308] rounded-full animate-pulse" />
-                            <span>{user?.email ?? "staff@floreriabautista.com"}</span>
+                            <span>{user?.correo || "staff@floreriabautista.com"}</span>
                         </div>
                     </div>
                   </div>
@@ -201,12 +196,12 @@ export default function EmployeeSettingsPage() {
                                 <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
                                     <User className="w-4 h-4 text-slate-400 group-focus-within:text-[#1e3a5f] transition-colors" />
                                 </div>
-                                <input type="text" readOnly value={user?.nombre ?? user?.name ?? ""} className={`${inputClass} pl-16 bg-slate-50/50 dark:bg-slate-900/50 border-transparent cursor-default focus:ring-0 uppercase font-serif`} />
+                                <input type="text" readOnly value={user?.nombre ?? ""} className={`${inputClass} pl-16 bg-slate-50/50 dark:bg-slate-900/50 border-transparent cursor-default focus:ring-0 uppercase font-serif`} />
                             </div>
                         </div>
                         <div>
                             <label className={labelClass}>Clave Identificadora POS</label>
-                            <input type="text" readOnly value={user?.uid?.substring(0, 18).toUpperCase() || "ID-INTERNO-FB"} className={`${inputClass} bg-slate-50/50 dark:bg-slate-900/50 border-transparent text-[11px] tracking-[0.4em] font-black uppercase text-slate-400 focus:ring-0`} />
+                            <input type="text" readOnly value={user?.id?.substring(0, 18).toUpperCase() || "ID-INTERNO-FB"} className={`${inputClass} bg-slate-50/50 dark:bg-slate-900/50 border-transparent text-[11px] tracking-[0.4em] font-black uppercase text-slate-400 focus:ring-0`} />
                         </div>
                     </div>
                     <div className="space-y-10">

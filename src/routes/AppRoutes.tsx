@@ -1,170 +1,235 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
-import PageTransition from '../components/PageTransition';
+import ProtectedRoute from '../components/ProtectedRoute';
+import { ROL, rutaInicialPorRol } from '../utils/auth';
+import { useAuth } from '../hooks/useAuth';
+import PantallaCarga from '../components/PantallaCarga';
 
-// Client Pages
-import HomePage from '../pages/client/HomePage';
-import ClientHomePage from '../pages/client/ClientHomePage';
-import CatalogPage from '../pages/client/CatalogPage';
-import AboutPage from '../pages/client/AboutPage';
-import ProductPage from '../pages/client/ProductPage';
-import TestimonialsPage from '../pages/client/TestimonialsPage';
-import ContactPage from '../pages/client/ContactPage';
-import CustomerOrdersPage from '../pages/client/CustomerOrdersPage';
-import SettingsPage from '../pages/client/SettingsPage';
-import CartPage from '../pages/client/CartPage';
-import OffersPage from '../pages/client/OffersPage';
-import EventsPage from '../pages/client/EventsPage';
-import NotificationsPage from '../pages/client/NotificationsPage';
-import CheckoutDataPage from '../pages/client/CheckoutDataPage';
-import CheckoutReviewPage from '../pages/client/CheckoutReviewPage';
-import OrderSuccessPage from '../pages/client/OrderSuccessPage';
-import PaymentFailedPage from '../pages/client/PaymentFailedPage';
-import PaymentPendingPage from '../pages/client/PaymentPendingPage';
+const AnimatePresence = React.lazy(() =>
+  import('motion/react').then(m => ({ default: m.AnimatePresence }))
+);
+const PageTransition = React.lazy(() => import('../components/PageTransition'));
 
-// Auth Pages
-import LoginPage from '../pages/auth/LoginPage';
-import RegisterPage from '../pages/auth/RegisterPage';
-import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
-import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
+// Client Pages — lazy loaded
+const HomePage = React.lazy(() => import('../pages/client/HomePage'));
+const ClientHomePage = React.lazy(() => import('../pages/client/ClientHomePage'));
+const CatalogPage = React.lazy(() => import('../pages/client/CatalogPage'));
+const AboutPage = React.lazy(() => import('../pages/client/AboutPage'));
+const ProductPage = React.lazy(() => import('../pages/client/ProductPage'));
+const TestimonialsPage = React.lazy(() => import('../pages/client/TestimonialsPage'));
+const ContactPage = React.lazy(() => import('../pages/client/ContactPage'));
+const CustomerOrdersPage = React.lazy(() => import('../pages/client/CustomerOrdersPage'));
+const SettingsPage = React.lazy(() => import('../pages/client/SettingsPage'));
+const CartPage = React.lazy(() => import('../pages/client/CartPage'));
+const OffersPage = React.lazy(() => import('../pages/client/OffersPage'));
+const EventsPage = React.lazy(() => import('../pages/client/EventsPage'));
+const NotificationsPage = React.lazy(() => import('../pages/client/NotificationsPage'));
+const CheckoutDataPage = React.lazy(() => import('../pages/client/CheckoutDataPage'));
+const CheckoutReviewPage = React.lazy(() => import('../pages/client/CheckoutReviewPage'));
+const OrderSuccessPage = React.lazy(() => import('../pages/client/OrderSuccessPage'));
+const PaymentFailedPage = React.lazy(() => import('../pages/client/PaymentFailedPage'));
+const PaymentPendingPage = React.lazy(() => import('../pages/client/PaymentPendingPage'));
+const EsperandoAprobacionPage = React.lazy(() => import('../pages/client/EsperandoAprobacionPage'));
 
-// Admin Pages
-import DashboardPage from '../pages/admin/DashboardPage';
-import ReportsPage from '../pages/admin/ReportsPage';
-import BackupsPage from '../pages/admin/BackupsPage';
-import AdminInventoryPage from '../pages/admin/AdminInventoryPage';
-import AdminNewInsumoPage from '../pages/admin/AdminNewInsumoPage';
-import AdminPaymentsPage from '../pages/admin/AdminPaymentsPage';
-import AdminUsersPage from '../pages/admin/AdminUsersPage';
-import AdminNewUserPage from '../pages/admin/AdminNewUserPage';
-import AdminOperationPage from '../pages/admin/AdminOperationPage';
-import AdminSettingsPage from '../pages/admin/AdminSettingsPage';
-import AdminDataManagementPage from '../pages/admin/AdminDataManagementPage';
-import AdminSystemMonitoringPage from '../pages/admin/AdminSystemMonitoringPage';
-import AdminAuditPage from '../pages/admin/AdminAuditPage';
-import AdminProductDetailPage from '../pages/admin/AdminProductDetailPage';
-import AdminProductsListPage from '../pages/admin/AdminProductsListPage';
-import AdminRecipeManagementPage from '../pages/admin/AdminRecipeManagementPage';
-import AdminCmsPage from '../pages/admin/AdminCmsPage';
-import AdminOrdersListPage from '../pages/admin/AdminOrdersListPage';
-import AdminOrderDetailPage from '../pages/admin/AdminOrderDetailPage';
-import AdminSeasonalCatalogsPage from '../pages/admin/AdminSeasonalCatalogsPage';
-import AdminNewCatalogPage from '../pages/admin/AdminNewCatalogPage';
-import AdminPromotionsPage from '../pages/admin/AdminPromotionsPage';
-import AdminNewPromotionPage from '../pages/admin/AdminNewPromotionPage';
-import AdminProductAnalysisPage from '../pages/admin/AdminProductAnalysisPage';
-import AdminSupplyAnalysisPage from '../pages/admin/AdminSupplyAnalysisPage';
-import AdminCustomerSegmentsPage from '../pages/admin/AdminCustomerSegmentsPage';
-import AdminPeopleModule from '../pages/admin/AdminPeopleModule';
-import AdminReplenishmentPage from '../pages/admin/AdminReplenishmentPage';
-import AdminSupplyOrdersPage from '../pages/admin/AdminSupplyOrdersPage';
-import AdminSupplyOrderDetailPage from '../pages/admin/AdminSupplyOrderDetailPage';
-import AdminQuickSaleTemplatesPage from '../pages/admin/AdminQuickSaleTemplatesPage';
+// Auth Pages — lazy loaded
+const LoginPage = React.lazy(() => import('../pages/auth/LoginPage'));
+const RegisterPage = React.lazy(() => import('../pages/auth/RegisterPage'));
+const ForgotPasswordPage = React.lazy(() => import('../pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = React.lazy(() => import('../pages/auth/ResetPasswordPage'));
 
-// Employee Pages
-import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
-import ProductManagementPage from '../pages/employee/ProductManagementPage';
-import OrdersPage from '../pages/employee/OrdersPage';
-import OrderDetailPage from '../pages/employee/OrderDetailPage';
-import PhysicalOrderPage from '../pages/employee/PhysicalOrderPage';
-import DailyDeliveriesPage from '../pages/employee/DailyDeliveriesPage';
-import QuickInventoryPage from '../pages/employee/QuickInventoryPage';
-import QuickSalePage from '../pages/employee/QuickSalePage';
-import SessionOrderPage from '../pages/employee/SessionOrderPage';
-import EmployeeSettingsPage from '../pages/employee/EmployeeSettingsPage';
+// Admin Pages — lazy loaded
+const DashboardPage = React.lazy(() => import('../pages/admin/DashboardPage'));
+const ReportsPage = React.lazy(() => import('../pages/admin/ReportsPage'));
+const BackupsPage = React.lazy(() => import('../pages/admin/BackupsPage'));
+const AdminInventoryPage = React.lazy(() => import('../pages/admin/AdminInventoryPage'));
+const AdminNewInsumoPage = React.lazy(() => import('../pages/admin/AdminNewInsumoPage'));
+const AdminPaymentsPage = React.lazy(() => import('../pages/admin/AdminPaymentsPage'));
+const AdminNewUserPage = React.lazy(() => import('../pages/admin/AdminNewUserPage'));
+const AdminOperationPage = React.lazy(() => import('../pages/admin/AdminOperationPage'));
+const AdminSettingsPage = React.lazy(() => import('../pages/admin/AdminSettingsPage'));
+const AdminDataManagementPage = React.lazy(() => import('../pages/admin/AdminDataManagementPage'));
+const AdminSystemMonitoringPage = React.lazy(() => import('../pages/admin/AdminSystemMonitoringPage'));
+const AdminAuditPage = React.lazy(() => import('../pages/admin/AdminAuditPage'));
+const AdminCashControlPage = React.lazy(() => import('../pages/admin/AdminCashControlPage'));
+const AdminProductDetailPage = React.lazy(() => import('../pages/admin/AdminProductDetailPage'));
+const AdminProductsListPage = React.lazy(() => import('../pages/admin/AdminProductsListPage'));
+const AdminRecipeManagementPage = React.lazy(() => import('../pages/admin/AdminRecipeManagementPage'));
+const AdminCmsPage = React.lazy(() => import('../pages/admin/AdminCmsPage'));
+const AdminOrdersListPage = React.lazy(() => import('../pages/admin/AdminOrdersListPage'));
+const AdminOrderDetailPage = React.lazy(() => import('../pages/admin/AdminOrderDetailPage'));
+const AdminSeasonalCatalogsPage = React.lazy(() => import('../pages/admin/AdminSeasonalCatalogsPage'));
+const AdminNewCatalogPage = React.lazy(() => import('../pages/admin/AdminNewCatalogPage'));
+const AdminPromotionsPage = React.lazy(() => import('../pages/admin/AdminPromotionsPage'));
+const AdminNewPromotionPage = React.lazy(() => import('../pages/admin/AdminNewPromotionPage'));
+const AdminProductAnalysisPage = React.lazy(() => import('../pages/admin/AdminProductAnalysisPage'));
+const AdminSupplyAnalysisPage = React.lazy(() => import('../pages/admin/AdminSupplyAnalysisPage'));
+const AdminPeopleModule = React.lazy(() => import('../pages/admin/AdminPeopleModule'));
+const AdminReplenishmentPage = React.lazy(() => import('../pages/admin/AdminReplenishmentPage'));
+const AdminSupplyOrdersPage = React.lazy(() => import('../pages/admin/AdminSupplyOrdersPage'));
+const AdminSupplyOrderDetailPage = React.lazy(() => import('../pages/admin/AdminSupplyOrderDetailPage'));
+const AdminQuickSaleTemplatesPage = React.lazy(() => import('../pages/admin/AdminQuickSaleTemplatesPage'));
 
-export default function AnimatedRoutes() {
+// Employee Pages — lazy loaded
+const EmployeeDashboardPage = React.lazy(() => import('../pages/employee/EmployeeDashboardPage'));
+const ProductManagementPage = React.lazy(() => import('../pages/employee/ProductManagementPage'));
+const OrdersPage = React.lazy(() => import('../pages/employee/OrdersPage'));
+const OrderDetailPage = React.lazy(() => import('../pages/employee/OrderDetailPage'));
+const PhysicalOrderPage = React.lazy(() => import('../pages/employee/PhysicalOrderPage'));
+const DailyDeliveriesPage = React.lazy(() => import('../pages/employee/DailyDeliveriesPage'));
+const QuickInventoryPage = React.lazy(() => import('../pages/employee/QuickInventoryPage'));
+const QuickSalePage = React.lazy(() => import('../pages/employee/QuickSalePage'));
+const SessionOrderPage = React.lazy(() => import('../pages/employee/SessionOrderPage'));
+const EmployeeSettingsPage = React.lazy(() => import('../pages/employee/EmployeeSettingsPage'));
+const EmployeeNotificationsPage = React.lazy(() => import('../pages/employee/EmployeeNotificationsPage'));
+
+const LazyFallback = <PantallaCarga mensaje="Cargando página..." />;
+
+const CssTransition = ({ children }: { children: React.ReactNode }) => (
+  <div className="animate-[pageEnter_0.3s_ease-out_both]">{children}</div>
+);
+
+const P = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={null}>
+    <PageTransition>{children}</PageTransition>
+  </Suspense>
+);
+
+function AdminRoutes() {
   const location = useLocation();
-
   return (
     <AnimatePresence mode="wait">
       <Routes location={location}>
-        <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
-        <Route path="/inicio" element={<PageTransition><ClientHomePage /></PageTransition>} />
-        <Route path="/admin/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
-        <Route path="/admin/reportes" element={<PageTransition><ReportsPage /></PageTransition>} />
-        {/* ── Catálogo: los productos que vendes ── */}
-        <Route path="/admin/productos" element={<PageTransition><AdminProductsListPage /></PageTransition>} />
-        <Route path="/admin/productos/recetas" element={<PageTransition><AdminRecipeManagementPage /></PageTransition>} />
-        <Route path="/admin/productos/nuevo" element={<PageTransition><ProductManagementPage /></PageTransition>} />
-        <Route path="/admin/productos/editar/:id" element={<PageTransition><ProductManagementPage /></PageTransition>} />
-        <Route path="/admin/productos/:id" element={<PageTransition><AdminProductDetailPage /></PageTransition>} />
+        <Route path="dashboard" element={<Suspense fallback={LazyFallback}><P><DashboardPage /></P></Suspense>} />
+        <Route path="reportes" element={<Suspense fallback={LazyFallback}><P><ReportsPage /></P></Suspense>} />
 
-        {/* Rutas viejas: /admin/catalogo (singular) nunca fue un catálogo, era la
-            lista de productos. Se conservan como redirect para no romper enlaces
-            guardados. */}
-        <Route path="/admin/catalogo" element={<Navigate to="/admin/productos" replace />} />
-        <Route path="/admin/catalogo/recetas" element={<Navigate to="/admin/productos/recetas" replace />} />
+        <Route path="productos" element={<Suspense fallback={LazyFallback}><P><AdminProductsListPage /></P></Suspense>} />
+        <Route path="productos/recetas" element={<Suspense fallback={LazyFallback}><P><AdminRecipeManagementPage /></P></Suspense>} />
+        <Route path="productos/nuevo" element={<Suspense fallback={LazyFallback}><P><ProductManagementPage /></P></Suspense>} />
+        <Route path="productos/editar/:id" element={<Suspense fallback={LazyFallback}><P><ProductManagementPage /></P></Suspense>} />
+        <Route path="productos/:id" element={<Suspense fallback={LazyFallback}><P><AdminProductDetailPage /></P></Suspense>} />
 
-        {/* ── Catálogo: agrupaciones por festividad/temporada ── */}
-        <Route path="/admin/catalogos" element={<PageTransition><AdminSeasonalCatalogsPage /></PageTransition>} />
-        <Route path="/admin/catalogos/nuevo" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
-        <Route path="/admin/catalogos/editar/:id" element={<PageTransition><AdminNewCatalogPage /></PageTransition>} />
+        <Route path="catalogo" element={<Navigate to="/admin/productos" replace />} />
+        <Route path="catalogo/recetas" element={<Navigate to="/admin/productos/recetas" replace />} />
 
-        {/* ── Punto de venta: botonera del mostrador ── */}
-        <Route path="/admin/plantillas-venta" element={<PageTransition><AdminQuickSaleTemplatesPage /></PageTransition>} />
+        <Route path="catalogos" element={<Suspense fallback={LazyFallback}><P><AdminSeasonalCatalogsPage /></P></Suspense>} />
+        <Route path="catalogos/nuevo" element={<Suspense fallback={LazyFallback}><P><AdminNewCatalogPage /></P></Suspense>} />
+        <Route path="catalogos/editar/:id" element={<Suspense fallback={LazyFallback}><P><AdminNewCatalogPage /></P></Suspense>} />
 
-        <Route path="/admin/promociones" element={<PageTransition><AdminPromotionsPage /></PageTransition>} />
-        <Route path="/admin/promociones/nuevo" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
-        <Route path="/admin/promociones/editar/:id" element={<PageTransition><AdminNewPromotionPage /></PageTransition>} />
-        <Route path="/admin/cms" element={<PageTransition><AdminCmsPage /></PageTransition>} />
-        <Route path="/admin/pedidos" element={<PageTransition><AdminOrdersListPage /></PageTransition>} />
-        <Route path="/admin/pedidos/:id" element={<PageTransition><AdminOrderDetailPage /></PageTransition>} />
-        <Route path="/admin/inventario" element={<PageTransition><AdminInventoryPage /></PageTransition>} />
-        <Route path="/admin/inventario/nuevo" element={<PageTransition><AdminNewInsumoPage /></PageTransition>} />
-        <Route path="/admin/inventario/editar/:id" element={<PageTransition><AdminNewInsumoPage /></PageTransition>} />
-        <Route path="/admin/pagos" element={<PageTransition><AdminPaymentsPage /></PageTransition>} />
-        <Route path="/admin/usuarios" element={<PageTransition><AdminPeopleModule initialTab="usuarios" /></PageTransition>} />
-        <Route path="/admin/usuarios/nuevo" element={<PageTransition><AdminNewUserPage /></PageTransition>} />
-        <Route path="/admin/operacion" element={<PageTransition><AdminOperationPage /></PageTransition>} />
-        <Route path="/admin/respaldos" element={<PageTransition><BackupsPage /></PageTransition>} />
-        <Route path="/admin/datos" element={<PageTransition><AdminDataManagementPage /></PageTransition>} />
-        <Route path="/admin/monitoreo" element={<PageTransition><AdminSystemMonitoringPage /></PageTransition>} />
-        <Route path="/admin/auditoria" element={<PageTransition><AdminAuditPage /></PageTransition>} />
-        <Route path="/admin/configuracion" element={<PageTransition><AdminSettingsPage /></PageTransition>} />
-        <Route path="/admin/analisis-producto/:id" element={<PageTransition><AdminProductAnalysisPage /></PageTransition>} />
-        <Route path="/admin/analisis-insumo/:id" element={<PageTransition><AdminSupplyAnalysisPage /></PageTransition>} />
-        <Route path="/admin/clientes" element={<PageTransition><AdminPeopleModule initialTab="segmentos" /></PageTransition>} />
-        <Route path="/admin/reabastecimiento" element={<PageTransition><AdminReplenishmentPage /></PageTransition>} />
-        <Route path="/admin/reabastecimiento/solicitudes" element={<PageTransition><AdminSupplyOrdersPage /></PageTransition>} />
-        <Route path="/admin/reabastecimiento/solicitudes/:id" element={<PageTransition><AdminSupplyOrderDetailPage /></PageTransition>} />
-        
-        {/* Employee Routes */}
-        <Route path="/empleado/dashboard" element={<PageTransition><EmployeeDashboardPage /></PageTransition>} />
-        <Route path="/empleado/pedidos" element={<PageTransition><OrdersPage /></PageTransition>} />
-        <Route path="/empleado/pedidos/:id" element={<PageTransition><OrderDetailPage /></PageTransition>} />
-        <Route path="/empleado/registrar-pedido" element={<PageTransition><PhysicalOrderPage /></PageTransition>} />
-        <Route path="/empleado/registrar-pedido-sesion" element={<PageTransition><SessionOrderPage /></PageTransition>} />
-        <Route path="/empleado/entregas" element={<PageTransition><DailyDeliveriesPage /></PageTransition>} />
-        <Route path="/empleado/inventario" element={<PageTransition><QuickInventoryPage /></PageTransition>} />
-        <Route path="/empleado/venta-rapida" element={<PageTransition><QuickSalePage /></PageTransition>} />
-        <Route path="/empleado/configuracion" element={<PageTransition><EmployeeSettingsPage /></PageTransition>} />
+        <Route path="plantillas-venta" element={<Suspense fallback={LazyFallback}><P><AdminQuickSaleTemplatesPage /></P></Suspense>} />
 
-        {/* Client Specific Routes */}
-        <Route path="/mis-pedidos" element={<PageTransition><CustomerOrdersPage /></PageTransition>} />
-        <Route path="/configuracion" element={<PageTransition><SettingsPage /></PageTransition>} />
-        <Route path="/ofertas" element={<PageTransition><OffersPage /></PageTransition>} />
-        <Route path="/eventos" element={<PageTransition><EventsPage /></PageTransition>} />
-        <Route path="/notificaciones" element={<PageTransition><NotificationsPage /></PageTransition>} />
-        <Route path="/catalogo" element={<PageTransition><CatalogPage /></PageTransition>} />
-        <Route path="/carrito" element={<PageTransition><CartPage /></PageTransition>} />
-        <Route path="/checkout/datos" element={<PageTransition><CheckoutDataPage /></PageTransition>} />
-        <Route path="/checkout/revision" element={<PageTransition><CheckoutReviewPage /></PageTransition>} />
-        <Route path="/checkout/exito" element={<PageTransition><OrderSuccessPage /></PageTransition>} />
-        <Route path="/checkout/fallo" element={<PageTransition><PaymentFailedPage /></PageTransition>} />
-        <Route path="/checkout/pendiente" element={<PageTransition><PaymentPendingPage /></PageTransition>} />
-        <Route path="/producto/:id" element={<PageTransition><ProductPage /></PageTransition>} />
-        <Route path="/testimonios" element={<PageTransition><TestimonialsPage /></PageTransition>} />
-        <Route path="/nosotros" element={<PageTransition><AboutPage /></PageTransition>} />
-        <Route path="/contacto" element={<PageTransition><ContactPage /></PageTransition>} />
-        
-        {/* Auth Routes */}
-        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
-        <Route path="/registro" element={<PageTransition><RegisterPage /></PageTransition>} />
-        <Route path="/recuperar-contrasena" element={<PageTransition><ForgotPasswordPage /></PageTransition>} />
-        <Route path="/restablecer-contrasena" element={<PageTransition><ResetPasswordPage /></PageTransition>} />
+        <Route path="promociones" element={<Suspense fallback={LazyFallback}><P><AdminPromotionsPage /></P></Suspense>} />
+        <Route path="promociones/nuevo" element={<Suspense fallback={LazyFallback}><P><AdminNewPromotionPage /></P></Suspense>} />
+        <Route path="promociones/editar/:id" element={<Suspense fallback={LazyFallback}><P><AdminNewPromotionPage /></P></Suspense>} />
+        <Route path="cms" element={<Suspense fallback={LazyFallback}><P><AdminCmsPage /></P></Suspense>} />
+        <Route path="pedidos" element={<Suspense fallback={LazyFallback}><P><AdminOrdersListPage /></P></Suspense>} />
+        <Route path="pedidos/:id" element={<Suspense fallback={LazyFallback}><P><AdminOrderDetailPage /></P></Suspense>} />
+        <Route path="inventario" element={<Suspense fallback={LazyFallback}><P><AdminInventoryPage /></P></Suspense>} />
+        <Route path="inventario/nuevo" element={<Suspense fallback={LazyFallback}><P><AdminNewInsumoPage /></P></Suspense>} />
+        <Route path="inventario/editar/:id" element={<Suspense fallback={LazyFallback}><P><AdminNewInsumoPage /></P></Suspense>} />
+        <Route path="pagos" element={<Suspense fallback={LazyFallback}><P><AdminPaymentsPage /></P></Suspense>} />
+        <Route path="caja" element={<Suspense fallback={LazyFallback}><P><AdminCashControlPage /></P></Suspense>} />
+        <Route path="usuarios" element={<Suspense fallback={LazyFallback}><P><AdminPeopleModule initialTab="usuarios" /></P></Suspense>} />
+        <Route path="usuarios/nuevo" element={<Suspense fallback={LazyFallback}><P><AdminNewUserPage /></P></Suspense>} />
+        <Route path="operacion" element={<Suspense fallback={LazyFallback}><P><AdminOperationPage /></P></Suspense>} />
+        <Route path="respaldos" element={<Suspense fallback={LazyFallback}><P><BackupsPage /></P></Suspense>} />
+        <Route path="datos" element={<Suspense fallback={LazyFallback}><P><AdminDataManagementPage /></P></Suspense>} />
+        <Route path="monitoreo" element={<Suspense fallback={LazyFallback}><P><AdminSystemMonitoringPage /></P></Suspense>} />
+        <Route path="auditoria" element={<Suspense fallback={LazyFallback}><P><AdminAuditPage /></P></Suspense>} />
+        <Route path="configuracion" element={<Suspense fallback={LazyFallback}><P><AdminSettingsPage /></P></Suspense>} />
+        <Route path="analisis-producto/:id" element={<Suspense fallback={LazyFallback}><P><AdminProductAnalysisPage /></P></Suspense>} />
+        <Route path="analisis-insumo/:id" element={<Suspense fallback={LazyFallback}><P><AdminSupplyAnalysisPage /></P></Suspense>} />
+        <Route path="clientes" element={<Suspense fallback={LazyFallback}><P><AdminPeopleModule initialTab="segmentos" /></P></Suspense>} />
+        <Route path="reabastecimiento" element={<Suspense fallback={LazyFallback}><P><AdminReplenishmentPage /></P></Suspense>} />
+        <Route path="reabastecimiento/solicitudes" element={<Suspense fallback={LazyFallback}><P><AdminSupplyOrdersPage /></P></Suspense>} />
+        <Route path="reabastecimiento/solicitudes/:id" element={<Suspense fallback={LazyFallback}><P><AdminSupplyOrderDetailPage /></P></Suspense>} />
+
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Routes>
     </AnimatePresence>
+  );
+}
+
+function EmployeeRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location}>
+        <Route path="dashboard" element={<Suspense fallback={LazyFallback}><P><EmployeeDashboardPage /></P></Suspense>} />
+        <Route path="pedidos" element={<Suspense fallback={LazyFallback}><P><OrdersPage /></P></Suspense>} />
+        <Route path="pedidos/:id" element={<Suspense fallback={LazyFallback}><P><OrderDetailPage /></P></Suspense>} />
+        <Route path="registrar-pedido" element={<Suspense fallback={LazyFallback}><P><PhysicalOrderPage /></P></Suspense>} />
+        <Route path="registrar-pedido-sesion" element={<Suspense fallback={LazyFallback}><P><SessionOrderPage /></P></Suspense>} />
+        <Route path="entregas" element={<Suspense fallback={LazyFallback}><P><DailyDeliveriesPage /></P></Suspense>} />
+        <Route path="inventario" element={<Suspense fallback={LazyFallback}><P><QuickInventoryPage /></P></Suspense>} />
+        <Route path="venta-rapida" element={<Suspense fallback={LazyFallback}><P><QuickSalePage /></P></Suspense>} />
+        <Route path="notificaciones" element={<Suspense fallback={LazyFallback}><P><EmployeeNotificationsPage /></P></Suspense>} />
+        <Route path="configuracion" element={<Suspense fallback={LazyFallback}><P><EmployeeSettingsPage /></P></Suspense>} />
+
+        <Route path="*" element={<Navigate to="/empleado/dashboard" replace />} />
+      </Routes>
+    </AnimatePresence>
+  );
+}
+
+function RedirigirAInicio() {
+  const { roles, cargando } = useAuth();
+  if (cargando) return null;
+  return <Navigate to={rutaInicialPorRol(roles)} replace />;
+}
+
+export default function AnimatedRoutes() {
+  return (
+    <Routes>
+      {/* ── Públicas (CSS transitions, no motion dependency) ── */}
+      <Route path="/" element={<Suspense fallback={LazyFallback}><CssTransition><HomePage /></CssTransition></Suspense>} />
+      <Route path="/catalogo" element={<Suspense fallback={LazyFallback}><CssTransition><CatalogPage /></CssTransition></Suspense>} />
+      <Route path="/producto/:id" element={<Suspense fallback={LazyFallback}><CssTransition><ProductPage /></CssTransition></Suspense>} />
+      <Route path="/testimonios" element={<Suspense fallback={LazyFallback}><CssTransition><TestimonialsPage /></CssTransition></Suspense>} />
+      <Route path="/nosotros" element={<Suspense fallback={LazyFallback}><CssTransition><AboutPage /></CssTransition></Suspense>} />
+      <Route path="/contacto" element={<Suspense fallback={LazyFallback}><CssTransition><ContactPage /></CssTransition></Suspense>} />
+      <Route path="/ofertas" element={<Suspense fallback={LazyFallback}><CssTransition><OffersPage /></CssTransition></Suspense>} />
+      <Route path="/eventos" element={<Suspense fallback={LazyFallback}><CssTransition><EventsPage /></CssTransition></Suspense>} />
+
+      {/* ── Auth ── */}
+      <Route path="/login" element={<Suspense fallback={LazyFallback}><CssTransition><LoginPage /></CssTransition></Suspense>} />
+      <Route path="/registro" element={<Suspense fallback={LazyFallback}><CssTransition><RegisterPage /></CssTransition></Suspense>} />
+      <Route path="/recuperar-contrasena" element={<Suspense fallback={LazyFallback}><CssTransition><ForgotPasswordPage /></CssTransition></Suspense>} />
+      <Route path="/restablecer-contrasena" element={<Suspense fallback={LazyFallback}><CssTransition><ResetPasswordPage /></CssTransition></Suspense>} />
+
+      {/* ── Panel de administración (motion transitions, lazy-loaded) ── */}
+      <Route
+        path="/admin/*"
+        element={
+          <ProtectedRoute roles={[ROL.ADMIN]}>
+            <AdminRoutes />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ── Mostrador ── */}
+      <Route
+        path="/empleado/*"
+        element={
+          <ProtectedRoute roles={[ROL.ADMIN, ROL.EMPLEADO]}>
+            <EmployeeRoutes />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ── Solo cliente ── */}
+      <Route path="/inicio" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><ClientHomePage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/mis-pedidos" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><CustomerOrdersPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/configuracion" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><SettingsPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/notificaciones" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><NotificationsPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/carrito" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><CartPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/checkout/datos" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><CheckoutDataPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/checkout/revision" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><CheckoutReviewPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/checkout/exito" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><OrderSuccessPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/checkout/fallo" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><PaymentFailedPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/checkout/pendiente" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><PaymentPendingPage /></CssTransition></Suspense></ProtectedRoute>} />
+      <Route path="/esperando-aprobacion" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><EsperandoAprobacionPage /></CssTransition></Suspense></ProtectedRoute>} />
+
+      <Route path="*" element={<RedirigirAInicio />} />
+    </Routes>
   );
 }

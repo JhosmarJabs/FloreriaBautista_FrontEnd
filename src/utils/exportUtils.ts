@@ -1,13 +1,8 @@
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
 export const filterSensitiveFields = (data: any[]) => {
   return data.map(item => {
     const newItem = { ...item };
     Object.keys(newItem).forEach(key => {
       const lowerKey = key.toLowerCase();
-      // Omitir campos que son IDs o sensibles
       if (lowerKey === 'id' || lowerKey.endsWith('id') || key.startsWith('_')) {
         delete newItem[key];
       }
@@ -17,10 +12,11 @@ export const filterSensitiveFields = (data: any[]) => {
 };
 
 export const exportToCSV = async (data: any[], filename: string) => {
+  const XLSX = await import('xlsx');
   const filteredData = filterSensitiveFields(data);
   const worksheet = XLSX.utils.json_to_sheet(filteredData);
   const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-  const BOM = '\uFEFF';
+  const BOM = '﻿';
   const blob = new Blob([BOM + csvOutput], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -33,6 +29,10 @@ export const exportToCSV = async (data: any[], filename: string) => {
 };
 
 export const exportToPDF = async (data: any[], title: string, filename: string) => {
+  const [{ default: jsPDF }, _autoTable] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
   const filteredData = filterSensitiveFields(data);
   if (filteredData.length === 0) return;
 

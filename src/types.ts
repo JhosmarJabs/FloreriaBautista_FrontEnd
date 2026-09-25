@@ -6,12 +6,17 @@ export interface Product {
   estado: string;
   imagenUrl: string | null;
   stock: number | null;
+  esReal?: boolean;
+  permiteVentaInstantanea?: boolean;
+  limiteVentaInstantanea?: number | null;
 }
 
 export interface ProductDetail extends Product {
   descripcion?: string;
   esPersonalizable?: boolean;
   visibilidad?: string;
+  permiteVentaInstantanea?: boolean;
+  limiteVentaInstantanea?: number | null;
   categorias?: string[];
   catalogos?: string[];
   receta?: RecipeItem[];
@@ -66,6 +71,8 @@ export interface ProductBody {
   catalogos: string[];
   receta?: RecipeItem[];
   activo?: boolean;
+  permiteVentaInstantanea?: boolean;
+  limiteVentaInstantanea?: number | null;
 }
 
 export interface Order {
@@ -101,6 +108,8 @@ export interface SiteSettings {
   bannerCta: string;
   horarios: Horario[];
   destacados: string[];
+  latitud: number | null;
+  longitud: number | null;
   anuncioTexto: string;
   anuncioActivo: boolean;
 }
@@ -176,10 +185,35 @@ export interface Backup {
   enlace: string;
 }
 
+export interface BackupJob {
+  id: string;
+  tipo: string;
+  formato: string;
+  nombreTabla: string | null;
+  estado: string;
+  descripcion: string | null;
+  mensajeError: string | null;
+  creadoEn: string;
+  completadoEn: string | null;
+  tamanoBytes: number | null;
+  driveFileId: string | null;
+  driveEnlace: string | null;
+  subidoADrive: boolean;
+  cloudinaryPublicId: string | null;
+  cloudinaryEnlace: string | null;
+  subidoACloudinary: boolean;
+}
+
 export interface BackupsResponse {
   success: boolean;
   message: string;
   data: Backup[] | null;
+}
+
+export interface BackupJobsResponse {
+  success: boolean;
+  message: string;
+  data: BackupJob[] | null;
 }
 
 export interface MaintenanceTask {
@@ -208,6 +242,7 @@ export interface User {
   fechaNacimiento: string | null;
   estado: string;
   correoVerificado: boolean;
+  esResponsableTurno?: boolean;
   roles: string[];
   creadoEn: string;
 }
@@ -381,9 +416,17 @@ export interface InventoryItem {
   esFlorPrimaria: boolean;
   imagenUrl?: string | null;
   bajoMinimo: boolean;
+  /** Unidades de uso que rinde en promedio 1 unidad de compra. 1 = sin conversión. */
+  rendimientoEsperado: number;
+  /** Fracción (0-0.9) que se descuenta sola en cada salida como merma de manipulación. */
+  factorMermaUso: number;
+  precioUnidadCompra?: number | null;
+  unidadCompra?: string | null;
+  vidaUtilDias?: number | null;
 }
 
 export type MovementType = 'ENTRADA' | 'SALIDA' | 'AJUSTE';
+export type MotivoCategoria = 'RECEPCION' | 'MANIPULACION' | 'CADUCIDAD' | 'CONTEO_FISICO' | 'OTRO';
 
 export interface InventoryMovement {
   id: string;
@@ -394,6 +437,9 @@ export interface InventoryMovement {
   stockAntes: number;
   stockDespues: number;
   motivo?: string | null;
+  motivoCategoria: MotivoCategoria;
+  /** Unidades que el sistema descontó solo, además de lo pedido, como merma estimada. */
+  mermaAutomaticaGenerada?: number | null;
   fechaHora: string;
 }
 
@@ -402,6 +448,13 @@ export interface RegisterMovementRequest {
   tipo: MovementType;
   cantidad: number;
   motivo?: string;
+  motivoCategoria?: MotivoCategoria;
+  /** Solo ENTRADA: unidades de compra recibidas (rollos, cajas). El backend calcula
+   * la cantidad de uso con el rendimiento esperado del insumo. */
+  unidadesCompra?: number;
+  /** Solo ENTRADA con unidadesCompra: rendimiento real de esta recepción, si se contó.
+   * Recalibra el rendimiento esperado del insumo para la próxima vez. */
+  rendimientoObservado?: number;
 }
 
 export interface OrderItem {
@@ -482,3 +535,171 @@ export interface SeasonalCatalogKpis {
 }
 
 
+
+// ── Caja del empleado: gastos, cortes y reportes de error ─────────
+// Espejo de los DTOs en Backend/Models/DTOs/Employee. El campo `empleado` solo
+// llega en las consultas de administrador; en las del empleado va vacío porque
+// ya sabe que los registros son suyos.
+
+export interface EmployeeExpense {
+  id: string;
+  fechaHora: string;
+  concepto: string;
+  categoria: string;
+  importe: number;
+  estado: 'REGISTRADO' | 'ANULADO' | 'CORREGIDO';
+  incluidoEnCorte: boolean;
+  estadoReporte: string | null;
+  empleado?: string | null;
+}
+
+export interface CashCut {
+  id: string;
+  fechaLocal: string;
+  fechaHoraCierre: string;
+  totalVentas: number;
+  totalEfectivo: number;
+  totalGastos: number;
+  efectivoEsperado: number;
+  efectivoDeclarado: number;
+  /** Declarado − esperado. Negativo = falta dinero en la caja. */
+  diferencia: number;
+  pedidosContados: number;
+  gastosContados: number;
+  estado: 'CERRADO' | 'ANULADO';
+  notas: string | null;
+  estadoReporte: string | null;
+  empleado?: string | null;
+}
+
+export type ResolucionAccion =
+  | 'CORREGIDO'
+  | 'CANCELADO'
+  | 'INVALIDADO'
+  | 'ELIMINADO'
+  | 'SIN_CAMBIO';
+
+export interface ErrorReport {
+  id: string;
+  tipoRegistro: 'VENTA' | 'GASTO' | 'CORTE';
+  registroId: string;
+  motivo: string;
+  estado: 'PENDIENTE' | 'EN_REVISION' | 'RESUELTO' | 'RECHAZADO';
+  fechaHora: string;
+  fechaResolucion: string | null;
+  resolucionAccion: ResolucionAccion | null;
+  resolucionNota: string | null;
+  empleado?: string | null;
+}
+
+// ── Ofertas ──────────────────────────────────────────────────────
+export interface Oferta {
+  id: string;
+  productoId: string;
+  productoNombre?: string;
+  productoImagen?: string | null;
+  precioBase?: number;
+  precioOferta: number;
+  porcentajeDesc?: number;
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  activo: boolean;
+  creadoEn: string;
+}
+
+export interface SaveOfertaBody {
+  productoId: string;
+  precioOferta: number;
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  activo?: boolean;
+}
+
+export interface OfertaPublica {
+  id: string;
+  productoId: string;
+  productoNombre: string;
+  productoImagen: string | null;
+  productoTipo: string;
+  precioBase: number;
+  precioOferta: number;
+  porcentajeDesc: number;
+  fechaFin?: string | null;
+}
+
+// ── Descuentos ───────────────────────────────────────────────────
+export type TipoRegla = 'MONTO_MINIMO' | 'CATEGORIA' | 'CATALOGO';
+export type TipoValor = 'PORCENTAJE' | 'MONTO_FIJO';
+
+export interface Descuento {
+  id: string;
+  nombre: string;
+  tipoRegla: TipoRegla;
+  montoMinimoCompra?: number | null;
+  categoriaId?: string | null;
+  categoriaNombre?: string | null;
+  catalogoId?: string | null;
+  catalogoNombre?: string | null;
+  tipoValor: TipoValor;
+  valor: number;
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  activo: boolean;
+  creadoEn: string;
+}
+
+export interface SaveDescuentoBody {
+  nombre: string;
+  tipoRegla: TipoRegla;
+  montoMinimoCompra?: number | null;
+  categoriaId?: string | null;
+  catalogoId?: string | null;
+  tipoValor: TipoValor;
+  valor: number;
+  fechaInicio?: string | null;
+  fechaFin?: string | null;
+  activo?: boolean;
+}
+
+export interface DescuentoPublico {
+  id: string;
+  nombre: string;
+  tipoRegla: string;
+  montoMinimoCompra?: number | null;
+  categoriaNombre?: string | null;
+  catalogoNombre?: string | null;
+  tipoValor: string;
+  valor: number;
+  fechaFin?: string | null;
+}
+
+// ── Pricing ──────────────────────────────────────────────────────
+export interface PricingItem {
+  productId: string;
+  cantidad: number;
+}
+
+export interface DescuentoAplicado {
+  origen: 'OFERTA' | 'DESCUENTO_AUTO' | 'CUPON';
+  nombre: string;
+  monto: number;
+}
+
+export interface PricingBreakdown {
+  subtotal: number;
+  descuentosAplicados: DescuentoAplicado[];
+  totalDescuentos: number;
+  total: number;
+}
+
+// ── Temporadas (eventos) ─────────────────────────────────────────
+export interface TemporadaProxima {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  imagenUrl: string | null;
+  proximoInicio: string;
+  proximoFin: string;
+  diasParaInicio: number;
+  enCurso: boolean;
+}

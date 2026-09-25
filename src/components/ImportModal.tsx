@@ -9,7 +9,6 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { AnimatedButton } from "./Animations";
-import * as XLSX from "xlsx";
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -30,50 +29,55 @@ export default function ImportModal({
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
     setFile(selectedFile);
     setError(null);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        let workbook: XLSX.WorkBook;
-        if (selectedFile.name.endsWith(".csv")) {
-          // Leer CSV como texto UTF-8 para preservar tildes y caracteres especiales
-          const text = event.target?.result as string;
-          workbook = XLSX.read(text, { type: "string" });
-        } else if (selectedFile.name.endsWith(".xlsx")) {
-          const data = new Uint8Array(event.target?.result as ArrayBuffer);
-          workbook = XLSX.read(data, { type: "array" });
-        } else {
+    try {
+      const XLSX = await import("xlsx");
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          let workbook: import("xlsx").WorkBook;
+          if (selectedFile.name.endsWith(".csv")) {
+            const text = event.target?.result as string;
+            workbook = XLSX.read(text, { type: "string" });
+          } else if (selectedFile.name.endsWith(".xlsx")) {
+            const data = new Uint8Array(event.target?.result as ArrayBuffer);
+            workbook = XLSX.read(data, { type: "array" });
+          } else {
+            setError(
+              "Formato no soportado. Por favor suba un archivo CSV o XLSX.",
+            );
+            return;
+          }
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet);
+
+          if (json.length > 0) {
+            setPreviewData(json);
+          } else {
+            setError("El archivo está vacío o no tiene el formato correcto.");
+          }
+        } catch (err) {
           setError(
-            "Formato no soportado. Por favor suba un archivo CSV o XLSX.",
+            "Error al procesar el archivo. Asegúrese de que el formato sea válido.",
           );
-          return;
         }
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet);
+      };
 
-        if (json.length > 0) {
-          setPreviewData(json);
-        } else {
-          setError("El archivo está vacío o no tiene el formato correcto.");
-        }
-      } catch (err) {
-        setError(
-          "Error al procesar el archivo. Asegúrese de que el formato sea válido.",
-        );
+      if (selectedFile.name.endsWith(".csv")) {
+        reader.readAsText(selectedFile, "UTF-8");
+      } else {
+        reader.readAsArrayBuffer(selectedFile);
       }
-    };
-
-    if (selectedFile.name.endsWith(".csv")) {
-      reader.readAsText(selectedFile, "UTF-8");
-    } else {
-      reader.readAsArrayBuffer(selectedFile);
+    } catch {
+      setError("Error al cargar el módulo de procesamiento de archivos.");
     }
   };
 

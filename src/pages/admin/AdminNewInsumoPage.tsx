@@ -46,6 +46,12 @@ type FormState = {
   precioCosto: string;
   esFlorPrimaria: boolean;
   imagenUrl: string; // La guardamos en el estado local aunque el backend actual no la persista aún
+  // Rendimiento y merma: ver InventoryService.RegistrarMovimientoAsync para cómo se usan.
+  unidadCompra: string;
+  rendimientoEsperado: string;
+  factorMermaUsoPct: string; // se guarda como % (0-90) en el formulario; el backend espera fracción
+  precioUnidadCompra: string;
+  vidaUtilDias: string;
 };
 
 type FieldError = Partial<Record<keyof FormState, string>>;
@@ -66,6 +72,11 @@ export default function AdminNewInsumoPage() {
     precioCosto:    '0',
     esFlorPrimaria: false,
     imagenUrl:      '',
+    unidadCompra:        '',
+    rendimientoEsperado: '1',
+    factorMermaUsoPct:   '0',
+    precioUnidadCompra:  '',
+    vidaUtilDias:        '',
   });
 
   /* ── Imagen ── */
@@ -96,6 +107,11 @@ export default function AdminNewInsumoPage() {
               precioCosto:  String(item.precioCosto),
               esFlorPrimaria: item.esFlorPrimaria,
               imagenUrl:    item.imagenUrl || '',
+              unidadCompra:        item.unidadCompra || '',
+              rendimientoEsperado: String(item.rendimientoEsperado ?? 1),
+              factorMermaUsoPct:   String(Math.round((item.factorMermaUso ?? 0) * 100)),
+              precioUnidadCompra:  item.precioUnidadCompra != null ? String(item.precioUnidadCompra) : '',
+              vidaUtilDias:        item.vidaUtilDias != null ? String(item.vidaUtilDias) : '',
             });
           }
         } catch {
@@ -113,6 +129,18 @@ export default function AdminNewInsumoPage() {
   ) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
+  };
+
+  // Costo por unidad de uso = precio de la unidad de compra ÷ rendimiento esperado.
+  // Es la misma fórmula que aplica el backend cuando no se manda un PrecioCosto manual
+  // (ver InventoryService.CrearAsync/ActualizarAsync); aquí solo se adelanta para que
+  // se vea al instante en vez de esperar a guardar.
+  const rendimientoNum = parseFloat(form.rendimientoEsperado) || 1;
+  const precioCompraNum = parseFloat(form.precioUnidadCompra);
+  const costoCalculado = precioCompraNum > 0 ? precioCompraNum / rendimientoNum : null;
+
+  const aplicarCostoCalculado = () => {
+    if (costoCalculado != null) setForm(prev => ({ ...prev, precioCosto: costoCalculado.toFixed(4) }));
   };
 
   const validate = (): boolean => {
@@ -165,7 +193,12 @@ export default function AdminNewInsumoPage() {
         unidadMedida:   form.unidadMedida,
         precioCosto:    parseFloat(form.precioCosto) || 0,
         esFlorPrimaria: form.esFlorPrimaria,
-        imagenUrl:      imagenUrl || null
+        imagenUrl:      imagenUrl || null,
+        unidadCompra:        form.unidadCompra.trim() || null,
+        rendimientoEsperado: parseFloat(form.rendimientoEsperado) || 1,
+        factorMermaUso:      Math.min(Math.max((parseFloat(form.factorMermaUsoPct) || 0) / 100, 0), 0.9),
+        precioUnidadCompra:  parseFloat(form.precioUnidadCompra) > 0 ? parseFloat(form.precioUnidadCompra) : null,
+        vidaUtilDias:        parseInt(form.vidaUtilDias) > 0 ? parseInt(form.vidaUtilDias) : null,
       };
 
       if (isEdit && id) {
@@ -331,7 +364,7 @@ export default function AdminNewInsumoPage() {
 
                 {/* Precio Costo */}
                 <div>
-                  <FieldLabel required hint="Costo de compra por unidad">¿Cuánto cuesta cada uno?</FieldLabel>
+                  <FieldLabel required hint="Costo por unidad de uso (vara, flor, gramo...)">¿Cuánto cuesta cada uno?</FieldLabel>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 dark:text-slate-500 text-xs">$</span>
                     <input
@@ -343,7 +376,93 @@ export default function AdminNewInsumoPage() {
                       step="0.01"
                     />
                   </div>
+                  {costoCalculado != null && (
+                    <button
+                      type="button"
+                      onClick={aplicarCostoCalculado}
+                      className="mt-1 text-[11px] font-bold text-blue-500 dark:text-blue-400 hover:underline"
+                    >
+                      Usar calculado: ${costoCalculado.toFixed(4)} (precio de compra ÷ rendimiento)
+                    </button>
+                  )}
                 </div>
+              </div>
+            </GroupCard>
+
+            <GroupCard title="Rendimiento y merma">
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 -mt-2">
+                Un rollo o una caja no siempre rinde lo mismo. En vez de contar cada vara o cada
+                flor, el sistema usa esta estimación y la recalibra sola con cada recepción y cada
+                conteo físico.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel hint="Ej. ROLLO, CAJA, PAQUETE (deja vacío si se compra igual que se usa)">¿En qué unidad se compra?</FieldLabel>
+                  <input
+                    type="text"
+                    value={form.unidadCompra}
+                    onChange={set('unidadCompra')}
+                    className={inputBase}
+                    placeholder="Ej. ROLLO"
+                  />
+                </div>
+                <div>
+                  <FieldLabel hint={`Ej. 1 ${form.unidadCompra.trim() || 'unidad de compra'} rinde...`}>
+                    ¿Cuántas unidades de uso rinde?
+                  </FieldLabel>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={form.rendimientoEsperado}
+                    onChange={set('rendimientoEsperado')}
+                    className={inputBase}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel hint="Precio pagado por 1 unidad de compra (opcional)">¿Cuánto costó comprarlo?</FieldLabel>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 dark:text-slate-500 text-xs">$</span>
+                    <input
+                      type="number"
+                      value={form.precioUnidadCompra}
+                      onChange={set('precioUnidadCompra')}
+                      className={`${inputBase} pl-6`}
+                      placeholder="0.00"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <FieldLabel hint="% que se espera perder al manipularlo (se rompe, se maltrata al armar)">
+                    ¿Qué % se pierde al usarlo?
+                  </FieldLabel>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      max={90}
+                      value={form.factorMermaUsoPct}
+                      onChange={set('factorMermaUsoPct')}
+                      className={`${inputBase} pr-8`}
+                      placeholder="0"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold text-slate-400 dark:text-slate-500 text-xs">%</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <FieldLabel hint="Solo para insumos perecederos. Deja vacío si no aplica">¿Cuántos días dura antes de dañarse?</FieldLabel>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.vidaUtilDias}
+                  onChange={set('vidaUtilDias')}
+                  className={`${inputBase} max-w-[10rem]`}
+                  placeholder="Ej. 5"
+                />
               </div>
             </GroupCard>
           </div>

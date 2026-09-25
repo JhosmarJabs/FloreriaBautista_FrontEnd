@@ -1,6 +1,7 @@
 import {
   HealthCheckResponse,
   BackupsResponse,
+  BackupJobsResponse,
   MaintenanceResponse,
   DatabaseMonitorResponse,
   Product,
@@ -26,13 +27,28 @@ import {
   AdminCatalogo,
   Promotion,
   PromotionBody,
+  Oferta,
+  SaveOfertaBody,
+  OfertaPublica,
+  Descuento,
+  SaveDescuentoBody,
+  DescuentoPublico,
+  PricingItem,
+  PricingBreakdown,
+  TemporadaProxima,
   QuickSaleTemplate,
   SaveQuickSaleTemplateBody,
   SiteSettings,
   InventoryKpis,
   ProductKpis,
   SeasonalCatalogKpis,
+  EmployeeExpense,
+  CashCut,
+  ErrorReport,
+  ResolucionAccion,
 } from '../types';
+import { isJwtExpired, limpiarSesion } from '../utils/auth';
+import { apiCache } from './apiCache';
 
 const API_BASE = '/api/admin';
 const TOKEN_URL = '/api/dev/token';
@@ -130,6 +146,28 @@ export interface WebOrderInput {
     referencias?: string | null;
   };
   items: { productId: string; cantidad: number; notas?: string | null }[];
+  codigoCupon?: string | null;
+}
+
+// ── Solicitudes de venta instantanea (admin) ────────────────────
+export interface SolicitudVentaInstantaneaAdmin {
+  id: string;
+  customerId: string;
+  nombreCliente: string;
+  telefonoCliente: string | null;
+  productId: string;
+  nombreProducto: string;
+  imagenProducto: string | null;
+  cantidad: number;
+  estado: string;  // PENDIENTE | ACEPTADA | RECHAZADA | EXPIRADA
+  creadaEn: string;
+  escaladaAEmpleadoEn: string | null;
+  decididaEn: string | null;
+  decididaPorNombre: string | null;
+  motivoRechazo: string | null;
+  motivoExpiracion: string | null;
+  reservaExpiraEn: string | null;
+  orderId: string | null;
 }
 
 // Cache del token para evitar múltiples llamadas seguidas
@@ -137,23 +175,11 @@ let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
 
-// ── Helpers de JWT ─────────────────────────────────────────────────────────
-const isJwtExpired = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    // exp es en segundos, Date.now() en ms
-    return payload.exp * 1000 < Date.now();
-  } catch {
-    return true; // si no se puede parsear, tratar como expirado
-  }
-};
-
 // Limpia la sesión y manda al login. Se usa window.location (no useNavigate)
-// porque este archivo no es un componente/hook de React.
+// porque este archivo no es un componente/hook de React. `limpiarSesion` borra
+// también la clave heredada 'user', que si sobrevive revive una sesión vieja.
 const redirectToLogin = () => {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('usuario');
+  limpiarSesion();
   if (window.location.pathname !== '/login') {
     window.location.href = '/login';
   }
@@ -213,6 +239,29 @@ const errorMessage = async (res: Response, fallback: string): Promise<string> =>
   return `${fallback} (error ${res.status})`;
 };
 
+async function cachedGet<T>(url: string, errorMsg: string): Promise<T> {
+  const hit = apiCache.get(url);
+  if (hit) return hit as T;
+  const res = await fetch(url, { headers: await authHeaders() });
+  if (!res.ok) throw new Error(await errorMessage(res, errorMsg));
+  const json = await res.json();
+  apiCache.set(url, json);
+  return json;
+}
+
+async function mutate<T>(
+  method: string, url: string, body?: unknown, invalidatePattern?: string, errorMsg = 'Error'
+): Promise<T> {
+  if (invalidatePattern) apiCache.invalidate(invalidatePattern);
+  const res = await fetch(url, {
+    method,
+    headers: await authHeaders(),
+    ...(body !== undefined && { body: JSON.stringify(body) }),
+  });
+  if (!res.ok) throw new Error(await errorMessage(res, errorMsg));
+  return res.json();
+}
+
 export const AdminService = {
   // ─── Base de datos ────────────────────────────────────────────
   getDatabaseHealth: async (): Promise<HealthCheckResponse> => {
@@ -241,7 +290,7 @@ export const AdminService = {
   },
 
   // ─── Respaldos ────────────────────────────────────────────────
-  getBackups: async (): Promise<BackupsResponse> => {
+  getBackups: async (): Promise<BackupJobsResponse> => {
     const res = await fetch(`${API_BASE}/backups`, {
       headers: await authHeaders(),
     });
@@ -257,11 +306,14 @@ export const AdminService = {
     return res.json();
   },
 
-  createFullBackup: async (descripcion: string): Promise<{ success: boolean; message: string }> => {
+  createFullBackup: async (
+    descripcion: string,
+    destino: string = 'DRIVE'
+  ): Promise<{ success: boolean; message: string }> => {
     const res = await fetch(`${API_BASE}/backups/full`, {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ descripcion, formato: 'BACKUP' }),
+      body: JSON.stringify({ descripcion, formato: 'BACKUP', destino }),
     });
     if (!res.ok) throw new Error('Error al crear respaldo completo');
     return res.json();
@@ -399,19 +451,25 @@ export const AdminService = {
     if (params.page      !== undefined) query.set('page',       String(params.page));
     if (params.size      !== undefined) query.set('size',       String(params.size));
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/inventory${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener inventario');
-    return res.json();
+    return cachedGet(`${API_BASE}/inventory${qs ? `?${qs}` : ''}`, 'Error al obtener inventario');
+  },
+
+  getInventoryIndex: async (): Promise<{ items: InventoryItem[]; sincronizadoEn: string }> => {
+    const res = await fetch(`${API_BASE}/inventory/index`, { headers: await authHeaders() });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al cargar índice de inventario'));
+    const json = await res.json();
+    return json.data;
+  },
+
+  getInventoryDelta: async (desde: string): Promise<{ items: InventoryItem[]; sincronizadoEn: string }> => {
+    const res = await fetch(`${API_BASE}/inventory/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar inventario'));
+    const json = await res.json();
+    return json.data;
   },
 
   getAdminInventoryKpis: async (): Promise<SingleResponse<InventoryKpis>> => {
-    const res = await fetch(`${API_BASE}/inventory/kpis`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener KPIs de inventario');
-    return res.json();
+    return cachedGet(`${API_BASE}/inventory/kpis`, 'Error al obtener KPIs de inventario');
   },
 
   getAdminInventoryMovements: async (params: {
@@ -424,16 +482,13 @@ export const AdminService = {
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/inventory/movements${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener movimientos de inventario');
-    return res.json();
+    return cachedGet(`${API_BASE}/inventory/movements${qs ? `?${qs}` : ''}`, 'Error al obtener movimientos de inventario');
   },
 
   registerAdminInventoryMovement: async (
     body: RegisterMovementRequest,
   ): Promise<SingleResponse<InventoryMovement>> => {
+    apiCache.invalidate('/inventory');
     const res = await fetch(`${API_BASE}/inventory/movements`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -445,46 +500,25 @@ export const AdminService = {
   },
 
   getAdminProductsKpis: async (): Promise<SingleResponse<ProductKpis>> => {
-    const res = await fetch(`${API_BASE}/products/kpis`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener KPIs de productos');
-    return res.json();
+    return cachedGet(`${API_BASE}/products/kpis`, 'Error al obtener KPIs de productos');
   },
 
   getAdminCatalogsKpis: async (): Promise<SingleResponse<SeasonalCatalogKpis>> => {
-    const res = await fetch(`${API_BASE}/catalogos/kpis`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener KPIs de catálogos');
-    return res.json();
+    return cachedGet(`${API_BASE}/catalogos/kpis`, 'Error al obtener KPIs de catálogos');
   },
 
   getAdminInventoryItemById: async (id: string): Promise<SingleResponse<InventoryItem>> => {
-    const res = await fetch(`${API_BASE}/inventory/${id}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/inventory/${id}`, 'Error al obtener insumo');
   },
 
   // ─── Predicción de surtido (Modelos Predictivos — Propuesta 1) ─
   getSupplyForecast: async (id: string): Promise<SingleResponse<any>> => {
-    const res = await fetch(`${API_BASE}/inventory/${id}/prediccion-surtido`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/inventory/${id}/prediccion-surtido`, 'Error al obtener predicción de surtido');
   },
 
-  // Lista de reabastecimiento: insumos con la predicción del modelo S1 (Propuesta 1).
-  // Por defecto lee del caché del backend; refresh=true fuerza recalcular el modelo.
   getReabastecimiento: async (refresh = false): Promise<SingleResponse<any[]>> => {
-    const res = await fetch(`${API_BASE}/inventory/reabastecimiento${refresh ? '?refresh=true' : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    if (refresh) apiCache.invalidate('/inventory/reabastecimiento');
+    return cachedGet(`${API_BASE}/inventory/reabastecimiento${refresh ? '?refresh=true' : ''}`, 'Error al obtener reabastecimiento');
   },
 
   // ─── Solicitudes de reabastecimiento ──────────────────────────
@@ -504,22 +538,15 @@ export const AdminService = {
     qs.set('page', String(params.page ?? 1));
     qs.set('size', String(params.size ?? 20));
 
-    const res = await fetch(`${API_BASE}/supply-orders?${qs}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al obtener las solicitudes'));
-    return res.json();
+    return cachedGet(`${API_BASE}/supply-orders?${qs}`, 'Error al obtener las solicitudes');
   },
 
   getSupplyOrder: async (id: string): Promise<SingleResponse<SupplyOrderDetail>> => {
-    const res = await fetch(`${API_BASE}/supply-orders/${id}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al obtener la solicitud'));
-    return res.json();
+    return cachedGet(`${API_BASE}/supply-orders/${id}`, 'Error al obtener la solicitud');
   },
 
   createSupplyOrder: async (body: SupplyOrderInput): Promise<SingleResponse<SupplyOrderDetail>> => {
+    apiCache.invalidate('/supply-orders');
     const res = await fetch(`${API_BASE}/supply-orders`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -530,6 +557,7 @@ export const AdminService = {
   },
 
   updateSupplyOrder: async (id: string, body: SupplyOrderInput): Promise<SingleResponse<SupplyOrderDetail>> => {
+    apiCache.invalidate('/supply-orders');
     const res = await fetch(`${API_BASE}/supply-orders/${id}`, {
       method: 'PUT',
       headers: await authHeaders(),
@@ -540,6 +568,7 @@ export const AdminService = {
   },
 
   sendSupplyOrder: async (id: string): Promise<SingleResponse<SupplyOrderDetail>> => {
+    apiCache.invalidate('/supply-orders');
     const res = await fetch(`${API_BASE}/supply-orders/${id}/enviar`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -552,6 +581,8 @@ export const AdminService = {
     id: string,
     body: SupplyOrderReceiveInput,
   ): Promise<SingleResponse<SupplyOrderDetail>> => {
+    apiCache.invalidate('/supply-orders');
+    apiCache.invalidate('/inventory');
     const res = await fetch(`${API_BASE}/supply-orders/${id}/recepcion`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -562,6 +593,7 @@ export const AdminService = {
   },
 
   cancelSupplyOrder: async (id: string, motivo?: string): Promise<SingleResponse<SupplyOrderDetail>> => {
+    apiCache.invalidate('/supply-orders');
     const res = await fetch(`${API_BASE}/supply-orders/${id}/cancelar`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -572,6 +604,7 @@ export const AdminService = {
   },
 
   createInventoryItem: async (body: any): Promise<SingleResponse<InventoryItem>> => {
+    apiCache.invalidate('/inventory');
     const res = await fetch(`${API_BASE}/inventory`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -582,6 +615,7 @@ export const AdminService = {
   },
 
   updateInventoryItem: async (id: string, body: any): Promise<SingleResponse<InventoryItem>> => {
+    apiCache.invalidate('/inventory');
     const res = await fetch(`${API_BASE}/inventory/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -592,6 +626,7 @@ export const AdminService = {
   },
 
   deleteInventoryItem: async (id: string): Promise<ApiResponse<any>> => {
+    apiCache.invalidate('/inventory');
     const res = await fetch(`${API_BASE}/inventory/${id}/delete`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -601,12 +636,7 @@ export const AdminService = {
   },
 
   getDashboardStats: async (): Promise<SingleResponse<any>> => {
-    const res = await fetch(`${API_BASE}/reports/dashboard`, {
-      method: 'GET',
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/reports/dashboard`, 'Error al obtener estadísticas del dashboard');
   },
 
   getSalesReport: async (desde?: string, hasta?: string): Promise<SingleResponse<any>> => {
@@ -614,27 +644,15 @@ export const AdminService = {
     if (desde) query.set('desde', desde);
     if (hasta) query.set('hasta', hasta);
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/reports/sales${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/reports/sales${qs ? `?${qs}` : ''}`, 'Error al obtener reporte de ventas');
   },
 
   getTopProducts: async (top = 10): Promise<SingleResponse<any[]>> => {
-    const res = await fetch(`${API_BASE}/reports/top-products?top=${top}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/reports/top-products?top=${top}`, 'Error al obtener top productos');
   },
 
   getTopCustomers: async (top = 10): Promise<SingleResponse<any[]>> => {
-    const res = await fetch(`${API_BASE}/reports/top-customers?top=${top}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/reports/top-customers?top=${top}`, 'Error al obtener top clientes');
   },
 
   // ─── Productos admin ──────────────────────────────────────────
@@ -643,29 +661,38 @@ export const AdminService = {
     estado?: string;
     page?: number;
     size?: number;
+    sortBy?: string;
   } = {}): Promise<ApiResponse<Product>> => {
     const query = new URLSearchParams();
     if (params.busqueda !== undefined) query.set('busqueda', params.busqueda);
     if (params.estado !== undefined) query.set('estado', params.estado);
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
+    if (params.sortBy !== undefined) query.set('sortBy', params.sortBy);
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/products${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener productos admin');
-    return res.json();
+    return cachedGet(`${API_BASE}/products${qs ? `?${qs}` : ''}`, 'Error al obtener productos admin');
+  },
+
+  getProductsIndex: async (): Promise<{ items: Product[]; sincronizadoEn: string }> => {
+    const res = await fetch(`${API_BASE}/products/index`, { headers: await authHeaders() });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al cargar índice de productos'));
+    const json = await res.json();
+    return json.data;
+  },
+
+  getProductsDelta: async (desde: string): Promise<{ items: Product[]; sincronizadoEn: string }> => {
+    const res = await fetch(`${API_BASE}/products/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar productos'));
+    const json = await res.json();
+    return json.data;
   },
 
   getAdminProductById: async (productId: string): Promise<SingleResponse<ProductDetail>> => {
-    const res = await fetch(`${API_BASE}/products/${productId}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/products/${productId}`, 'Error al obtener producto');
   },
 
   createAdminProduct: async (body: ProductBody): Promise<ApiResponse<Product>> => {
+    apiCache.invalidate('/products');
     const res = await fetch(`${API_BASE}/products`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -676,6 +703,8 @@ export const AdminService = {
   },
 
   updateAdminProduct: async (productId: string, body: ProductBody): Promise<ApiResponse<Product>> => {
+    apiCache.invalidate('/products');
+    apiCache.invalidate('/products/kpis');
     const res = await fetch(`${API_BASE}/products/${productId}`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -903,19 +932,18 @@ export const AdminService = {
     if (params.size !== undefined) query.set('size', String(params.size));
     if (params.archivado !== undefined) query.set('archivado', String(params.archivado));
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/orders${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener órdenes');
-    return res.json();
+    return cachedGet(`${API_BASE}/orders${qs ? `?${qs}` : ''}`, 'Error al obtener órdenes');
+  },
+
+  getOrdersDelta: async (desde: string): Promise<{ items: Order[]; sincronizadoEn: string }> => {
+    const res = await fetch(`${API_BASE}/orders/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar pedidos'));
+    const json = await res.json();
+    return json.data;
   },
 
   getAdminOrderById: async (orderId: string): Promise<SingleResponse<OrderDetail>> => {
-    const res = await fetch(`${API_BASE}/orders/${orderId}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/orders/${orderId}`, 'Error al obtener orden');
   },
 
   createPhysicalOrder: async (body: {
@@ -929,6 +957,7 @@ export const AdminService = {
     items: { productId: string; cantidad: number; notas?: string }[];
     montoPagado?: number;
     metodoPago?: string;
+    idLocalOffline?: string;
   }): Promise<SingleResponse<OrderDetail>> => {
     // Nota: este endpoint vive en /api/orders (OrdersController), no en /api/admin/orders
     const res = await fetch(`/api/orders/physical`, {
@@ -979,14 +1008,11 @@ export const AdminService = {
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/flowers${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener flores/insumos');
-    return res.json();
+    return cachedGet(`${API_BASE}/flowers${qs ? `?${qs}` : ''}`, 'Error al obtener flores/insumos');
   },
 
   updateFlower: async (id: string, body: FlowerBody): Promise<{ success: boolean; message: string }> => {
+    apiCache.invalidate('/flowers');
     const res = await fetch(`${API_BASE}/flowers/${id}`, {
       method: 'PUT',
       headers: await authHeaders(),
@@ -997,6 +1023,7 @@ export const AdminService = {
   },
 
   createFlower: async (body: FlowerBody): Promise<{ success: boolean; message: string }> => {
+    apiCache.invalidate('/flowers');
     const res = await fetch(`${API_BASE}/flowers`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1021,19 +1048,11 @@ export const AdminService = {
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/users${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/users${qs ? `?${qs}` : ''}`, 'Error al obtener usuarios');
   },
 
   getAdminUserById: async (userId: string): Promise<ApiResponse<User>> => {
-    const res = await fetch(`${API_BASE}/users/${userId}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/users/${userId}`, 'Error al obtener usuario');
   },
 
   updateAdminUserStatus: async (
@@ -1041,6 +1060,7 @@ export const AdminService = {
     activo: boolean,
     motivo: string
   ): Promise<void> => {
+    apiCache.invalidate('/users');
     const res = await fetch(`${API_BASE}/users/${userId}/status`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1050,6 +1070,7 @@ export const AdminService = {
   },
 
   updateAdminUserRoles: async (userId: string, roles: string[]): Promise<void> => {
+    apiCache.invalidate('/users');
     const res = await fetch(`${API_BASE}/users/${userId}/roles`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1058,12 +1079,33 @@ export const AdminService = {
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
   },
 
-  getAuditByEntity: async (entidad: string, entidadId: string): Promise<{ success: boolean; data: AuditLog[] }> => {
-    const res = await fetch(`${API_BASE}/audit/${encodeURIComponent(entidad)}/${encodeURIComponent(entidadId)}`, {
+  // ─── Responsable de turno ──────────────────────────────────────
+  getResponsableTurno: async (): Promise<SingleResponse<User | null>> => {
+    return cachedGet(`${API_BASE}/users/responsable-turno`, 'Error al obtener responsable de turno');
+  },
+
+  asignarResponsableTurno: async (userId: string): Promise<SingleResponse<null>> => {
+    apiCache.invalidate('/users');
+    const res = await fetch(`${API_BASE}/users/${userId}/responsable-turno`, {
+      method: 'POST',
       headers: await authHeaders(),
     });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al asignar responsable de turno'));
     return res.json();
+  },
+
+  quitarResponsableTurno: async (): Promise<SingleResponse<null>> => {
+    apiCache.invalidate('/users');
+    const res = await fetch(`${API_BASE}/users/responsable-turno`, {
+      method: 'DELETE',
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al quitar responsable de turno'));
+    return res.json();
+  },
+
+  getAuditByEntity: async (entidad: string, entidadId: string): Promise<{ success: boolean; data: AuditLog[] }> => {
+    return cachedGet(`${API_BASE}/audit/${encodeURIComponent(entidad)}/${encodeURIComponent(entidadId)}`, 'Error al obtener auditoría');
   },
 
   getAuditLogs: async (params: {
@@ -1084,14 +1126,11 @@ export const AdminService = {
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
     const qs = query.toString();
-    const res = await fetch(`${API_BASE}/audit${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/audit${qs ? `?${qs}` : ''}`, 'Error al obtener logs de auditoría');
   },
 
   createAdminUser: async (body: UserBody): Promise<SingleResponse<User>> => {
+    apiCache.invalidate('/users');
     const res = await fetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1106,22 +1145,15 @@ export const AdminService = {
 
   // ─── Promociones ──────────────────────────────────────────────
   getAdminPromotions: async (): Promise<SingleResponse<Promotion[]>> => {
-    const res = await fetch(`${API_BASE}/promotions`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/promotions`, 'Error al obtener promociones');
   },
 
   getAdminPromotionById: async (id: string): Promise<SingleResponse<Promotion>> => {
-    const res = await fetch(`${API_BASE}/promotions/${id}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/promotions/${id}`, 'Error al obtener promoción');
   },
 
   createAdminPromotion: async (body: PromotionBody): Promise<SingleResponse<Promotion>> => {
+    apiCache.invalidate('/promotions');
     const res = await fetch(`${API_BASE}/promotions`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1132,6 +1164,7 @@ export const AdminService = {
   },
 
   updateAdminPromotion: async (id: string, body: PromotionBody): Promise<SingleResponse<Promotion>> => {
+    apiCache.invalidate('/promotions');
     const res = await fetch(`${API_BASE}/promotions/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1142,6 +1175,7 @@ export const AdminService = {
   },
 
   deleteAdminPromotion: async (id: string): Promise<SingleResponse<null>> => {
+    apiCache.invalidate('/promotions');
     const res = await fetch(`${API_BASE}/promotions/${id}/eliminar`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1150,18 +1184,96 @@ export const AdminService = {
     return res.json();
   },
 
+  // ─── Ofertas (admin) ────────────────────────────────────────────
+  getAdminOfertas: async (): Promise<SingleResponse<Oferta[]>> => {
+    return cachedGet(`${API_BASE}/offers`, 'Error al obtener ofertas');
+  },
+
+  createOferta: async (body: SaveOfertaBody): Promise<SingleResponse<Oferta>> => {
+    return mutate('POST', `${API_BASE}/offers`, body, '/offers', 'Error al crear oferta');
+  },
+
+  updateOferta: async (id: string, body: SaveOfertaBody): Promise<SingleResponse<Oferta>> => {
+    return mutate('POST', `${API_BASE}/offers/${id}`, body, '/offers', 'Error al actualizar oferta');
+  },
+
+  deleteOferta: async (id: string): Promise<SingleResponse<null>> => {
+    return mutate('POST', `${API_BASE}/offers/${id}/eliminar`, undefined, '/offers', 'Error al eliminar oferta');
+  },
+
+  // ─── Descuentos (admin) ─────────────────────────────────────────
+  getAdminDescuentos: async (): Promise<SingleResponse<Descuento[]>> => {
+    return cachedGet(`${API_BASE}/discounts`, 'Error al obtener descuentos');
+  },
+
+  createDescuento: async (body: SaveDescuentoBody): Promise<SingleResponse<Descuento>> => {
+    return mutate('POST', `${API_BASE}/discounts`, body, '/discounts', 'Error al crear descuento');
+  },
+
+  updateDescuento: async (id: string, body: SaveDescuentoBody): Promise<SingleResponse<Descuento>> => {
+    return mutate('POST', `${API_BASE}/discounts/${id}`, body, '/discounts', 'Error al actualizar descuento');
+  },
+
+  deleteDescuento: async (id: string): Promise<SingleResponse<null>> => {
+    return mutate('POST', `${API_BASE}/discounts/${id}/eliminar`, undefined, '/discounts', 'Error al eliminar descuento');
+  },
+
+  // ─── Ofertas y descuentos (público) ─────────────────────────────
+  getOfertasPublicas: async (): Promise<ApiResponse<OfertaPublica[]>> => {
+    const res = await fetch('/api/offers');
+    if (!res.ok) throw new Error('Error al obtener ofertas');
+    return res.json();
+  },
+
+  getDescuentosPublicos: async (): Promise<ApiResponse<DescuentoPublico[]>> => {
+    const res = await fetch('/api/discounts');
+    if (!res.ok) throw new Error('Error al obtener descuentos');
+    return res.json();
+  },
+
+  // ─── Temporadas (público) ───────────────────────────────────────
+  getTemporadasProximas: async (): Promise<TemporadaProxima[]> => {
+    const res = await fetch('/api/catalogos/temporadas-proximas');
+    if (!res.ok) throw new Error('Error al obtener temporadas');
+    return res.json();
+  },
+
+  // ─── Pricing / cupón (requiere auth) ────────────────────────────
+  calcularPricing: async (items: PricingItem[], codigoCupon?: string): Promise<ApiResponse<PricingBreakdown>> => {
+    const res = await fetch('/api/cart/calcular', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ items, codigoCupon: codigoCupon ?? '' }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || 'Error al calcular precio');
+    }
+    return res.json();
+  },
+
+  aplicarCupon: async (items: PricingItem[], codigoCupon: string): Promise<ApiResponse<PricingBreakdown>> => {
+    const res = await fetch('/api/cart/aplicar-cupon', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ items, codigoCupon }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || 'Cupón inválido');
+    }
+    return res.json();
+  },
+
   // ─── Plantillas de Venta Rápida (compartidas ADMIN + EMPLEADO) ──
   // soloActivas=true -> solo plantillas publicadas (POS). Omitir -> todas (editor admin).
   getQuickSaleTemplates: async (soloActivas = false): Promise<SingleResponse<QuickSaleTemplate[]>> => {
     const qs = soloActivas ? '?soloActivas=true' : '';
-    const res = await fetch(`/api/quick-sale-templates${qs}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`/api/quick-sale-templates${qs}`, 'Error al obtener plantillas');
   },
 
   createQuickSaleTemplate: async (body: SaveQuickSaleTemplateBody): Promise<SingleResponse<QuickSaleTemplate>> => {
+    apiCache.invalidate('/quick-sale-templates');
     const res = await fetch('/api/quick-sale-templates', {
       method: 'POST',
       headers: await authHeaders(),
@@ -1172,6 +1284,7 @@ export const AdminService = {
   },
 
   updateQuickSaleTemplate: async (id: string, body: SaveQuickSaleTemplateBody): Promise<SingleResponse<QuickSaleTemplate>> => {
+    apiCache.invalidate('/quick-sale-templates');
     const res = await fetch(`/api/quick-sale-templates/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1182,6 +1295,7 @@ export const AdminService = {
   },
 
   deleteQuickSaleTemplate: async (id: string): Promise<SingleResponse<null>> => {
+    apiCache.invalidate('/quick-sale-templates');
     const res = await fetch(`/api/quick-sale-templates/${id}/eliminar`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1192,14 +1306,11 @@ export const AdminService = {
 
   // ─── CMS ──────────────────────────────────────────────────────
   getCms: async (): Promise<SingleResponse<SiteSettings>> => {
-    const res = await fetch(`${API_BASE}/cms`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/cms`, 'Error al obtener configuración CMS');
   },
 
   updateCms: async (body: SiteSettings): Promise<SingleResponse<SiteSettings>> => {
+    apiCache.invalidate('/cms');
     const res = await fetch(`${API_BASE}/cms`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1211,41 +1322,26 @@ export const AdminService = {
 
   // ─── Catálogos globales ────────────────────────────────────────
   getCategorias: async (): Promise<SingleResponse<AdminCategory[]>> => {
-    const res = await fetch(`${API_BASE}/categories`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener catálogo de categorías');
-    return res.json();
+    return cachedGet(`${API_BASE}/categories`, 'Error al obtener catálogo de categorías');
   },
 
   getCatalogos: async (): Promise<SingleResponse<AdminCatalogo[]>> => {
-    const res = await fetch(`${API_BASE}/catalogos`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener catálogos');
-    return res.json();
+    return cachedGet(`${API_BASE}/catalogos`, 'Error al obtener catálogos');
   },
 
   // Catálogos visibles para empleados (endpoint público /api/catalogos): para
   // roles no-admin devuelve solo los catálogos activos. Usado por Venta Rápida
   // para armar las plantillas a partir de catálogos. Devuelve un array plano.
   getPublicCatalogos: async (): Promise<AdminCatalogo[]> => {
-    const res = await fetch('/api/catalogos', {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener catálogos');
-    return res.json();
+    return cachedGet('/api/catalogos', 'Error al obtener catálogos');
   },
 
   getCatalogoById: async (id: string): Promise<SingleResponse<any>> => {
-    const res = await fetch(`${API_BASE}/catalogos/${id}`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error('Error al obtener catálogo');
-    return res.json();
+    return cachedGet(`${API_BASE}/catalogos/${id}`, 'Error al obtener catálogo');
   },
 
   createCatalog: async (body: any): Promise<SingleResponse<any>> => {
+    apiCache.invalidate('/catalogos');
     const res = await fetch(`${API_BASE}/catalogos`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1256,6 +1352,7 @@ export const AdminService = {
   },
 
   updateCatalog: async (id: string, body: any): Promise<SingleResponse<any>> => {
+    apiCache.invalidate('/catalogos');
     const res = await fetch(`${API_BASE}/catalogos/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
@@ -1285,11 +1382,7 @@ export const AdminService = {
 
   // ─── Segmentación de clientes (Modelos Predictivos — Propuesta 3) ──
   getCustomerSegments: async (): Promise<SingleResponse<any[]>> => {
-    const res = await fetch(`${API_BASE}/analytics/segmentos-clientes`, {
-      headers: await authHeaders(),
-    });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
-    return res.json();
+    return cachedGet(`${API_BASE}/analytics/segmentos-clientes`, 'Error al obtener segmentos de clientes');
   },
 
   recalcularSegmentosClientes: async (): Promise<SingleResponse<any>> => {
@@ -1299,5 +1392,148 @@ export const AdminService = {
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
+  },
+
+  // ─── Caja del empleado: gastos, cortes y reportes de error ────────
+  // Contraparte de /api/employee: aquí el admin sí puede filtrar por empleado y
+  // por rango de fechas, porque es quien tiene permitido ver la operación completa.
+
+  getEmployeeExpenses: async (params: {
+    usuarioId?: string;
+    desde?: string;
+    hasta?: string;
+    page?: number;
+    size?: number;
+  } = {}): Promise<ApiResponse<EmployeeExpense>> => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== '') as [string, string][],
+    ).toString();
+    return cachedGet(`${API_BASE}/expenses${qs ? `?${qs}` : ''}`, 'Error al obtener los gastos');
+  },
+
+  getCashCuts: async (params: {
+    usuarioId?: string;
+    desde?: string;
+    hasta?: string;
+    page?: number;
+    size?: number;
+  } = {}): Promise<ApiResponse<CashCut>> => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== '') as [string, string][],
+    ).toString();
+    return cachedGet(`${API_BASE}/cash-cuts${qs ? `?${qs}` : ''}`, 'Error al obtener los cortes de caja');
+  },
+
+  getErrorReports: async (params: { estado?: string; page?: number; size?: number } = {}):
+    Promise<ApiResponse<ErrorReport>> => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== '') as [string, string][],
+    ).toString();
+    return cachedGet(`${API_BASE}/error-reports${qs ? `?${qs}` : ''}`, 'Error al obtener los reportes');
+  },
+
+  resolveErrorReport: async (
+    reporteId: string,
+    body: { accion: ResolucionAccion; nota?: string; rechazar?: boolean },
+  ): Promise<SingleResponse<ErrorReport>> => {
+    apiCache.invalidate('/error-reports');
+    const res = await fetch(`${API_BASE}/error-reports/${reporteId}/resolver`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al resolver el reporte'));
+    return res.json();
+  },
+
+  // ─── Venta Instantanea (cliente) ──────────────────────────────
+
+  crearSolicitudVentaInstantanea: async (body: {
+    productId: string;
+    cantidad: number;
+  }): Promise<SingleResponse<{
+    id: string;
+    productId: string;
+    productoNombre: string;
+    cantidad: number;
+    estado: string;
+    motivoRechazo: string | null;
+    creadaEn: string;
+    reservaExpiraEn: string | null;
+  }>> => {
+    const res = await fetch('/api/solicitudes-venta-instantanea', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al crear solicitud de venta instantanea'));
+    return res.json();
+  },
+
+  getSolicitudVentaInstantanea: async (solicitudId: string): Promise<SingleResponse<{
+    id: string;
+    productId: string;
+    productoNombre: string;
+    cantidad: number;
+    estado: string;
+    motivoRechazo: string | null;
+    creadaEn: string;
+    reservaExpiraEn: string | null;
+  }>> => {
+    const res = await fetch(`/api/solicitudes-venta-instantanea/${solicitudId}`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res, 'Error al consultar solicitud'));
+    return res.json();
+  },
+
+  // ─── Venta Instantanea (admin) ─────────────────────────────────
+
+  getAdminSolicitudesInstantaneas: async (params: {
+    estado?: string;
+    page?: number;
+    size?: number;
+  } = {}): Promise<ApiResponse<SolicitudVentaInstantaneaAdmin>> => {
+    const query = new URLSearchParams();
+    if (params.estado) query.set('estado', params.estado);
+    if (params.page !== undefined) query.set('page', String(params.page));
+    if (params.size !== undefined) query.set('size', String(params.size));
+    const qs = query.toString();
+    return cachedGet(
+      `${API_BASE}/solicitudes-venta-instantanea${qs ? `?${qs}` : ''}`,
+      'Error al obtener solicitudes de venta instantanea');
+  },
+
+  aceptarSolicitudInstantanea: async (
+    solicitudId: string
+  ): Promise<SingleResponse<SolicitudVentaInstantaneaAdmin>> => {
+    return mutate('POST',
+      `${API_BASE}/solicitudes-venta-instantanea/${solicitudId}/aceptar`,
+      undefined,
+      'solicitudes-venta-instantanea',
+      'Error al aceptar solicitud');
+  },
+
+  rechazarSolicitudInstantanea: async (
+    solicitudId: string,
+    motivoRechazo?: string
+  ): Promise<SingleResponse<SolicitudVentaInstantaneaAdmin>> => {
+    return mutate('POST',
+      `${API_BASE}/solicitudes-venta-instantanea/${solicitudId}/rechazar`,
+      { motivoRechazo: motivoRechazo ?? null },
+      'solicitudes-venta-instantanea',
+      'Error al rechazar solicitud');
+  },
+
+  expirarSolicitudesInstantaneas: async (): Promise<SingleResponse<{
+    escaladas: number;
+    expiradasSinRespuesta: number;
+    reservasLiberadas: number;
+  }>> => {
+    return mutate('POST',
+      `${API_BASE}/orders/expirar-solicitudes-instantaneas`,
+      undefined,
+      'solicitudes-venta-instantanea',
+      'Error al expirar solicitudes');
   },
 };

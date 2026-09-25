@@ -25,9 +25,12 @@ import { AdminService } from '../../services/adminService';
 import { lookupCp } from '../../services/sepomexService';
 import { useToast } from '../../hooks/useToast';
 import { todayISO } from '../../utils/date';
+import { agregarVenta } from '../../services/offlineSalesQueue';
+import { useOfflineSync } from '../../hooks/useOfflineSync';
 
 export default function PhysicalOrderPage() {
   const { showToast } = useToast();
+  const { refreshCount } = useOfflineSync();
   const [items, setItems] = useState<{ id: number; productId: string; name: string; quantity: number; price: number; image?: string }[]>([]);
   // Se incrementa en cada reset para forzar un remount limpio de la tabla:
   // evita que AnimatePresence deje un renglón "fantasma" a medio animar
@@ -228,35 +231,44 @@ export default function PhysicalOrderPage() {
     }
 
     setSubmitting(true);
-    try {
-      const payload = {
-        nombreCliente: nombreCliente.trim(),
-        telefono: telefono.trim() || undefined,
-        fechaEntrega,
-        horaEntrega,
-        tipoPedido,
-        notas: notaExtra.trim() || undefined,
-        direccion: needsDireccion ? {
-          calle: [direccion.calle, direccion.numero].filter(Boolean).join(' '),
-          colonia: direccion.colonia,
-          municipio: direccion.municipio,
-          estado: direccion.estado,
-          cp: direccion.cp || undefined,
-          referencias: notaExtra.trim() || undefined,
-        } : undefined,
-        items: items.map(item => ({ productId: item.productId, cantidad: item.quantity })),
-        montoPagado: montoNum > 0 ? montoNum : undefined,
-        metodoPago: montoNum > 0 ? metodoPago : undefined,
-        costoEnvio: deliveryMethod === 'ENVIO' ? shipping : undefined,
-      };
+    const idLocalOffline = crypto.randomUUID();
+    const payload = {
+      nombreCliente: nombreCliente.trim(),
+      telefono: telefono.trim() || undefined,
+      fechaEntrega,
+      horaEntrega,
+      tipoPedido,
+      notas: notaExtra.trim() || undefined,
+      direccion: needsDireccion ? {
+        calle: [direccion.calle, direccion.numero].filter(Boolean).join(' '),
+        colonia: direccion.colonia,
+        municipio: direccion.municipio,
+        estado: direccion.estado,
+        cp: direccion.cp || undefined,
+        referencias: notaExtra.trim() || undefined,
+      } : undefined,
+      items: items.map(item => ({ productId: item.productId, cantidad: item.quantity })),
+      montoPagado: montoNum > 0 ? montoNum : undefined,
+      metodoPago: montoNum > 0 ? metodoPago : undefined,
+      costoEnvio: deliveryMethod === 'ENVIO' ? shipping : undefined,
+      idLocalOffline,
+    };
 
+    try {
       const response = await AdminService.createPhysicalOrder(payload);
       const folio = response.data.id.slice(0, 8).toUpperCase();
       showToast(`Pedido registrado correctamente (folio ${folio})`, 'success');
       resetForm();
-    } catch (error) {
-      console.error('Error creating physical order:', error);
-      showToast('Error al registrar el pedido', 'error');
+    } catch {
+      await agregarVenta({
+        idLocalOffline,
+        payload,
+        creadoEn: new Date().toISOString(),
+        intentos: 0,
+      });
+      await refreshCount();
+      showToast('Sin conexión — pedido guardado localmente', 'info');
+      resetForm();
     } finally {
       setSubmitting(false);
     }
@@ -270,7 +282,7 @@ export default function PhysicalOrderPage() {
     <motion.main 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-[1280px] mx-auto"
+      className="w-full"
     >
       {/* Header Section */}
       <FadeIn>

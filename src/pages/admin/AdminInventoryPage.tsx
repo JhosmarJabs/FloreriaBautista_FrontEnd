@@ -1,157 +1,97 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Package, AlertTriangle, Search, Plus, 
-  ArrowUpRight, ArrowDownRight, History, RefreshCw, 
-  UploadCloud, DownloadCloud, TrendingUp, ChevronRight, 
-  Edit3, Trash2, ChevronLeft, XCircle, Boxes, Star, LayoutGrid, List,
-  ArrowUpDown, Filter
+import {
+  Package, AlertTriangle, Search, Plus,
+  ArrowUpRight, History, RefreshCw,
+  UploadCloud, DownloadCloud, TrendingUp, ChevronRight,
+  Edit3, ChevronLeft, Boxes, LayoutGrid, List
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
-import { ImportProductsResult, InventoryItem, InventoryKpis, SingleResponse } from '../../types';
-import { FadeIn, ScaleIn, AnimatedButton } from '../../components/Animations';
+import { InventoryItem, InventoryKpis } from '../../types';
+import { FadeIn, AnimatedButton } from '../../components/Animations';
 import ImportModal from '../../components/ImportModal';
 import MovementsModal from '../../components/MovementsModal';
 import { useToast } from '../../hooks/useToast';
 import { filterCSV } from '../../utils/exportUtils';
+import { useDatasetEnMemoria } from '../../hooks/useDatasetEnMemoria';
+import { useLocalSort } from '../../hooks/useLocalSort';
+import { SortableColumnHeader } from '../../components/SortableColumnHeader';
+
+const datasetConfig = {
+  cargarTodo: AdminService.getInventoryIndex,
+  cargarDelta: AdminService.getInventoryDelta,
+  getId: (i: InventoryItem) => i.id,
+};
 
 export default function AdminInventoryPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
-  // ── Estado ───────────────────────────────────────────────────────────────────
-  const [inventory, setInventory]           = useState<InventoryItem[]>([]);
-  const [invTotal, setInvTotal]             = useState(0);
-  const [invTotalPags, setInvTotalPags]     = useState(1);
-  const [invPage, setInvPage]               = useState(1);
-  const [loading, setLoading]               = useState(false);
   const [kpis, setKpis]                     = useState<InventoryKpis | null>(null);
   const [viewMode, setViewMode]             = useState<'table' | 'grid'>('table');
   const [invBusqueda, setInvBusqueda]       = useState('');
-  const [invBajoMin, setInvBajoMin]         = useState<boolean | undefined>(undefined);
+  const [invBajoMin, setInvBajoMin]         = useState(false);
   const [isImportModalOpen, setIsImportModalOpen]     = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen]     = useState(false);
-  const [importResult, setImportResult]     = useState<ImportProductsResult | null>(null);
   const [isMovementsModalOpen, setIsMovementsModalOpen] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{ field: keyof InventoryItem; order: 'asc' | 'desc' }>({ field: 'nombre', order: 'asc' });
   const [invCategoria, setInvCategoria] = useState('');
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
-  const [availableUnits, setAvailableUnits] = useState<string[]>([]);
 
-  // ── Carga ────────────────────────────────────────────────────────────────────
-  const loadInventory = useCallback(async () => {
-    setLoading(true);
-    const kpisPromise = AdminService.getAdminInventoryKpis()
-      .then(res => {
-        if (res && res.success) {
-          setKpis(res.data);
-        }
-      })
-      .catch((err) => {
-        console.error('Error al cargar KPIs de inventario:', err);
-      });
-    try {
-      const res = await AdminService.getAdminInventory({
-        busqueda:   invBusqueda  || undefined,
-        bajoMinimo: invBajoMin,
-        page:       invPage,
-        size:       40,
-      });
-      let items = res.data.items;
+  const { datos, cargando, error, recargarCompleto } = useDatasetEnMemoria(datasetConfig);
 
-      // Filtro de Categoría (basado en la unidadMedida real del insumo)
-      if (invCategoria) {
-        items = items.filter(i => i.unidadMedida.toLowerCase() === invCategoria.toLowerCase());
-      }
-
-      const sortedItems = [...items].sort((a, b) => {
-        const aVal = a[sortConfig.field];
-        const bVal = b[sortConfig.field];
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
-          return sortConfig.order === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-        }
-        if (typeof aVal === 'number' && typeof bVal === 'number') {
-          return sortConfig.order === 'asc' ? aVal - bVal : bVal - aVal;
-        }
-        return 0;
-      });
-      setInventory(sortedItems);
-      setInvTotal(res.data.total);
-      setInvTotalPags(res.data.totalPaginas ?? 1);
-    } catch {
-      showToast('Error al cargar inventario', 'error');
-    } finally {
-      setLoading(false);
-    }
-    await kpisPromise;
-  }, [invBusqueda, invBajoMin, invPage, invCategoria, showToast, sortConfig]);
-
-  useEffect(() => { loadInventory(); }, [loadInventory]);
-  useEffect(() => { setInvPage(1); }, [invBusqueda, invBajoMin, invCategoria]);
-
-  // ── Unidades disponibles (para el filtro de Categoría) ─────────────────────────
   useEffect(() => {
-    AdminService.getAdminInventory({ size: 1000 })
-      .then(res => {
-        const unidades = Array.from(
-          new Set(
-            res.data.items
-              .map(i => i.unidadMedida?.trim())
-              .filter((u): u is string => !!u)
-          )
-        ).sort((a, b) => a.localeCompare(b, 'es'));
-        setAvailableUnits(unidades);
-        // Si la categoría seleccionada ya no existe, reiniciarla
-        setInvCategoria(prev => (prev && !unidades.includes(prev) ? '' : prev));
-      })
-      .catch(err => console.error('Error al cargar unidades de inventario:', err));
+    AdminService.getAdminInventoryKpis().then(r => { if (r?.success) setKpis(r.data); }).catch(() => {});
   }, []);
 
-  // ── Handlers ─────────────────────────────────────────────────────────────────
+  const availableUnits = useMemo(() => {
+    return Array.from(new Set(datos.map(i => i.unidadMedida?.trim()).filter((u): u is string => !!u))).sort((a, b) => a.localeCompare(b, 'es'));
+  }, [datos]);
+
+  const filtros = useMemo(() => {
+    const f: ((item: InventoryItem) => boolean)[] = [];
+    if (invBajoMin) f.push(i => i.stockActual <= i.stockMinimo);
+    if (invCategoria) f.push(i => i.unidadMedida.toLowerCase() === invCategoria.toLowerCase());
+    return f;
+  }, [invBajoMin, invCategoria]);
+
+  const camposBusqueda = useMemo(() => ['nombre' as keyof InventoryItem], []);
+
+  const {
+    datosPaginados: inventory,
+    totalFiltrados,
+    page, setPage, totalPages,
+    sortConfig, toggleSort,
+  } = useLocalSort<InventoryItem>({
+    datos,
+    busqueda: invBusqueda,
+    camposBusqueda,
+    filtros,
+    pageSize: 100,
+  });
+
   const handleImportConfirm = async (_data: any[], file: File) => {
-    try {
-      await AdminService.importAdminInventory(file);
-      await loadInventory();
-      showToast('Inventario importado con éxito', 'success');
-    } catch (err: any) {
-      throw err;
-    }
+    await AdminService.importAdminInventory(file);
+    await recargarCompleto();
+    showToast('Inventario importado con éxito', 'success');
   };
 
   const getUnitStyle = (unit: string) => {
     const u = unit.toLowerCase();
-    if (u.includes('unid') || u.includes('pza') || u.includes('pieza')) 
+    if (u.includes('unid') || u.includes('pza') || u.includes('pieza'))
       return 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20';
-    if (u.includes('caja')) 
+    if (u.includes('caja'))
       return 'bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20';
-    if (u.includes('paq')) 
+    if (u.includes('paq'))
       return 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20';
-    if (u.includes('rollo')) 
+    if (u.includes('rollo'))
       return 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
-    if (u.includes('gr') || u.includes('kg') || u.includes('kilo')) 
+    if (u.includes('gr') || u.includes('kg') || u.includes('kilo'))
       return 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20';
-    if (u.includes('m') || u.includes('metro')) 
+    if (u.includes('m') || u.includes('metro'))
       return 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20';
-    if (u.includes('l') || u.includes('litro')) 
+    if (u.includes('l') || u.includes('litro'))
       return 'bg-cyan-50 text-cyan-600 border-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20';
     return 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700';
-  };
-
-  const calculateRefillDate = (item: InventoryItem) => {
-    // Modelo Predictivo Simplificado
-    let dailyRate = 2;
-    if (item.unidadMedida.toLowerCase().includes('tallo')) dailyRate = 18;
-    if (item.unidadMedida.toLowerCase().includes('pza')) dailyRate = 4;
-    
-    const daysRemaining = Math.floor(item.stockActual / dailyRate);
-    const date = new Date();
-    date.setDate(date.getDate() + daysRemaining);
-
-    return {
-      date: date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }),
-      priority: daysRemaining <= 3 ? 'text-rose-600 font-black' : 'text-slate-500 dark:text-slate-400'
-    };
   };
 
   const getStatusInfo = (item: InventoryItem) => {
@@ -162,13 +102,6 @@ export default function AdminInventoryPage() {
     return                            { label: 'Óptimo',    color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', border: 'border-emerald-100 dark:border-emerald-500/20', dot: 'bg-emerald-400', bar: 90 };
   };
 
-  const toggleSort = (field: keyof InventoryItem) => {
-    setSortConfig(prev => ({
-      field,
-      order: prev.field === field && prev.order === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
   return (
     <div className="space-y-6">
       {/* ── HEADER ── */}
@@ -176,13 +109,12 @@ export default function AdminInventoryPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Gestión de Insumos</h1>
-            <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">Stock de accesorios, bases y materiales</p>
+            <p className="text-slate-400 dark:text-slate-500 text-sm mt-0.5">Stock de accesorios, bases y materiales — {cargando ? '...' : `${datos.length} registros`}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {[
               { label: 'Importar',    icon: UploadCloud,   action: () => setIsImportModalOpen(true) },
               { label: 'Exportar',    icon: DownloadCloud, action: async () => {
-                setLoading(true);
                 try {
                   const blob = await AdminService.exportAdminInventory();
                   const text = await blob.text();
@@ -197,8 +129,6 @@ export default function AdminInventoryPage() {
                   showToast('Inventario exportado', 'success');
                 } catch (err: any) {
                   showToast(`Error al exportar: ${err.message}`, 'error');
-                } finally {
-                  setLoading(false);
                 }
               }},
               { label: 'Movimientos', icon: History,       action: () => setIsMovementsModalOpen(true) },
@@ -219,10 +149,10 @@ export default function AdminInventoryPage() {
       {/* ── KPI Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total registros', value: loading || !kpis ? '—' : String(kpis.totalRegistros), icon: <TrendingUp />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'en inventario' },
-          { label: 'Bajo mínimo', value: loading || !kpis ? '—' : String(kpis.bajoMinimo), icon: <AlertTriangle />, color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40', trend: 'requieren reposición' },
-          { label: 'Suma al costo', value: loading || !kpis ? '—' : String(kpis.sumaAlCosto), icon: <ArrowUpRight />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'afectan costo base' },
-          { label: 'Sucursales', value: loading || !kpis ? '—' : String(kpis.sucursales), icon: <Boxes />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'con insumos activos' },
+          { label: 'Total registros', value: cargando || !kpis ? '—' : String(kpis.totalRegistros), icon: <TrendingUp />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'en inventario' },
+          { label: 'Bajo mínimo', value: cargando || !kpis ? '—' : String(kpis.bajoMinimo), icon: <AlertTriangle />, color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-100/70 dark:bg-rose-500/20', border: 'border-rose-200 dark:border-rose-500/40', trend: 'requieren reposición' },
+          { label: 'Suma al costo', value: cargando || !kpis ? '—' : String(kpis.sumaAlCosto), icon: <ArrowUpRight />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'afectan costo base' },
+          { label: 'Sucursales', value: cargando || !kpis ? '—' : String(kpis.sucursales), icon: <Boxes />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'con insumos activos' },
         ].map((s, i) => (
           <div key={i} className={`relative overflow-hidden rounded-2xl border ${s.border} ${s.bg} p-5`}>
             <div className="relative z-10 flex flex-col justify-between h-full">
@@ -241,12 +171,11 @@ export default function AdminInventoryPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar por nombre..." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20" value={invBusqueda} onChange={e => setInvBusqueda(e.target.value)} />
         </div>
-        
-        <button onClick={() => setInvBajoMin(prev => prev === true ? undefined : true)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${invBajoMin ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 text-amber-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 text-slate-600 dark:text-slate-400'}`}>
+
+        <button onClick={() => setInvBajoMin(prev => !prev)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${invBajoMin ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 text-amber-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 text-slate-600 dark:text-slate-400'}`}>
           <AlertTriangle className="w-4 h-4" /> Bajo mín.
         </button>
 
-        {/* Botón de Categoría (Filtra por Unidad: Pieza, Tallo, Pliego, etc.) */}
         <div className="relative">
           <button onClick={() => setIsCategoryMenuOpen(!isCategoryMenuOpen)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${invCategoria ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 text-blue-700' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 text-slate-600 dark:text-slate-400'}`}>
             <Boxes className="w-4 h-4" />
@@ -272,8 +201,8 @@ export default function AdminInventoryPage() {
           </AnimatePresence>
         </div>
 
-        <button onClick={loadInventory} className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-slate-600 dark:text-slate-400">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        <button onClick={() => recargarCompleto()} className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-slate-600 dark:text-slate-400">
+          <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
         </button>
 
         <div className="flex bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl ml-auto">
@@ -284,8 +213,16 @@ export default function AdminInventoryPage() {
 
       {/* ── TABLA / GRID ── */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-2xl shadow-sm overflow-hidden min-h-[400px] flex flex-col">
-        {loading ? (
+        {cargando && datos.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20"><RefreshCw className="w-7 h-7 animate-spin text-blue-400" /><p className="text-sm text-slate-400">Cargando...</p></div>
+        ) : error ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20 text-red-400">
+            <AlertTriangle className="w-8 h-8" />
+            <p className="text-sm font-medium">{error}</p>
+            <button onClick={() => recargarCompleto()} className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg">
+              <RefreshCw className="w-3.5 h-3.5" />Reintentar
+            </button>
+          </div>
         ) : inventory.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20"><Package className="w-12 h-12 text-slate-200" /><p className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Sin registros</p></div>
         ) : (
@@ -295,15 +232,20 @@ export default function AdminInventoryPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50/60 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700/50 whitespace-nowrap">
-                      {['Artículo', 'Unidad', 'Costo', 'Sucursal', 'Stock', 'Mínimo', 'Reabastecimiento', 'Status', 'Acción'].map((h, i) => (
-                        <th key={i} className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{h}</th>
-                      ))}
+                      <SortableColumnHeader label="Artículo" field="nombre" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Unidad" field="unidadMedida" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Costo" field="precioCosto" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Tipo" field="sucursal" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Stock" field="stockActual" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <SortableColumnHeader label="Mínimo" field="stockMinimo" sortConfig={sortConfig} onToggle={toggleSort} className="px-6 py-4" />
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reabastecimiento</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                     {inventory.map((item) => {
                       const s = getStatusInfo(item);
-                      const refill = calculateRefillDate(item);
                       return (
                         <tr key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors group">
                           <td className="px-6 py-4">
@@ -323,9 +265,7 @@ export default function AdminInventoryPage() {
                           <td className="px-6 py-4 text-lg font-black text-slate-900 dark:text-white">{item.stockActual}</td>
                           <td className="px-6 py-4 text-xs text-slate-400">{item.stockMinimo}</td>
                           <td className="px-6 py-4">
-                             <div className="flex flex-col">
-                                <span className={`text-[10px] font-black uppercase ${refill.priority}`}>{refill.date}</span>
-                             </div>
+                            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase" title="Aún no disponible">Pendiente</span>
                           </td>
                           <td className="px-6 py-4"><span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${s.bg} ${s.color} ${s.border}`}>{s.label}</span></td>
                           <td className="px-6 py-4">
@@ -339,13 +279,11 @@ export default function AdminInventoryPage() {
               </div>
             ) : (
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {inventory.map(item => {
-                  const refill = calculateRefillDate(item);
-                  return (
+                {inventory.map(item => (
                     <div key={item.id} className="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-xl transition-all">
                        <div className="flex justify-between items-start mb-4">
                           <div className="size-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">{item.imagenUrl ? <img src={item.imagenUrl} className="w-full h-full object-cover rounded-xl" /> : <Package className="w-5 h-5 text-slate-300" />}</div>
-                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${refill.priority} bg-slate-50 dark:bg-slate-900`}>{refill.date}</span>
+                          <span className="text-[8px] font-semibold uppercase px-2 py-0.5 rounded-full text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900" title="Aún no disponible">Pendiente</span>
                        </div>
                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-sm truncate mb-4">{item.nombre}</h3>
                        <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl mb-4 border border-slate-100 dark:border-slate-700">
@@ -354,24 +292,23 @@ export default function AdminInventoryPage() {
                             <p className="text-xl font-black text-slate-900 dark:text-white leading-none">{item.stockActual}</p>
                           </div>
                           <div className="text-right">
-                             <p className="text-[9px] font-black text-slate-400 uppercase mb-0.5">Surtido IA</p>
-                             <p className={`text-[11px] font-black uppercase ${refill.priority}`}>{refill.date}</p>
+                             <p className="text-[9px] font-black text-slate-400 uppercase mb-0.5">Mínimo</p>
+                             <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase">{item.stockMinimo}</p>
                           </div>
                        </div>
                        <button onClick={() => navigate(`/admin/inventario/editar/${item.id}`)} className="w-full py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-xl">Editar Insumo</button>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             )}
 
             {/* Paginación */}
             <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{inventory.length} de {invTotal}</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{inventory.length} de {totalFiltrados}</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setInvPage(p => Math.max(1, p - 1))} disabled={invPage === 1} className="p-2 text-slate-400 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
-                <span className="text-xs font-black text-slate-900 dark:text-white">Pág {invPage}</span>
-                <button onClick={() => setInvPage(p => Math.min(invTotalPags, p + 1))} disabled={invPage === invTotalPags} className="p-2 text-slate-400 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+                <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="p-2 text-slate-400 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+                <span className="text-xs font-black text-slate-900 dark:text-white">Pág {page}</span>
+                <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages} className="p-2 text-slate-400 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
               </div>
             </div>
           </>
@@ -379,8 +316,7 @@ export default function AdminInventoryPage() {
       </motion.div>
 
       <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onConfirm={handleImportConfirm} title="Importar Insumos" />
-
-      <MovementsModal isOpen={isMovementsModalOpen} onClose={() => setIsMovementsModalOpen(false)} onRegistered={loadInventory} />
+      <MovementsModal isOpen={isMovementsModalOpen} onClose={() => setIsMovementsModalOpen(false)} onRegistered={() => recargarCompleto()} />
     </div>
   );
 }

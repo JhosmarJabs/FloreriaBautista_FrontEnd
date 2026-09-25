@@ -22,6 +22,8 @@ import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
 import { useToast } from '../../hooks/useToast';
 import { parseApiDate } from '../../utils/date';
+import { ESTADO_PEDIDO, estadoPedidoLabel } from '../../utils/labels';
+import AvisoAlcanceEmpleado from '../../components/AvisoAlcanceEmpleado';
 
 // Estados de una entrega dentro de la maquina de estados del backend
 // (ver Transiciones en Backend/Services/OrderService.cs)
@@ -33,11 +35,8 @@ const SIGUIENTE_ESTADO: Record<string, string | null> = {
   EN_RUTA:        'ENTREGADO',
 };
 
-const LABEL_ESTADO: Record<string, string> = {
-  EN_PREPARACION: 'En Preparación',
-  EN_RUTA:        'En Ruta',
-  ENTREGADO:      'Entregado',
-};
+// La etiqueta de cada estado vive en utils/labels.ts (`estadoPedidoLabel`), para
+// que una entrega no se llame distinto aquí que en la lista de pedidos.
 
 function formatDireccion(d?: OrderDetail['direccion']): string {
   if (!d) return 'Entrega en tienda / Sin domicilio';
@@ -129,7 +128,7 @@ export default function DailyDeliveriesPage() {
     try {
       // Consumo: avanzar el estado del pedido en el backend real
       await AdminService.updateAdminOrderStatus(order.id, siguiente);
-      showToast(`Entrega actualizada a ${LABEL_ESTADO[siguiente] ?? siguiente}`, 'success');
+      showToast(`Entrega actualizada a ${estadoPedidoLabel(siguiente)}`, 'success');
 
       setDeliveries(prev =>
         siguiente === 'ENTREGADO'
@@ -165,6 +164,7 @@ export default function DailyDeliveriesPage() {
 
   return (
     <div className="max-w-[1500px] mx-auto px-4 py-2 space-y-4">
+      <AvisoAlcanceEmpleado recurso="entregas" />
       {/* Header Section */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
         <div className="space-y-0.5">
@@ -204,8 +204,8 @@ export default function DailyDeliveriesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {[
           { label: 'Total', value: stats.total, icon: <Package />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30', border: 'border-blue-100 dark:border-blue-800' },
-          { label: 'Por Salir', value: stats.pending, icon: <Clock />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30', border: 'border-amber-100 dark:border-amber-800' },
-          { label: 'En Ruta', value: stats.enRoute, icon: <Truck />, color: 'text-[#1e3a5f] dark:text-blue-400', bg: 'bg-slate-100 dark:bg-slate-900/30', border: 'border-slate-200 dark:border-slate-800' },
+          { label: ESTADO_PEDIDO.EN_PREPARACION.label, value: stats.pending, icon: <Clock />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30', border: 'border-amber-100 dark:border-amber-800' },
+          { label: ESTADO_PEDIDO.EN_RUTA.label, value: stats.enRoute, icon: <Truck />, color: 'text-[#1e3a5f] dark:text-blue-400', bg: 'bg-slate-100 dark:bg-slate-900/30', border: 'border-slate-200 dark:border-slate-800' },
         ].map((s, i) => (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -243,8 +243,8 @@ export default function DailyDeliveriesPage() {
               onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
             >
               <option value="todos">Todos los Estados</option>
-              <option value="EN_PREPARACION">Por Salir</option>
-              <option value="EN_RUTA">En Ruta</option>
+              <option value="EN_PREPARACION">{ESTADO_PEDIDO.EN_PREPARACION.label}</option>
+              <option value="EN_RUTA">{ESTADO_PEDIDO.EN_RUTA.label}</option>
             </select>
           </div>
         </div>

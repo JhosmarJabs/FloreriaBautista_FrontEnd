@@ -6,27 +6,21 @@ import { useCart } from '../../hooks/useCart';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
-import { esCliente } from '../../utils/auth';
 import { slugify, esGuid } from '../../utils/slug';
+import { useAuth } from '../../hooks/useAuth';
 
-export default function ProductPage({ user: initialUser }: { user?: any }) {
+export default function ProductPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { addToCart } = useCart();
-  const [user, setUser] = useState<any>(initialUser);
+  const { esCliente } = useAuth();
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [mainImage, setMainImage] = useState('');
-
-  useEffect(() => {
-    if (!initialUser) {
-      const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-      if (storedUser) setUser(JSON.parse(storedUser));
-    }
-  }, [initialUser]);
+  const [aceptaVariacion, setAceptaVariacion] = useState(false);
 
   useEffect(() => {
     // Carga los productos "También te podría gustar" reales: primero del mismo
@@ -124,7 +118,7 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
         : [];
 
   const handleAddToCart = (p: any) => {
-    if (esCliente(user)) {
+    if (esCliente) {
       addToCart(p);
       showToast(`${p.nombre} añadido al carrito`, 'success');
     } else {
@@ -277,19 +271,50 @@ export default function ProductPage({ user: initialUser }: { user?: any }) {
                 <textarea className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-2xl focus:ring-brand-coral focus:border-brand-coral resize-none px-5 py-4 border font-medium min-h-[120px]" placeholder="Escribe aquí tu dedicatoria..." rows={3}></textarea>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-4 pt-4">
-                <AnimatedButton 
-                  className="flex-1 bg-brand-coral text-white py-5 rounded-2xl font-black text-xl shadow-xl shadow-brand-coral/20 flex items-center justify-center gap-3"
-                  onClick={() => handleAddToCart(product)}
-                >
-                  <ShoppingCart className="w-6 h-6" />
-                  Añadir al Carrito
-                </AnimatedButton>
-                <AnimatedButton className="w-20 h-20 flex items-center justify-center bg-green-500 text-white rounded-2xl shadow-xl shadow-green-500/20">
-                  <MessageCircle className="w-8 h-8" />
-                </AnimatedButton>
-              </div>
+              {/* Checkbox obligatorio de variacion para venta instantanea */}
+              {(() => {
+                const receta = product?.receta ?? [];
+                const tieneFlorPrimaria = receta.length === 1 && receta[0]?.esFlorPrimaria === true;
+                const requiereCheckbox = product?.permiteVentaInstantanea && tieneFlorPrimaria;
+                return (
+                  <>
+                    {requiereCheckbox && (
+                      <label className="flex items-start gap-3 cursor-pointer group p-5 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 transition-all hover:border-amber-300">
+                        <input
+                          className="mt-0.5 w-5 h-5 rounded-lg border-amber-300 text-brand-coral focus:ring-brand-coral shrink-0"
+                          type="checkbox"
+                          checked={aceptaVariacion}
+                          onChange={(e) => setAceptaVariacion(e.target.checked)}
+                        />
+                        <span className="text-sm font-medium text-amber-800 dark:text-amber-200 leading-relaxed">
+                          {"El diseño puede variar en follaje según disponibilidad; la flor principal y estructura del arreglo se garantizan."}
+                        </span>
+                      </label>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-4 pt-4">
+                      <AnimatedButton
+                        className={`flex-1 py-5 rounded-2xl font-black text-xl shadow-xl flex items-center justify-center gap-3 transition-all ${
+                          requiereCheckbox && !aceptaVariacion
+                            ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed shadow-none'
+                            : 'bg-brand-coral text-white shadow-brand-coral/20'
+                        }`}
+                        onClick={() => {
+                          if (requiereCheckbox && !aceptaVariacion) return;
+                          handleAddToCart(product);
+                        }}
+                      >
+                        <ShoppingCart className="w-6 h-6" />
+                        Añadir al Carrito
+                      </AnimatedButton>
+                      <AnimatedButton className="w-20 h-20 flex items-center justify-center bg-green-500 text-white rounded-2xl shadow-xl shadow-green-500/20">
+                        <MessageCircle className="w-8 h-8" />
+                      </AnimatedButton>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </FadeIn>

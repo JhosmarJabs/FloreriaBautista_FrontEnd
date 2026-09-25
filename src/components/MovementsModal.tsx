@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'motion/react';
 import {
   X, History, Plus, RefreshCw, ChevronLeft, ChevronRight,
-  ArrowDownRight, ArrowUpRight, SlidersHorizontal, Search, Package, CheckCircle2,
+  ArrowDownRight, ArrowUpRight, SlidersHorizontal, Search, Package, CheckCircle2, Info,
 } from 'lucide-react';
 import { AdminService } from '../services/adminService';
-import { InventoryItem, InventoryMovement, MovementType } from '../types';
+import { InventoryItem, InventoryMovement, MovementType, MotivoCategoria } from '../types';
 import { AnimatedButton } from './Animations';
 import { useToast } from '../hooks/useToast';
 import { formatApiDate } from '../utils/date';
@@ -55,6 +55,14 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
   const [motivo, setMotivo] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Recepción por unidad de compra (rollo, caja) en vez de contar unidades de uso
+  // exactas; y las categorías que activan la merma explícita o la recalibración.
+  const [porUnidadCompra, setPorUnidadCompra] = useState(false);
+  const [unidadesCompra, setUnidadesCompra] = useState('');
+  const [rendimientoObservado, setRendimientoObservado] = useState('');
+  const [categoriaSalida, setCategoriaSalida] = useState<'OTRO' | 'CADUCIDAD'>('OTRO');
+  const [categoriaAjuste, setCategoriaAjuste] = useState<'OTRO' | 'CONTEO_FISICO'>('OTRO');
+
   const loadMovements = useCallback(async () => {
     setLoading(true);
     try {
@@ -91,6 +99,11 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
       setCantidad('');
       setMotivo('');
       setItemSearch('');
+      setPorUnidadCompra(false);
+      setUnidadesCompra('');
+      setRendimientoObservado('');
+      setCategoriaSalida('OTRO');
+      setCategoriaAjuste('OTRO');
     }
   }, [isOpen]);
 
@@ -100,10 +113,37 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
     return items.filter(i => i.nombre.toLowerCase().includes(q)).slice(0, 50);
   }, [items, itemSearch]);
 
+  const usaUnidadesCompra = tipo === 'ENTRADA' && porUnidadCompra;
+
   const handleSubmit = async () => {
     if (!selectedItem) { showToast('Selecciona un insumo', 'error'); return; }
-    const cant = parseInt(cantidad, 10);
-    if (!Number.isFinite(cant) || cant <= 0) { showToast('La cantidad debe ser mayor a 0', 'error'); return; }
+
+    let cant = 0;
+    let unidCompra: number | undefined;
+    let rendObservado: number | undefined;
+
+    if (usaUnidadesCompra) {
+      unidCompra = parseInt(unidadesCompra, 10);
+      if (!Number.isFinite(unidCompra) || unidCompra <= 0) {
+        showToast('Las unidades de compra deben ser mayor a 0', 'error'); return;
+      }
+      if (rendimientoObservado.trim()) {
+        rendObservado = parseFloat(rendimientoObservado);
+        if (!Number.isFinite(rendObservado) || rendObservado <= 0) {
+          showToast('El rendimiento observado debe ser mayor a 0', 'error'); return;
+        }
+      }
+    } else {
+      cant = tipo === 'AJUSTE' ? parseInt(cantidad, 10) : parseInt(cantidad, 10);
+      if (!Number.isFinite(cant) || (tipo === 'AJUSTE' ? cant < 0 : cant <= 0)) {
+        showToast(tipo === 'AJUSTE' ? 'El conteo no puede ser negativo' : 'La cantidad debe ser mayor a 0', 'error');
+        return;
+      }
+    }
+
+    const categoria: MotivoCategoria | undefined =
+      tipo === 'SALIDA' ? categoriaSalida : tipo === 'AJUSTE' ? categoriaAjuste : undefined;
+
     setSaving(true);
     try {
       await AdminService.registerAdminInventoryMovement({
@@ -111,6 +151,9 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
         tipo,
         cantidad: cant,
         motivo: motivo.trim() || undefined,
+        motivoCategoria: categoria,
+        unidadesCompra: unidCompra,
+        rendimientoObservado: rendObservado,
       });
       showToast('Movimiento registrado', 'success');
       onRegistered?.();
@@ -119,6 +162,11 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
       setCantidad('');
       setMotivo('');
       setItemSearch('');
+      setPorUnidadCompra(false);
+      setUnidadesCompra('');
+      setRendimientoObservado('');
+      setCategoriaSalida('OTRO');
+      setCategoriaAjuste('OTRO');
       setPage(1);
       setTab('historial');
     } catch (err: any) {
@@ -287,17 +335,121 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Cantidad</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={cantidad}
-                    onChange={e => setCantidad(e.target.value)}
-                    placeholder="0"
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
+                {/* ENTRADA: elegir si se cuenta en unidad de compra o de uso */}
+                {tipo === 'ENTRADA' && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPorUnidadCompra(false)}
+                      className={`flex-1 py-2 rounded-lg text-[11px] font-bold border transition-colors ${!porUnidadCompra ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}
+                    >
+                      Cuento {selectedItem?.unidadMedida?.toLowerCase() || 'unidades de uso'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPorUnidadCompra(true)}
+                      className={`flex-1 py-2 rounded-lg text-[11px] font-bold border transition-colors ${porUnidadCompra ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}
+                    >
+                      Cuento {selectedItem?.unidadCompra?.toLowerCase() || 'unidades de compra'}
+                    </button>
+                  </div>
+                )}
+
+                {usaUnidadesCompra ? (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                        {selectedItem?.unidadCompra || 'Unidades de compra'} recibidas
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={unidadesCompra}
+                        onChange={e => setUnidadesCompra(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      {selectedItem && parseFloat(unidadesCompra) > 0 && (
+                        <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <Info className="w-3 h-3 shrink-0" />
+                          ≈ {Math.round(parseFloat(unidadesCompra) * (selectedItem.rendimientoEsperado || 1))} {selectedItem.unidadMedida?.toLowerCase()} (rendimiento estimado)
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                        ¿Contaste cuánto rindió esta vez? (opcional)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.1"
+                        value={rendimientoObservado}
+                        onChange={e => setRendimientoObservado(e.target.value)}
+                        placeholder={`Ej. si un ${(selectedItem?.unidadCompra || 'rollo').toLowerCase()} trajo 9`}
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <p className="text-[10px] text-slate-400">Si lo llenas, ajusta el rendimiento esperado del insumo para la próxima recepción.</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                      {tipo === 'AJUSTE' ? 'Conteo real' : 'Cantidad'}
+                    </label>
+                    <input
+                      type="number"
+                      min={tipo === 'AJUSTE' ? 0 : 1}
+                      value={cantidad}
+                      onChange={e => setCantidad(e.target.value)}
+                      placeholder="0"
+                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    {tipo === 'SALIDA' && selectedItem && selectedItem.factorMermaUso > 0 && categoriaSalida === 'OTRO' && parseFloat(cantidad) > 0 && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <Info className="w-3 h-3 shrink-0" />
+                        Se añadirá sola ~{Math.round(parseFloat(cantidad) * selectedItem.factorMermaUso)} de merma de manipulación estimada ({(selectedItem.factorMermaUso * 100).toFixed(0)}%)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* SALIDA: consumo normal vs. caducidad/daño explícito */}
+                {tipo === 'SALIDA' && (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Categoría</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => setCategoriaSalida('OTRO')}
+                        className={`py-2 rounded-lg text-[11px] font-bold border ${categoriaSalida === 'OTRO' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                        Consumo normal
+                      </button>
+                      <button type="button" onClick={() => setCategoriaSalida('CADUCIDAD')}
+                        className={`py-2 rounded-lg text-[11px] font-bold border ${categoriaSalida === 'CADUCIDAD' ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                        Caducidad / daño
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* AJUSTE: corrección manual vs. conteo físico (recalibra la merma) */}
+                {tipo === 'AJUSTE' && (
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Categoría</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => setCategoriaAjuste('OTRO')}
+                        className={`py-2 rounded-lg text-[11px] font-bold border ${categoriaAjuste === 'OTRO' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                        Corrección manual
+                      </button>
+                      <button type="button" onClick={() => setCategoriaAjuste('CONTEO_FISICO')}
+                        className={`py-2 rounded-lg text-[11px] font-bold border ${categoriaAjuste === 'CONTEO_FISICO' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                        Conteo físico
+                      </button>
+                    </div>
+                    {categoriaAjuste === 'CONTEO_FISICO' && (
+                      <p className="text-[10px] text-slate-400">Si el conteo queda por debajo de lo esperado, recalibra la merma estimada del insumo.</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Motivo (opcional)</label>

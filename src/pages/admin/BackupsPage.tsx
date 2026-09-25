@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ChevronRight, Database, CloudUpload, AlertTriangle, RefreshCw, 
-  Plus, Table, CheckCircle2, XCircle, Clock, HardDrive, Zap, 
-  Calendar, Filter, X, ArrowUp, ArrowDown, ArrowUpDown, 
-  ToggleLeft, ToggleRight, RotateCcw, Search, ShieldAlert
+  ChevronRight, Database, CloudUpload, AlertTriangle, RefreshCw,
+  Plus, Table, CheckCircle2, XCircle, Clock, HardDrive, Zap,
+  Calendar, Filter, X, ArrowUp, ArrowDown, ArrowUpDown,
+  ToggleLeft, ToggleRight, RotateCcw, Search, ShieldAlert, Cloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
-import { Backup } from '../../types';
+import { BackupJob } from '../../types';
 import { FadeIn, ScaleIn, AnimatedButton } from '../../components/Animations';
 
 export default function BackupsPage() {
-  const [backups, setBackups] = useState<Backup[]>([]);
+  const [backups, setBackups] = useState<BackupJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [descFull, setDescFull] = useState('');
+  const [destinoFull, setDestinoFull] = useState<'DRIVE' | 'CLOUDINARY' | 'AMBOS'>('DRIVE');
   const [loadingFull, setLoadingFull] = useState(false);
   const [resultFull, setResultFull] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -41,7 +42,7 @@ export default function BackupsPage() {
   const [sortDir, setSortDir] = useState<'desc' | 'desc'>('desc');
 
   // Restore modal
-  const [restoreBackup, setRestoreBackup] = useState<Backup | null>(null);
+  const [restoreBackup, setRestoreBackup] = useState<BackupJob | null>(null);
   const [loadingRestore, setLoadingRestore] = useState(false);
   const [resultRestore, setResultRestore] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -49,7 +50,7 @@ export default function BackupsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await AdminService.getDriveBackups();
+      const response = await AdminService.getBackups();
       if (response.success && response.data) {
         setBackups(response.data);
       } else {
@@ -67,9 +68,9 @@ export default function BackupsPage() {
     setLoadingFull(true);
     setResultFull(null);
     try {
-      const res = await AdminService.createFullBackup(descFull);
+      const res = await AdminService.createFullBackup(descFull, destinoFull);
       setResultFull({ ok: res.success, msg: res.message || 'Respaldo completo creado.' });
-      if (res.success) { setDescFull(''); loadBackups(); }
+      if (res.success) { setDescFull(''); setDestinoFull('DRIVE'); loadBackups(); }
     } catch (err: any) {
       setResultFull({ ok: false, msg: err.message });
     } finally { setLoadingFull(false); }
@@ -144,16 +145,24 @@ export default function BackupsPage() {
     }).catch(() => {/* silencioso */});
   }, []);
 
-  const formatSize = (bytes: number) => {
+  const formatSize = (bytes: number | null | undefined) => {
+    if (!bytes) return '0 KB';
     if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     return `${(bytes / 1024).toFixed(2)} KB`;
   };
 
-  const getBackupType = (nombre: string) => {
-    const n = nombre.toLowerCase();
-    if (n.includes('completo') || n.includes('full')) return { label: 'Base de Datos', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' };
-    if (n.includes('estatico') || n.includes('archivo')) return { label: 'BD + Estáticos', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' };
-    return { label: 'Parcial', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-700/50', border: 'border-slate-100 dark:border-slate-700' };
+  const getBackupType = (b: BackupJob) => {
+    if (b.tipo === 'BD') return { label: 'Base de Datos', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', border: 'border-amber-100 dark:border-amber-500/20' };
+    if (b.tipo === 'BD_ARCHIVOS') return { label: 'Tabla', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', border: 'border-blue-100 dark:border-blue-500/20' };
+    return { label: b.tipo, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-700/50', border: 'border-slate-100 dark:border-slate-700' };
+  };
+
+  const getDestinoLabels = (b: BackupJob) => {
+    const destinos: { label: string; color: string }[] = [];
+    if (b.subidoADrive) destinos.push({ label: 'Drive', color: 'text-blue-600 dark:text-blue-400' });
+    if (b.subidoACloudinary) destinos.push({ label: 'Cloudinary', color: 'text-purple-600 dark:text-purple-400' });
+    if (destinos.length === 0 && b.estado === 'COMPLETADO') destinos.push({ label: 'Local', color: 'text-slate-500' });
+    return destinos;
   };
 
   const activeFilters = [filterFechaDesde, filterFechaHasta, filterTipo].filter(Boolean).length;
@@ -164,7 +173,7 @@ export default function BackupsPage() {
       if (filterFechaDesde && date < new Date(filterFechaDesde)) return false;
       if (filterFechaHasta && date > new Date(filterFechaHasta + 'T23:59:59')) return false;
       if (filterTipo) {
-        const tipo = getBackupType(b.nombre).label;
+        const tipo = getBackupType(b).label;
         if (tipo !== filterTipo) return false;
       }
       return true;
@@ -172,7 +181,7 @@ export default function BackupsPage() {
     .sort((a, b) => {
       const mul = sortDir === 'asc' ? 1 : -1;
       if (sortBy === 'fecha') return mul * (new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime());
-      return mul * (a.tamanoBytes - b.tamanoBytes);
+      return mul * ((a.tamanoBytes ?? 0) - (b.tamanoBytes ?? 0));
     });
 
   return (
@@ -186,9 +195,15 @@ export default function BackupsPage() {
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Respaldos y Seguridad</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Administración de copias de seguridad sincronizadas con la nube</p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-2xl">
-            <CloudUpload className="w-4 h-4 text-blue-500" />
-            <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Google Drive Conectado</p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-2xl">
+              <CloudUpload className="w-4 h-4 text-blue-500" />
+              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Drive</p>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-purple-50/50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 rounded-2xl">
+              <Cloud className="w-4 h-4 text-purple-500" />
+              <p className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest">Cloudinary</p>
+            </div>
           </div>
         </div>
       </FadeIn>
@@ -196,10 +211,10 @@ export default function BackupsPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Respaldos totales', value: loading ? '—' : backups.length, icon: <HardDrive />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'Drive Cloud' },
+          { label: 'Respaldos totales', value: loading ? '—' : backups.length, icon: <HardDrive />, color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-100/70 dark:bg-amber-500/20', border: 'border-amber-200 dark:border-amber-500/40', trend: 'Drive + Cloud' },
           { label: 'Última copia', value: backups.length ? new Date(backups[0].creadoEn).toLocaleDateString() : 'N/A', icon: <Clock />, color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-100/70 dark:bg-blue-500/20', border: 'border-blue-200 dark:border-blue-500/40', trend: 'Sincronizado' },
           { label: 'Próxima tarea', value: schedulerInfo ? schedulerInfo.proximoBackup.split(' ')[0] : 'N/A', icon: <Zap />, color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: 'Automatizado' },
-          { label: 'Espacio usado', value: formatSize(backups.reduce((a, b) => a + b.tamanoBytes, 0)), icon: <Database />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', trend: 'Total Drive' },
+          { label: 'Espacio usado', value: formatSize(backups.reduce((a, b) => a + (b.tamanoBytes ?? 0), 0)), icon: <Database />, color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-100/70 dark:bg-purple-500/20', border: 'border-purple-200 dark:border-purple-500/40', trend: 'Total' },
         ].map((s, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className={`relative overflow-hidden bg-white dark:bg-slate-800 border ${s.border} rounded-2xl p-4 h-24 group transition-all hover:shadow-md`}>
@@ -233,6 +248,15 @@ export default function BackupsPage() {
                    <input type="text" value={descFull} onChange={e => setDescFull(e.target.value)} required
                     placeholder="Ej: Backup antes de migrar"
                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-all dark:text-white" />
+                </div>
+                <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Destino</label>
+                   <select value={destinoFull} onChange={e => setDestinoFull(e.target.value as 'DRIVE' | 'CLOUDINARY' | 'AMBOS')}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-all dark:text-white">
+                    <option value="DRIVE">Google Drive</option>
+                    <option value="CLOUDINARY">Cloudinary</option>
+                    <option value="AMBOS">Ambos</option>
+                   </select>
                 </div>
                 <button type="submit" disabled={loadingFull}
                    className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 disabled:opacity-50 transition-all active:scale-95">
@@ -323,10 +347,10 @@ export default function BackupsPage() {
                        className="w-full pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none" />
                  </div>
                  <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)}
-                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none">
+                    className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none dark:text-white">
                     <option value="">Todos los tipos</option>
                     <option value="Base de Datos">Base de Datos</option>
-                    <option value="BD + Estáticos">BD + Estáticos</option>
+                    <option value="Tabla">Tabla</option>
                  </select>
                  <button onClick={loadBackups} className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-blue-500 transition-all">
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -343,7 +367,7 @@ export default function BackupsPage() {
                     <table className="w-full text-left">
                        <thead>
                           <tr className="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
-                             {['Nombre y tipo', 'Información', 'Estado', 'Creado', 'Acciones'].map(h => (
+                             {['Nombre y tipo', 'Tamaño', 'Destino', 'Creado', 'Enlaces'].map(h => (
                                 <th key={h} className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">{h}</th>
                              ))}
                           </tr>
@@ -351,7 +375,9 @@ export default function BackupsPage() {
                        <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
                           <AnimatePresence mode="popLayout">
                              {filteredBackups.map((backup, idx) => {
-                                const tipo = getBackupType(backup.nombre);
+                                const tipo = getBackupType(backup);
+                                const destinos = getDestinoLabels(backup);
+                                const isError = backup.estado === 'ERROR';
                                 return (
                                    <motion.tr key={backup.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.02 }}
                                       className="hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition-colors group">
@@ -361,8 +387,8 @@ export default function BackupsPage() {
                                                <Database className="w-4 h-4" />
                                             </div>
                                             <div>
-                                               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{backup.nombre}</p>
-                                               <p className={`text-[9px] font-black uppercase tracking-widest ${tipo.color}`}>{tipo.label}</p>
+                                               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{backup.descripcion || backup.tipo}</p>
+                                               <p className={`text-[9px] font-black uppercase tracking-widest ${tipo.color}`}>{tipo.label}{backup.nombreTabla ? ` · ${backup.nombreTabla}` : ''}</p>
                                             </div>
                                          </div>
                                       </td>
@@ -373,9 +399,23 @@ export default function BackupsPage() {
                                          </div>
                                       </td>
                                       <td className="px-6 py-4">
-                                         <span className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
-                                            <CheckCircle2 className="w-3 h-3" /> Drive OK
-                                         </span>
+                                         {isError ? (
+                                            <span className="flex items-center gap-1.5 text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-100 dark:border-rose-500/20" title={backup.mensajeError || ''}>
+                                               <XCircle className="w-3 h-3" /> Error
+                                            </span>
+                                         ) : (
+                                            <div className="flex flex-wrap gap-1.5">
+                                               {destinos.map(d => (
+                                                  <span key={d.label} className={`flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border ${
+                                                     d.label === 'Drive' ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400'
+                                                     : d.label === 'Cloudinary' ? 'bg-purple-50 dark:bg-purple-500/10 border-purple-100 dark:border-purple-500/20 text-purple-600 dark:text-purple-400'
+                                                     : 'bg-slate-50 dark:bg-slate-700 border-slate-100 dark:border-slate-600 text-slate-500'
+                                                  }`}>
+                                                     <CheckCircle2 className="w-3 h-3" /> {d.label}
+                                                  </span>
+                                               ))}
+                                            </div>
+                                         )}
                                       </td>
                                       <td className="px-6 py-4">
                                          <div className="flex flex-col">
@@ -384,10 +424,20 @@ export default function BackupsPage() {
                                          </div>
                                       </td>
                                       <td className="px-6 py-4">
-                                         <button onClick={() => setRestoreBackup(backup)} title="Restaurar base de datos"
-                                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-xl transition-all">
-                                            <RotateCcw className="w-4 h-4" />
-                                         </button>
+                                         <div className="flex items-center gap-1">
+                                            {backup.driveEnlace && (
+                                               <a href={backup.driveEnlace} target="_blank" rel="noopener noreferrer" title="Ver en Drive"
+                                                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all">
+                                                  <CloudUpload className="w-4 h-4" />
+                                               </a>
+                                            )}
+                                            {backup.cloudinaryEnlace && (
+                                               <a href={backup.cloudinaryEnlace} target="_blank" rel="noopener noreferrer" title="Descargar de Cloudinary"
+                                                  className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-xl transition-all">
+                                                  <Cloud className="w-4 h-4" />
+                                               </a>
+                                            )}
+                                         </div>
                                       </td>
                                    </motion.tr>
                                 );
@@ -413,7 +463,7 @@ export default function BackupsPage() {
                 </div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">¿Confirmar Restauración?</h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 leading-relaxed">
-                   Estás por restaurar la base de datos al estado de <br/><span className="text-slate-900 dark:text-white font-black underline decoration-amber-400">"{restoreBackup.nombre}"</span>.
+                   Estás por restaurar la base de datos al estado de <br/><span className="text-slate-900 dark:text-white font-black underline decoration-amber-400">"{restoreBackup.descripcion || restoreBackup.tipo}"</span>.
                    <br/><strong>Los datos actuales se perderán permanentemente.</strong>
                 </p>
 

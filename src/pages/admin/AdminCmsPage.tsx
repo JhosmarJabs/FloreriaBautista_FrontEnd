@@ -54,6 +54,8 @@ export default function AdminCmsPage() {
   const [instagramUrl, setInstagramUrl] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [destacados, setDestacados] = useState<string[]>([]);
+  const [latitud, setLatitud] = useState('');
+  const [longitud, setLongitud] = useState('');
   const [anuncioTexto, setAnuncioTexto] = useState('🌸 Envío gratis en pedidos mayores a $500 MXN');
   const [anuncioActivo, setAnuncioActivo] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -80,6 +82,8 @@ export default function AdminCmsPage() {
       setBannerCta(s.bannerCta || 'Ver catálogo');
       setHorarios(s.horarios && s.horarios.length > 0 ? s.horarios : defaultHorarios);
       setDestacados(s.destacados ?? []);
+      setLatitud(s.latitud != null ? String(s.latitud) : '');
+      setLongitud(s.longitud != null ? String(s.longitud) : '');
       setAnuncioTexto(s.anuncioTexto || '🌸 Envío gratis en pedidos mayores a $500 MXN');
       setAnuncioActivo(s.anuncioActivo ?? false);
     } catch {
@@ -99,6 +103,8 @@ export default function AdminCmsPage() {
         facebookUrl, instagramUrl, whatsappUrl,
         bannerTitulo, bannerSubtitulo, bannerCta,
         horarios, destacados: destacados.filter(d => d.trim()),
+        latitud: latitud.trim() ? parseFloat(latitud) : null,
+        longitud: longitud.trim() ? parseFloat(longitud) : null,
         anuncioTexto, anuncioActivo,
       });
       setSaved(true);
@@ -315,6 +321,29 @@ export default function AdminCmsPage() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Geolocalización de la sucursal */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+            <SectionHeader
+              icon={MapPin}
+              color="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20"
+              title="Geolocalización"
+              description="Coordenadas para el botón 'Cómo llegar' en la página de contacto"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Latitud</label>
+                <input value={latitud} onChange={e => setLatitud(e.target.value)} placeholder="Ej. 20.1167" className={inp} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Longitud</label>
+                <input value={longitud} onChange={e => setLongitud(e.target.value)} placeholder="Ej. -98.7333" className={inp} />
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">
+              Búscalas en Google Maps: clic derecho sobre la sucursal → la primera línea son las coordenadas.
+            </p>
           </div>
 
           {/* Redes sociales */}

@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ChevronRight, Info, Settings, Save, RefreshCw,
   Package, Tag, Layers, X, Plus, ImagePlus,
-  FlaskConical, Star, Search, Trash2, Calculator, Check, AlertTriangle,
+  FlaskConical, Star, Search, Trash2, Calculator, Check,
+  AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
@@ -26,11 +27,12 @@ const TIPOS = [
   { value: 'ACCESORIOS', label: 'Accesorios' },
 ];
 
+// Valores reales de la restricción products_visibilidad_check en BD
+// (ver 02_Base_Datos/01_esquema.sql): solo WEB, SOLO_SUCURSAL o AMBOS.
 const VISIBILIDAD_OPTIONS = [
-  { value: 'PUBLICO', label: 'Público (Web)' },
-  { value: 'PRIVADO', label: 'Privado (Solo Admin)' },
-  { value: 'CATALOGO', label: 'Solo Catálogo PDF' },
-  { value: 'AMBOS', label: 'Ambos (Web y Catálogo)' },
+  { value: 'WEB', label: 'Público (Solo Web)' },
+  { value: 'SOLO_SUCURSAL', label: 'Privado (Solo Sucursal)' },
+  { value: 'AMBOS', label: 'Ambos (Web y Sucursal)' },
 ];
 
 const ESTADOS = [
@@ -53,6 +55,8 @@ const emptyForm = (): ProductBody => ({
   categorias: [],
   catalogos: [],
   receta: [],
+  permiteVentaInstantanea: false,
+  limiteVentaInstantanea: null,
 });
 
 // ─── Inventory search combobox ────────────────────────────────────────────────
@@ -192,6 +196,8 @@ export default function ProductManagementPage() {
           imagenUrl: p.imagenUrl ?? '',
           categorias: p.categorias ?? [],
           catalogos: p.catalogos ?? [],
+          permiteVentaInstantanea: p.permiteVentaInstantanea ?? false,
+          limiteVentaInstantanea: p.limiteVentaInstantanea ?? null,
           receta: (p.receta ?? []).map((r: any) => ({
              inventoryItemId: r.inventoryItemId,
              flowerNombre: r.nombre || r.flowerNombre, // Soporta ambos nombres de propiedad
@@ -675,6 +681,35 @@ export default function ProductManagementPage() {
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{form.esPersonalizable ? 'Habilitado' : 'Deshabilitado'}</span>
               </div>
               <p className="text-xs text-slate-400 mt-2">Permite personalizar colores, tamaño y mensaje.</p>
+            </div>
+
+            {/* Venta Instantanea */}
+            <div className={sec}>
+              <p className={secTitle}><AlertTriangle className="w-3.5 h-3.5 text-orange-500" /> Venta Instantanea</p>
+              <div className="flex items-center gap-3 mb-3">
+                <div onClick={() => set('permiteVentaInstantanea', !form.permiteVentaInstantanea)} className="cursor-pointer">
+                  <div className={`relative w-10 h-5 rounded-full transition-colors ${form.permiteVentaInstantanea ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-700'}`}>
+                    <span className={`absolute top-0.5 left-0.5 size-4 bg-white rounded-full shadow transition-transform ${form.permiteVentaInstantanea ? 'translate-x-5' : ''}`} />
+                  </div>
+                </div>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{form.permiteVentaInstantanea ? 'Habilitado' : 'Deshabilitado'}</span>
+              </div>
+              <p className="text-xs text-slate-400 mb-3">Permite que los clientes soliciten compra con entrega inmediata para este producto.</p>
+              {form.permiteVentaInstantanea && (
+                <div>
+                  <label className={lbl}>Limite por solicitud (opcional)</label>
+                  <input
+                    type="number"
+                    value={form.limiteVentaInstantanea ?? ''}
+                    onChange={e => set('limiteVentaInstantanea', e.target.value ? Number(e.target.value) : null)}
+                    placeholder="Sin limite"
+                    min={1}
+                    step={1}
+                    className={inp}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Cantidad maxima por solicitud. Dejar vacio para no limitar.</p>
+                </div>
+              )}
             </div>
 
             {/* Resumen */}

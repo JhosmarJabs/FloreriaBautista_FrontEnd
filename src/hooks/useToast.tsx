@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertCircle, X, Info } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -35,38 +34,32 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <ToastContext.Provider value={{ showToast }}>
       {children}
       <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
-        <AnimatePresence mode="popLayout">
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              layout
-              initial={{ opacity: 0, x: 50, scale: 0.8 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
-              className="pointer-events-auto"
-            >
-              <div className={`
-                flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border
-                ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' : ''}
-                ${toast.type === 'error' ? 'bg-red-500/90 border-red-400/50 text-white' : ''}
-                ${toast.type === 'info' ? 'bg-[#1A3B5B]/90 border-white/20 text-white' : ''}
-              `}>
-                <div className="flex-shrink-0">
-                  {toast.type === 'success' && <CheckCircle2 className="w-6 h-6" />}
-                  {toast.type === 'error' && <AlertCircle className="w-6 h-6" />}
-                  {toast.type === 'info' && <Info className="w-6 h-6" />}
-                </div>
-                <p className="font-bold text-sm">{toast.message}</p>
-                <button 
-                  onClick={() => removeToast(toast.id)}
-                  className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="pointer-events-auto animate-[toastIn_0.3s_ease-out_both]"
+          >
+            <div className={`
+              flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border
+              ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' : ''}
+              ${toast.type === 'error' ? 'bg-red-500/90 border-red-400/50 text-white' : ''}
+              ${toast.type === 'info' ? 'bg-[#1A3B5B]/90 border-white/20 text-white' : ''}
+            `}>
+              <div className="flex-shrink-0">
+                {toast.type === 'success' && <CheckCircle2 className="w-6 h-6" />}
+                {toast.type === 'error' && <AlertCircle className="w-6 h-6" />}
+                {toast.type === 'info' && <Info className="w-6 h-6" />}
               </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              <p className="font-bold text-sm">{toast.message}</p>
+              <button
+                onClick={() => removeToast(toast.id)}
+                className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </ToastContext.Provider>
   );

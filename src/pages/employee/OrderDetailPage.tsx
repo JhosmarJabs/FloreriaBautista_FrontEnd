@@ -22,16 +22,16 @@ import { OrderDetail } from '../../types';
 import { FadeIn } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { parseApiDate } from '../../utils/date';
+import { ESTADO_PEDIDO, type EstadoPedido } from '../../utils/labels';
 
-// Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs)
-const ESTADOS_FLUJO = [
-  { key: 'PENDIENTE_VALIDACION', label: 'Pendiente',      color: 'bg-amber-400',   text: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10' },
-  { key: 'EN_PREPARACION',       label: 'En Preparación', color: 'bg-indigo-400',  text: 'text-indigo-700 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-500/10' },
-  { key: 'EN_RUTA',              label: 'En Ruta',        color: 'bg-blue-400',    text: 'text-blue-700 dark:text-blue-400',     bg: 'bg-blue-50 dark:bg-blue-500/10' },
-  { key: 'ENTREGADO',            label: 'Entregado',      color: 'bg-emerald-500', text: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-];
-const ESTADO_CANCELADO = { key: 'CANCELADO', label: 'Cancelado', color: 'bg-rose-400', text: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' };
-const ESTADO_NO_COMPLETADO = { key: 'NO_COMPLETADO', label: 'No Completado', color: 'bg-slate-400', text: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/30' };
+// Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs).
+// Etiqueta y color salen de utils/labels.ts: aquí solo se arma el paso del stepper.
+// `color` es el punto sólido del stepper, que en el diccionario se llama `dot`.
+const paso = (key: EstadoPedido) => ({ key, ...ESTADO_PEDIDO[key], color: ESTADO_PEDIDO[key].dot });
+
+const ESTADOS_FLUJO = (['PENDIENTE_VALIDACION', 'EN_PREPARACION', 'EN_RUTA', 'ENTREGADO'] as const).map(paso);
+const ESTADO_CANCELADO = paso('CANCELADO');
+const ESTADO_NO_COMPLETADO = paso('NO_COMPLETADO');
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();

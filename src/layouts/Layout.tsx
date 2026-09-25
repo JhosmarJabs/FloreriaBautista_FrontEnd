@@ -1,71 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
 import AnimatedRoutes from '../routes/AppRoutes';
-import AdminLayout from '../layouts/AdminLayout';
-import EmployeeLayout from '../layouts/EmployeeLayout';
-import { NavbarCliente } from '../components/NavbarCliente';
-import EmployeeDashboardPage from '../pages/employee/EmployeeDashboardPage';
-import { DataService } from '../services/dataService';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+
+const AdminLayout = React.lazy(() => import('../layouts/AdminLayout'));
+const EmployeeLayout = React.lazy(() => import('../layouts/EmployeeLayout'));
+const NavbarCliente = React.lazy(() => import('../components/NavbarCliente').then(m => ({ default: m.NavbarCliente })));
+
+const initDataService = () => import('../services/dataService').then(m => m.DataService.init());
 
 export default function Layout() {
   const location = useLocation();
-  const [user, setUser] = useState<any>(null);
-  const [isDataReady, setIsDataReady] = useState(false);
+  const { usuario, esAdmin, esEmpleado, esCliente } = useAuth();
 
-  useEffect(() => {
-    const initData = async () => {
-      await DataService.init();
-      setIsDataReady(true);
-    };
-    initData();
-  }, []);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      setUser(null);
-    }
-  }, [location.pathname]);
-
-  if (!isDataReady) {
-    return (
-      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-6" />
-        <p className="text-slate-900 font-black text-2xl tracking-tighter font-serif">Florería Bautista</p>
-        <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-2">Cargando sistema...</p>
-      </div>
-    );
-  }
   const hideNavAndFooter = ['/login', '/registro', '/recuperar-contrasena', '/restablecer-contrasena'].includes(location.pathname);
   // Permite a un admin/empleado ver la tienda pública sin ser rebotado al dashboard
   // (usado por el botón "Ver tienda" en /admin/cms)
   const isPreview = new URLSearchParams(location.search).get('preview') === '1';
-  const userRoles: string[] = (user?.roles ?? (user?.role ? [user.role] : []))
-    .map((r: string) => r.toLowerCase());
-  const isAdmin = userRoles.some(r => ['administrador', 'admin'].includes(r));
-  const isEmployee = userRoles.some(r => ['empleado', 'staff'].includes(r));
-  const isClient = userRoles.some(r => ['cliente', 'customer'].includes(r));
 
-  if (isClient && location.pathname === '/' && !hideNavAndFooter) {
+  if (esCliente && location.pathname === '/' && !hideNavAndFooter) {
     return <Navigate to="/inicio" replace />;
   }
 
-  if ((isAdmin || isEmployee) && !hideNavAndFooter) {
-    if (isEmployee) {
+  if ((esAdmin || esEmpleado) && !hideNavAndFooter) {
+    initDataService();
+    if ((esEmpleado && !esAdmin) || (esAdmin && location.pathname.startsWith('/empleado'))) {
       return (
-        <EmployeeLayout user={user}>
-          {location.pathname === '/empleado/dashboard' ? <EmployeeDashboardPage /> : <AnimatedRoutes />}
-        </EmployeeLayout>
+        <Suspense fallback={null}>
+          <EmployeeLayout user={usuario}>
+            <AnimatedRoutes />
+          </EmployeeLayout>
+        </Suspense>
       );
     }
 
     if (!isPreview && (location.pathname === '/' || location.pathname === '/dashboard')) {
-      return <Navigate to={isAdmin ? "/admin/dashboard" : "/empleado/dashboard"} replace />;
+      return <Navigate to={esAdmin ? "/admin/dashboard" : "/empleado/dashboard"} replace />;
     }
 
     if (isPreview && (location.pathname === '/' || location.pathname === '/dashboard')) {
@@ -76,7 +48,7 @@ export default function Layout() {
             <button onClick={() => window.close()} className="underline hover:text-slate-300">Cerrar</button>
           </div>
           <Navigation />
-          <div className="flex-grow">
+          <div className="flex-grow min-h-screen">
             <AnimatedRoutes />
           </div>
           <Footer />
@@ -85,16 +57,20 @@ export default function Layout() {
     }
 
     return (
-      <AdminLayout user={user}>
-        <AnimatedRoutes />
-      </AdminLayout>
+      <Suspense fallback={null}>
+        <AdminLayout user={usuario}>
+          <AnimatedRoutes />
+        </AdminLayout>
+      </Suspense>
     );
   }
 
   return (
     <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden min-h-screen flex flex-col">
-      {!hideNavAndFooter && (isClient ? <NavbarCliente /> : <Navigation />)}
-      <div className="flex-grow">
+      {!hideNavAndFooter && (esCliente ? <Suspense fallback={null}><NavbarCliente /></Suspense> : <Navigation />)}
+      {/* min-h-screen: mientras la ruta lazy carga, el footer no debe quedar en
+          pantalla, o salta hacia abajo al llegar el contenido (CLS). */}
+      <div className="flex-grow min-h-screen">
         <AnimatedRoutes />
       </div>
       {!hideNavAndFooter && <Footer />}
