@@ -4,6 +4,9 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { ROL, rutaInicialPorRol } from '../utils/auth';
 import { useAuth } from '../hooks/useAuth';
 import PantallaCarga from '../components/PantallaCarga';
+// La landing va en el bundle inicial: con lazy, el primer render de React cambiaba
+// el hero del esqueleto HTML por la pantalla de carga y el LCP esperaba al chunk.
+import HomePage from '../pages/client/HomePage';
 
 const AnimatePresence = React.lazy(() =>
   import('motion/react').then(m => ({ default: m.AnimatePresence }))
@@ -11,7 +14,6 @@ const AnimatePresence = React.lazy(() =>
 const PageTransition = React.lazy(() => import('../components/PageTransition'));
 
 // Client Pages — lazy loaded
-const HomePage = React.lazy(() => import('../pages/client/HomePage'));
 const ClientHomePage = React.lazy(() => import('../pages/client/ClientHomePage'));
 const CatalogPage = React.lazy(() => import('../pages/client/CatalogPage'));
 const AboutPage = React.lazy(() => import('../pages/client/AboutPage'));
@@ -181,7 +183,8 @@ export default function AnimatedRoutes() {
   return (
     <Routes>
       {/* ── Públicas (CSS transitions, no motion dependency) ── */}
-      <Route path="/" element={<Suspense fallback={LazyFallback}><CssTransition><HomePage /></CssTransition></Suspense>} />
+      {/* Sin CssTransition: su fade parte de opacity 0 y retrasa el pintado del hero (LCP). */}
+      <Route path="/" element={<HomePage />} />
       <Route path="/catalogo" element={<Suspense fallback={LazyFallback}><CssTransition><CatalogPage /></CssTransition></Suspense>} />
       <Route path="/producto/:id" element={<Suspense fallback={LazyFallback}><CssTransition><ProductPage /></CssTransition></Suspense>} />
       <Route path="/testimonios" element={<Suspense fallback={LazyFallback}><CssTransition><TestimonialsPage /></CssTransition></Suspense>} />

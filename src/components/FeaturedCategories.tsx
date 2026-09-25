@@ -14,7 +14,7 @@ export default function FeaturedCategories() {
             <div key={category.id} className="bg-brand-light rounded-custom overflow-hidden shadow-sm hover:shadow-md transition-all group text-center p-4">
               <img alt={category.title} className="w-full h-48 object-cover rounded-custom mb-4" loading="lazy" decoding="async" width={400} height={192} src={category.image}
                 srcSet={`${category.image.replace('.webp', '-256.webp')} 256w, ${category.image} 512w`}
-                sizes="(min-width: 1024px) 20vw, (min-width: 640px) 50vw, 100vw" />
+                sizes="(min-width: 1024px) 200px, (min-width: 640px) 50vw, 100vw" />
               <h3 className="font-bold mb-2">{category.title}</h3>
               <p className="text-xs text-gray-600 mb-4">{category.description}</p>
               <a className="inline-block bg-brand-deep text-white px-4 py-2 rounded-custom text-sm font-semibold" href={category.link}>Ver arreglos</a>

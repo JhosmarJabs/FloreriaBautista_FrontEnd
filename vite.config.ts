@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         // defer: el <script src="registerSW.js"> por defecto bloquea el renderizado.
         injectRegister: 'script-defer',
-        includeAssets: ['Logo.png', 'pwa-192x192.png', 'pwa-512x512.png'],
+        includeAssets: ['favicon-64.png', 'Logo.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           name: 'Florería Bautista',
           short_name: 'Fl. Bautista',
@@ -68,7 +68,8 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             'vendor-react': ['react', 'react-dom', 'react-router-dom'],
             'vendor-signalr': ['@microsoft/signalr'],
-            'vendor-icons': ['lucide-react'],
+            // lucide-react sin chunk propio: agrupado arrastraba a la landing los
+            // iconos de todo el panel (JS sin usar). Así cada página lleva los suyos.
             'vendor-motion': ['motion'],
           },
         },
