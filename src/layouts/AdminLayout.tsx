@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from '../hooks/useAuth';
 import { NotificationsService } from '../services/notificationsService';
+import '../styles/panel.css';
 
 interface AdminLayoutProps {
   children: React.ReactNode;

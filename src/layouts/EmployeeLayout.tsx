@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { NotificationsService } from '../services/notificationsService';
 import { useOfflineSync } from '../hooks/useOfflineSync';
+import '../styles/panel.css';
 
 interface EmployeeLayoutProps {
   children: React.ReactNode;

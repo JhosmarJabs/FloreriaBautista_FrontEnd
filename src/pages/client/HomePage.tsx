@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import HeroSection from '../../components/HeroSection';
 import { useAuth } from '../../hooks/useAuth';
+import { useAlAcercarse } from '../../hooks/useAlAcercarse';
 
 const ClientHomePage = React.lazy(() => import('./ClientHomePage'));
 
@@ -24,48 +25,33 @@ const enIdle = (fn: () => void, timeout: number, fallbackMs: number): (() => voi
   return () => clearTimeout(id);
 };
 
-const EVENTOS_USUARIO = ['scroll', 'wheel', 'touchstart', 'pointerdown', 'keydown'] as const;
-
 function BelowFold() {
   // Cuántas secciones van montadas. No se montan durante la carga: el layout de
-  // cada una generaba tareas largas (TBT). Arrancan cuando el usuario interactúa
-  // o cuando el centinela entra en pantalla (viewports altos, p. ej. crawlers);
-  // el hero ocupa toda la pantalla, así que el centinela queda justo debajo.
+  // cada una generaba tareas largas (TBT). Arrancan al interactuar o cuando el
+  // centinela entra en pantalla; el hero ocupa toda la pantalla, así que el
+  // centinela queda justo debajo.
   const [montadas, setMontadas] = useState(0);
   const centinela = useRef<HTMLDivElement>(null);
   const anclaPendiente = useRef<string | null>(null);
+  const cerca = useAlAcercarse(centinela);
 
   useEffect(() => {
-    let fired = false;
-    const quitar = () => {
-      EVENTOS_USUARIO.forEach(ev => window.removeEventListener(ev, trigger));
-      window.removeEventListener('hashchange', alAncla);
-      io?.disconnect();
-    };
-    const trigger = () => {
-      if (fired) return;
-      fired = true;
-      setMontadas(n => Math.max(n, 1));
-    };
+    if (cerca) setMontadas(n => Math.max(n, 1));
+  }, [cerca]);
+
+  useEffect(() => {
     // Un enlace a una sección (#arreglos) necesita que existan todas ya montadas.
     const alAncla = () => {
       const id = location.hash.slice(1);
       if (!id) return;
       anclaPendiente.current = id;
-      fired = true;
       setMontadas(SECCIONES.length);
     };
-    EVENTOS_USUARIO.forEach(ev => window.addEventListener(ev, trigger, { passive: true, once: true }));
     window.addEventListener('hashchange', alAncla);
-    const io = 'IntersectionObserver' in window && centinela.current
-      ? new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) trigger(); },
-          { rootMargin: '0px 0px -2px 0px' })
-      : null;
-    if (io && centinela.current) io.observe(centinela.current);
     if (location.hash) alAncla();
     // Descarga los chunks en segundo plano para que el montaje sea inmediato.
     const cancelar = enIdle(() => CARGAS.forEach(c => { c().catch(() => {}); }), 8000, 3000);
-    return () => { quitar(); cancelar(); };
+    return () => { window.removeEventListener('hashchange', alAncla); cancelar(); };
   }, []);
 
   useEffect(() => {

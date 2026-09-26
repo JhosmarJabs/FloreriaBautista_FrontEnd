@@ -15,7 +15,9 @@ export const CmsService = {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
       try {
-        const res = await fetch(url, { signal: controller.signal });
+        // Prioridad baja: los textos del CMS no bloquean el pintado (hay valores por
+        // defecto) y el backend puede tardar en despertar; no debe competir con la carga.
+        const res = await fetch(url, { signal: controller.signal, priority: 'low' } as RequestInit);
         clearTimeout(timeout);
         if (!res.ok) throw new Error(`Error ${res.status}`);
         const json = await res.json();

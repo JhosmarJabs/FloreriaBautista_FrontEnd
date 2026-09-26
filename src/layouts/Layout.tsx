@@ -1,13 +1,28 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useRef } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import AnimatedRoutes from '../routes/AppRoutes';
 import { useAuth } from '../hooks/useAuth';
+import { useAlAcercarse } from '../hooks/useAlAcercarse';
 
 const AdminLayout = React.lazy(() => import('../layouts/AdminLayout'));
 const EmployeeLayout = React.lazy(() => import('../layouts/EmployeeLayout'));
 const NavbarCliente = React.lazy(() => import('../components/NavbarCliente').then(m => ({ default: m.NavbarCliente })));
+
+const Footer = React.lazy(() => import('../components/Footer'));
+
+/** El footer siempre empieza fuera de la primera pantalla (el contenido tiene
+ *  min-h-screen): se monta al acercarse, no durante la carga inicial. */
+function FooterDiferido() {
+  const centinela = useRef<HTMLDivElement>(null);
+  const cerca = useAlAcercarse(centinela);
+  return (
+    <>
+      <div ref={centinela} aria-hidden="true" className="h-px" />
+      {cerca && <Suspense fallback={null}><Footer /></Suspense>}
+    </>
+  );
+}
 
 const initDataService = () => import('../services/dataService').then(m => m.DataService.init());
 
@@ -51,7 +66,7 @@ export default function Layout() {
           <div className="flex-grow min-h-screen">
             <AnimatedRoutes />
           </div>
-          <Footer />
+          <FooterDiferido />
         </div>
       );
     }
@@ -73,7 +88,7 @@ export default function Layout() {
       <div className="flex-grow min-h-screen">
         <AnimatedRoutes />
       </div>
-      {!hideNavAndFooter && <Footer />}
+      {!hideNavAndFooter && <FooterDiferido />}
     </div>
   );
 }

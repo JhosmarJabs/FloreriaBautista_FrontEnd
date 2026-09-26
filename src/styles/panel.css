@@ -1,0 +1,19 @@
+/* CSS del panel (admin/empleado): lo importan AdminLayout y EmployeeLayout, así que
+   Vite lo separa en su propio archivo y solo se descarga al entrar al panel. Sin
+   preflight: la base ya la aplica index.css, que se carga siempre. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "./theme.css";
+@source "../pages/admin";
+@source "../data";
+@source "../pages/employee";
+@source "../layouts/AdminLayout.tsx";
+@source "../layouts/EmployeeLayout.tsx";
+@source "../components/AvisoAlcanceEmpleado.tsx";
+@source "../components/ImageUploader.tsx";
+@source "../components/ModalAprobacionInstantanea.tsx";
+@source "../components/ModalPedidoNuevo60s.tsx";
+@source "../components/MovementsModal.tsx";
+@source "../components/RealtimeModals.tsx";
+@source "../components/RealtimeWrapper.tsx";
+@source "../components/SortableColumnHeader.tsx";

@@ -1,49 +1,32 @@
-@import "tailwindcss";
-@variant dark (&:where(.dark, .dark *));
-@import "./styles/colors.css";
+/* CSS público: solo las clases de la landing, catálogo, cliente y login. Se carga en
+   todas las páginas, así que cuanto menos pese, antes se pinta. Las clases del panel
+   (admin/empleado) van en styles/panel.css, que se descarga al entrar al panel. */
+@import "tailwindcss" source(none);
+@import "./styles/theme.css";
+@source "./App.tsx";
+@source "./routes";
+@source "./hooks";
+@source "./utils";
+@source "./data";
+@source "./layouts/Layout.tsx";
+@source "./components";
+/* Componentes que solo usa el panel (van en panel.css) o que no se usan. */
+@source not "./components/AvisoAlcanceEmpleado.tsx";
+@source not "./components/ImageUploader.tsx";
+@source not "./components/ModalAprobacionInstantanea.tsx";
+@source not "./components/ModalPedidoNuevo60s.tsx";
+@source not "./components/MovementsModal.tsx";
+@source not "./components/RealtimeModals.tsx";
+@source not "./components/RealtimeWrapper.tsx";
+@source not "./components/SortableColumnHeader.tsx";
+@source not "./components/AboutUs.tsx";
+@source not "./components/AnimatedRoutes.tsx";
+@source not "./components/ExportModal.tsx";
+@source not "./components/OptimizedLoader.tsx";
+@source not "./components/ProductHistoryModal.tsx";
+@source "./pages/client";
+@source "./pages/auth";
 
-@theme {
-  --font-sans: "Manrope", sans-serif;
-  --font-serif: "Playfair Display", serif;
-  --font-display: "Public Sans", sans-serif;
-  --radius-custom: 8px;
-
-  --color-primary: #1e3a8a;
-  --color-secondary: #fbbf24;
-  --color-background-light: #f8fafd;
-  --color-background-dark: #0f172a;
-
-  --animate-shimmer: shimmer 2.5s ease-in-out infinite;
-  --animate-fade-slide-up: fadeSlideUp 0.8s ease-out both;
-  --animate-fade-in: fadeIn 0.5s ease-out both;
-  --animate-page-enter: pageEnter 0.3s ease-out both;
-
-  @keyframes shimmer {
-    0%   { transform: translateX(-100%) skewX(-20deg); }
-    60%  { transform: translateX(200%)  skewX(-20deg); }
-    100% { transform: translateX(200%)  skewX(-20deg); }
-  }
-
-  @keyframes fadeSlideUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-
-  @keyframes pageEnter {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes toastIn {
-    from { opacity: 0; transform: translateX(50px) scale(0.8); }
-    to   { opacity: 1; transform: translateX(0) scale(1); }
-  }
-}
 
 body {
   font-family: var(--font-sans);
