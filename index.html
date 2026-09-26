@@ -10,28 +10,75 @@
     <link rel="preload" as="image" type="image/webp" href="/img/landing/hero.webp" fetchpriority="high" />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&family=Public+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <title>Florería Bautista — Arreglos Florales Artesanales</title>
+    <style>
+      body{margin:0;background:#f0f7ff}
+      .sk,.sk *{box-sizing:border-box}
+      .sk{font-family:"Manrope",sans-serif;line-height:1.5}
+      .sk-header{position:fixed;top:0;left:0;width:100%;background:rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.1);z-index:50}
+      .sk-container{width:100%;margin:0 auto;padding:0 1rem}
+      .sk-nav{padding-top:1rem;padding-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+      .sk-logo{display:flex;align-items:center;gap:.5rem}
+      .sk-logo img{height:2.5rem;width:auto}
+      .sk-marca{font-family:"Playfair Display",serif;font-size:1.5rem;line-height:2rem;font-weight:700;color:#1a3b5b;letter-spacing:-.025em}
+      .sk-login{color:#fff;background:#1a3b5b;padding:.625rem 1.5rem;border-radius:8px;font-weight:700}
+      .sk-hero{position:relative;min-height:100vh;padding:8rem 0 5rem;overflow:hidden;background:#1a3b5b}
+      /* 1px más estrecha que el viewport a propósito: Chrome descarta como LCP las imágenes
+         que cubren toda la pantalla (las trata como fondo). Así el LCP es esta imagen,
+         pintada antes de React; la franja de 1px queda bajo el velo y no se aprecia. */
+      .sk-hero-fondo{position:absolute;top:0;left:0;width:calc(100% - 1px);height:100%;object-fit:cover}
+      .sk-hero-velo{position:absolute;inset:0;background:rgba(26,59,91,.6)}
+      .sk-hero .sk-container{position:relative;z-index:10;text-align:center}
+      .sk-texto{max-width:48rem}
+      .sk-hero h1{font-family:"Playfair Display",serif;font-size:2.25rem;line-height:1.25;font-weight:700;color:#fff;margin:0 0 1.5rem}
+      .sk-hero p{font-size:1.125rem;line-height:1.625;color:rgba(240,247,255,.9);margin:0 0 2.5rem;max-width:42rem}
+      .sk-botones{display:flex;flex-direction:column;gap:1rem;justify-content:center}
+      .sk-boton{display:block;padding:1rem 2rem;border-radius:8px;font-weight:700;font-size:1.125rem;line-height:1.75rem;text-align:center;text-decoration:none;border:2px solid transparent;transition:background-color .15s,opacity .15s}
+      .sk-boton-1{background:#fff;color:#1a3b5b;border-width:0}
+      .sk-boton-1:hover{background:#f0f7ff}
+      .sk-boton-2{background:#1a3b5b;color:#fff;border-color:#1a3b5b}
+      .sk-boton-2:hover{opacity:.9}
+      @media (min-width:40rem){.sk-container{max-width:40rem}.sk-botones{flex-direction:row}}
+      @media (min-width:48rem){.sk-container{max-width:48rem}.sk-hero h1{font-size:3.75rem}.sk-hero p{font-size:1.25rem;line-height:1.625}}
+      @media (min-width:64rem){.sk-container{max-width:64rem}.sk-hero{padding:12rem 0 10rem}.sk-hero .sk-container{text-align:left}.sk-botones{justify-content:flex-start}}
+      @media (min-width:80rem){.sk-container{max-width:80rem}}
+      @media (min-width:96rem){.sk-container{max-width:96rem}}
+    </style>
   </head>
   <body>
-    <div id="root">
-      <div id="html-skeleton" style="min-height:100vh;background:#f0f7ff">
-        <header style="position:fixed;top:0;left:0;width:100%;background:rgba(255,255,255,0.95);backdrop-filter:blur(8px);box-shadow:0 1px 3px rgba(0,0,0,0.08);z-index:50;padding:16px 24px;display:flex;align-items:center;gap:8px">
-          <img src="/Logo-sm.webp" alt="" width="32" height="40" style="width:32px;height:40px" />
-          <span style="font-size:1.4rem;font-weight:700;color:#1a3b5b;font-family:serif">Florería <span style="color:#D4AF37">Bautista</span></span>
-        </header>
-        <section id="skeleton-hero" style="position:relative;overflow:hidden;min-height:100vh;box-sizing:border-box;padding:160px 24px 80px;background:#1a3b5b;color:white;text-align:center">
-          <script>
-            // Solo en la landing: pinta el hero antes de que cargue React, así el LCP
-            // no espera al montaje (element render delay).
-            if (location.pathname === '/') {
-              document.getElementById('skeleton-hero').insertAdjacentHTML('afterbegin',
-                '<img src="/img/landing/hero.webp" alt="" fetchpriority="high" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" />' +
-                '<div style="position:absolute;inset:0;background:rgba(26,59,91,0.6)"></div>');
-            }
-          </script>
-          <h1 style="position:relative;font-size:2.2rem;font-weight:700;margin:0 auto 16px;max-width:640px;line-height:1.2;font-family:serif">Flores elegantes y coloridas para cada momento especial</h1>
-          <p style="position:relative;font-size:1rem;opacity:0.85;max-width:520px;margin:0 auto">Arreglos premium diseñados artesanalmente para celebrar la vida.</p>
-        </section>
+    <!-- Hero de la landing en HTML puro, fuera de #root para que React no lo destruya:
+         HeroSection lo adopta (textos y enlaces del CMS) en lugar de pintar otro. Así el
+         LCP es este hero, pintado antes de que cargue la app. En otras rutas se retira al
+         montar (App.tsx). Si cambias el hero, cambia también HeroSection.tsx. -->
+    <section id="skeleton-hero" class="sk sk-hero">
+      <script>
+        // Solo en la landing lleva la imagen de fondo (en otras rutas sería una descarga inútil).
+        if (location.pathname === '/') {
+          document.getElementById('skeleton-hero').insertAdjacentHTML('afterbegin',
+            '<img class="sk-hero-fondo" src="/img/landing/hero.webp" alt="" fetchpriority="high" /><div class="sk-hero-velo"></div>');
+        }
+      </script>
+      <div class="sk-container">
+        <div class="sk-texto">
+          <h1 id="sk-titulo">Flores elegantes y coloridas para cada momento especial en Huitzitzilingo</h1>
+          <p id="sk-subtitulo">Llevamos la belleza de la naturaleza a tu puerta. Arreglos premium diseñados artesanalmente para celebrar la vida en San Felipe Orizatlán y sus alrededores.</p>
+          <div class="sk-botones">
+            <a id="sk-cta" class="sk-boton sk-boton-1" href="#arreglos">Ver catálogo</a>
+            <a id="sk-whatsapp" class="sk-boton sk-boton-2" href="/contacto" target="_blank" rel="noopener noreferrer">Pedir por WhatsApp</a>
+          </div>
+        </div>
       </div>
+    </section>
+    <div id="root">
+      <!-- Cabecera provisional hasta que monte React (la reemplaza Navigation). -->
+      <header class="sk sk-header">
+        <nav class="sk-container sk-nav">
+          <span class="sk-logo">
+            <img src="/Logo-sm.webp" alt="" width="32" height="40" />
+            <span class="sk-marca">Florería <span style="color:#D4AF37">Bautista</span></span>
+          </span>
+          <span class="sk-login">Iniciar sesión</span>
+        </nav>
+      </header>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

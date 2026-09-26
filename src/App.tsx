@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import Layout from './layouts/Layout';
 import { ToastProvider } from './hooks/useToast';
@@ -18,6 +18,13 @@ function LazyRealtime() {
 }
 
 function App() {
+  // El hero de index.html vive fuera de #root. Si la ruta no lo adoptó (otra
+  // página, o una redirección desde /), se retira. Corre tras los efectos de los hijos.
+  useEffect(() => {
+    const hero = document.getElementById('skeleton-hero');
+    if (hero && !hero.dataset.adoptado) hero.remove();
+  }, []);
+
   return (
     <Router>
       <ScrollToTop />
