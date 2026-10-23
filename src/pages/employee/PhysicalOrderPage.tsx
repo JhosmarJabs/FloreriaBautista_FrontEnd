@@ -26,11 +26,9 @@ import { lookupCp } from '../../services/sepomexService';
 import { useToast } from '../../hooks/useToast';
 import { todayISO } from '../../utils/date';
 import { agregarVenta } from '../../services/offlineSalesQueue';
-import { useOfflineSync } from '../../hooks/useOfflineSync';
 
 export default function PhysicalOrderPage() {
   const { showToast } = useToast();
-  const { refreshCount } = useOfflineSync();
   const [items, setItems] = useState<{ id: number; productId: string; name: string; quantity: number; price: number; image?: string }[]>([]);
   // Se incrementa en cada reset para forzar un remount limpio de la tabla:
   // evita que AnimatePresence deje un renglón "fantasma" a medio animar
@@ -259,14 +257,20 @@ export default function PhysicalOrderPage() {
       const folio = response.data.id.slice(0, 8).toUpperCase();
       showToast(`Pedido registrado correctamente (folio ${folio})`, 'success');
       resetForm();
-    } catch {
+    } catch (err) {
+      // Solo se guarda localmente si no hubo respuesta (red) o fue 5xx.
+      // Un 4xx es un rechazo real (p. ej. sin existencias): se muestra y no se encola.
+      const { status, mensaje } = err as { status?: number; mensaje?: string };
+      if (status !== undefined && status < 500) {
+        showToast(mensaje || 'No se pudo registrar el pedido.', 'error');
+        return;
+      }
       await agregarVenta({
         idLocalOffline,
         payload,
         creadoEn: new Date().toISOString(),
         intentos: 0,
       });
-      await refreshCount();
       showToast('Sin conexión — pedido guardado localmente', 'info');
       resetForm();
     } finally {

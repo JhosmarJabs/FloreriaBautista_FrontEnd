@@ -2,6 +2,13 @@ const DB_NAME = 'floreria-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'ventasPendientes';
 
+/** Evento de ventana que avisa que la cola cambió (para refrescar el indicador del layout). */
+export const COLA_OFFLINE_CAMBIO = 'cola-offline-cambio';
+
+function avisarCambio() {
+  window.dispatchEvent(new Event(COLA_OFFLINE_CAMBIO));
+}
+
 export interface OfflineSale {
   idLocalOffline: string;
   payload: Record<string, unknown>;
@@ -31,7 +38,7 @@ export async function agregarVenta(sale: OfflineSale): Promise<void> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readwrite').put(sale);
-    req.onsuccess = () => resolve();
+    req.onsuccess = () => { resolve(); avisarCambio(); };
     req.onerror = () => reject(req.error);
   });
 }
@@ -49,7 +56,7 @@ export async function eliminarVenta(idLocalOffline: string): Promise<void> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readwrite').delete(idLocalOffline);
-    req.onsuccess = () => resolve();
+    req.onsuccess = () => { resolve(); avisarCambio(); };
     req.onerror = () => reject(req.error);
   });
 }

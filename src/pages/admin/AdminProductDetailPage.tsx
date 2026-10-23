@@ -79,7 +79,7 @@ export default function AdminProductDetailPage() {
     <div className="flex flex-col items-center justify-center h-64 gap-4 dark:bg-slate-900">
       <AlertCircle className="w-8 h-8 text-red-400" />
       <p className="text-sm text-red-500 font-semibold">{error || 'Producto no encontrado'}</p>
-      <button onClick={() => navigate('/catalogo')} className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 border border-blue-100 dark:border-blue-800/50 px-3 py-1.5 rounded-lg">
+      <button onClick={() => navigate('/admin/productos')} className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 border border-blue-100 dark:border-blue-800/50 px-3 py-1.5 rounded-lg">
         Volver al catálogo
       </button>
     </div>
@@ -100,7 +100,7 @@ export default function AdminProductDetailPage() {
       <div className="flex-none flex items-center justify-between py-3 px-1 border-b border-slate-100 dark:border-slate-700 mb-4">
         <div>
           <nav className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mb-1">
-            <span className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors" onClick={() => navigate('/catalogo')}>Catálogo</span>
+            <span className="hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors" onClick={() => navigate('/admin/productos')}>Catálogo</span>
             <ChevronRight className="w-3 h-3" />
             <span className="text-slate-700 dark:text-slate-300">Detalle de Producto</span>
           </nav>

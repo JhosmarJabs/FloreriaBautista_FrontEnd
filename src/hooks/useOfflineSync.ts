@@ -1,55 +1,60 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { isAxiosError } from 'axios';
+import api from '../services/api';
 import {
   obtenerPendientes,
   eliminarVenta,
   actualizarVenta,
   contarPendientes,
+  COLA_OFFLINE_CAMBIO,
   type OfflineSale,
 } from '../services/offlineSalesQueue';
 
 const MAX_RETRIES = 5;
 const RETRY_INTERVAL_MS = 30_000;
 
-async function authHeaders(): Promise<HeadersInit> {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+// Candado a nivel de módulo: una sola sincronización por pestaña aunque el hook se monte varias veces.
+let sincronizando = false;
 
-async function enviarVenta(sale: OfflineSale): Promise<boolean> {
+type ResultadoEnvio = 'ok' | 'reintentar' | 'sin-sesion';
+
+async function enviarVenta(sale: OfflineSale): Promise<ResultadoEnvio> {
   try {
-    const headers = await authHeaders();
-    const res = await fetch('/api/orders/physical', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ ...sale.payload, idLocalOffline: sale.idLocalOffline }),
+    // Cliente `api`: pone el accessToken y renueva la sesión en 401 con su interceptor.
+    // Todo lo que está en esta cola llegó por un fallo de red: el backend la acepta
+    // aunque ya no haya existencias y deja constancia.
+    await api.post('/api/orders/physical', {
+      ...sale.payload,
+      idLocalOffline: sale.idLocalOffline,
+      ventaSincronizadaSinConexion: true,
     });
-    if (res.ok) return true;
-    if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
-      const text = await res.text().catch(() => '');
-      await actualizarVenta({ ...sale, intentos: sale.intentos + 1, error: `HTTP ${res.status}: ${text}` });
-      return false;
+    return 'ok';
+  } catch (error) {
+    const status = isAxiosError(error) ? error.response?.status : undefined;
+    // Sin respuesta (red) o 5xx: se reintenta sin contar intento.
+    if (status === undefined || status >= 500) return 'reintentar';
+    // 401 aquí significa que el refresh también falló: las siguientes ventas fallarían igual.
+    if (status === 401) return 'sin-sesion';
+    if (status >= 400 && status !== 408 && status !== 429) {
+      const data = isAxiosError(error) ? error.response?.data : undefined;
+      const mensaje = typeof data?.message === 'string' ? data.message : '';
+      await actualizarVenta({ ...sale, intentos: sale.intentos + 1, error: `HTTP ${status}: ${mensaje}` });
     }
-    return false;
-  } catch {
-    return false;
+    return 'reintentar';
   }
 }
 
 export function useOfflineSync() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
-  const syncingRef = useRef(false);
 
   const refreshCount = useCallback(async () => {
     try { setPendingCount(await contarPendientes()); } catch { /* IndexedDB unavailable */ }
   }, []);
 
   const syncAll = useCallback(async () => {
-    if (syncingRef.current || !navigator.onLine) return;
-    syncingRef.current = true;
+    if (sincronizando || !navigator.onLine) return;
+    sincronizando = true;
     try {
       const pendientes = await obtenerPendientes();
       const ordenadas = pendientes.sort(
@@ -57,15 +62,15 @@ export function useOfflineSync() {
       );
       for (const sale of ordenadas) {
         if (sale.intentos >= MAX_RETRIES) continue;
-        const ok = await enviarVenta(sale);
-        if (ok) {
+        const resultado = await enviarVenta(sale);
+        if (resultado === 'ok') {
           await eliminarVenta(sale.idLocalOffline);
-        } else if (!navigator.onLine) {
+        } else if (resultado === 'sin-sesion' || !navigator.onLine) {
           break;
         }
       }
     } finally {
-      syncingRef.current = false;
+      sincronizando = false;
       await refreshCount();
     }
   }, [refreshCount]);
@@ -74,8 +79,11 @@ export function useOfflineSync() {
     const handleOnline = () => { setIsOnline(true); syncAll(); };
     const handleOffline = () => setIsOnline(false);
 
+    const handleColaCambio = () => { refreshCount(); };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener(COLA_OFFLINE_CAMBIO, handleColaCambio);
     refreshCount();
 
     const interval = setInterval(() => {
@@ -85,6 +93,7 @@ export function useOfflineSync() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener(COLA_OFFLINE_CAMBIO, handleColaCambio);
       clearInterval(interval);
     };
   }, [syncAll, refreshCount]);

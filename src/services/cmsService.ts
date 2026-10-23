@@ -13,7 +13,8 @@ export const CmsService = {
     if (enVuelo) return enVuelo;
     enVuelo = (async () => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      // 4 s: el service worker espera 3 s antes de servir la copia guardada.
+      const timeout = setTimeout(() => controller.abort(), 4000);
       try {
         // Prioridad baja: los textos del CMS no bloquean el pintado (hay valores por
         // defecto) y el backend puede tardar en despertar; no debe competir con la carga.

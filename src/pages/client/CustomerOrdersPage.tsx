@@ -13,12 +13,16 @@ import {
   RefreshCw,
   Truck,
   CreditCard,
-  Heart
+  Heart,
+  WifiOff
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { AdminService } from '../../services/adminService';
 import { estadoPedido } from '../../utils/labels';
 import { useAuth } from '../../hooks/useAuth';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { MisPedidosCache } from '../../services/misPedidosCache';
+import { haceCuanto } from '../../utils/date';
 
 export default function CustomerOrdersPage() {
   const { usuario: user } = useAuth();
@@ -27,23 +31,63 @@ export default function CustomerOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 5;
+  const enLinea = useOnlineStatus();
+  const userId = user?.id ?? null;
+  // Momento de la copia local cuando lo mostrado no viene del servidor; null = datos al día.
+  const [copiaDe, setCopiaDe] = useState<number | null>(null);
+  // Sin red y sin copia guardada: no hay nada que mostrar.
+  const [sinDatos, setSinDatos] = useState(false);
 
   useEffect(() => {
+    let cancelado = false;
+
+    const mostrar = (items: any[]) => {
+      setOrders(items);
+      setSelectedOrder(items[0] ?? null);
+      setCurrentPage(1);
+    };
+
+    // Solo la copia del usuario con sesión; la de otra cuenta nunca se lee.
+    const usarCopia = () => {
+      const copia = userId ? MisPedidosCache.leer(userId) : null;
+      mostrar(copia?.pedidos ?? []);
+      setCopiaDe(copia?.guardadoEn ?? null);
+      setSinDatos(!copia);
+    };
+
     const loadOrders = async () => {
+      if (!navigator.onLine) {
+        usarCopia();
+        setLoading(false);
+        return;
+      }
       try {
         const res = await AdminService.getMyOrders();
+        if (cancelado) return;
         const items = res.data?.items ?? [];
-        setOrders(items);
-        if (items.length > 0) setSelectedOrder(items[0]);
-      } catch {
-        setOrders([]);
+        mostrar(items);
+        setCopiaDe(null);
+        setSinDatos(false);
+        if (userId) MisPedidosCache.guardar(userId, items);
+      } catch (e) {
+        if (cancelado) return;
+        // fetch lanza TypeError cuando no hubo respuesta (sin red, servidor inalcanzable).
+        if (e instanceof TypeError || !navigator.onLine) {
+          usarCopia();
+        } else {
+          mostrar([]);
+          setCopiaDe(null);
+          setSinDatos(false);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelado) setLoading(false);
       }
     };
 
     loadOrders();
-  }, []);
+    return () => { cancelado = true; };
+    // `enLinea`: al recuperar la conexión se vuelve a pedir la lista.
+  }, [userId, enLinea]);
 
   // Antes este switch comparaba contra etiquetas ('En Ruta') pero recibía la clave
   // cruda del backend ('EN_RUTA'), así que ningún caso coincidía nunca: el badge
@@ -90,7 +134,20 @@ export default function CustomerOrdersPage() {
           </div>
         </div>
 
-        {orders.length === 0 ? (
+        {copiaDe !== null && (
+          <div className="flex items-center gap-2 mb-6 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium">
+            <WifiOff className="w-4 h-4 shrink-0" />
+            <span>Sin conexión. Última actualización: {haceCuanto(copiaDe)}</span>
+          </div>
+        )}
+
+        {sinDatos ? (
+          <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100">
+            <WifiOff className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Conéctate para ver tus pedidos</h3>
+            <p className="text-slate-500">No hay una copia guardada en este dispositivo.</p>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100">
             <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-slate-900 mb-2">Aún no tienes pedidos</h3>
@@ -181,6 +238,7 @@ export default function CustomerOrdersPage() {
                         Realizado el {new Date(selectedOrder.fechaCreacion ?? selectedOrder.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })} a las {new Date(selectedOrder.fechaCreacion ?? selectedOrder.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
+                    {copiaDe === null && (
                     <div className="flex gap-3">
                       <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-white hover:shadow-sm transition-all">
                         <Receipt className="w-4 h-4" />
@@ -191,6 +249,7 @@ export default function CustomerOrdersPage() {
                         Repetir Pedido
                       </button>
                     </div>
+                    )}
                   </div>
 
                   <div className="p-6 space-y-6">

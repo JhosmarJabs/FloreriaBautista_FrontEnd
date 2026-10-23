@@ -62,7 +62,7 @@ export default function AboutPage() {
             <img 
               className="w-full h-full object-cover" 
               alt="Elegantes arreglos florales en un entorno minimalista" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMHl0AAGUYdkAPH26cZ6yHaPKgfDneNmbgv1E0nbC-CgTEkDxAgxvguLd15BK4CgzsxG5T3PzW5OLrfkEp8PTglCnfu7gn6cedyic3J4lvfQIjUkYroe_pvm7WH1lh9EyDRzmTbMyUdWirAODPA1MqWzKQIbrFEdmOq1HkS6bPMIfqlBMWHj4h3_jn9jlAIkRBw1OWOVhpaNOZ9SIb3wgIiW-SXWkqfMB-ZG1URyeJLe1DSrxaH9CXgoVOyeB6cTnr-TepGIRrJ_gZ"
+              src="/img/nosotros/nosotros-portada.webp" width="512" height="512"
             />
           </div>
         </motion.div>
@@ -155,7 +155,7 @@ export default function AboutPage() {
             <img 
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
               alt="Decoración floral para eventos especiales" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWACwMMxdCJvSkZ_NU_5x2bh7b5-OhNWYbjLyWTCdqLia_PeZALdvN6m6_pb3lxHcw8ndVcCqklfOhJNpSmC9RVKZH-T4jql-8bMvGZ8XCIgMVritGjZwE189_LEOJ9J3NExnEKWF2jqAb6RdO4ZXzI4ez7VuHw8HJMnJT1H02BZp9iogn7PwVDyY4iHqqvKeqGjlQ6VnJVqS2MT8ONw8pI_u3hcW7RUUFNURiMzpJwA1mGRAFAY_qioJSGLGyzxURYqhnBz0C9SJR"
+              src="/img/nosotros/nosotros-eventos.webp" width="512" height="512" loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/20 to-transparent flex flex-col justify-end p-8 text-white">
               <h4 className="text-xl font-bold font-serif mb-2">Eventos Especiales</h4>
@@ -166,7 +166,7 @@ export default function AboutPage() {
             <img 
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
               alt="Arreglos florales funerarios respetuosos" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDs7swqFI17XHogEwFaKvoabu67rRm3ZuGqmq-AtZXZnDd5MvZqmOhaAVEWcrSwRrJtfWUwY6qoSJRjA7G2EzSGrQ19n72AfOv4tgbrf1nzAUr28QUseLtmABWQ4P8CixsH7M6qQgBG6Ao5aAMcPeb99OBtIl831XrPLxi042w8Gw0LCcwIyc7FlvgP4zFu3_qDJACUQQvO61ZQm1Lti9HjquMGQMKiVbfcV07LYkAKM1BE_tdtooqI2m2ulSpoQiefAy-PSKJ8R2GF"
+              src="/img/nosotros/nosotros-funerarios.webp" width="512" height="512" loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/20 to-transparent flex flex-col justify-end p-8 text-white">
               <h4 className="text-xl font-bold font-serif mb-2">Servicios Funerarios</h4>
@@ -177,7 +177,7 @@ export default function AboutPage() {
             <img 
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
               alt="Decoración floral para interiores y oficinas" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxt7Cfdh_je23fY-NL3U4GYNtbIuHJzjaORfngciCPQT3VczV35TtygFiSMz1Wow61njTn7q0qY7SyJC3yIflpl5IcH0xhifGoYHLQTlDKc-SinbJBfJlX_NyvNU2_AX_QK84xiX2wQqbB3HMBSXps0K6j3mKdiYMHDuk7fmoKuMSj62sqvRDMnMaLt6wTOexadQLGK8RmOWHaJgNvdsRpZ5FaO9bTpMMpBt_bSG0uI_QVX3WlCi247VqPgUkF_5QpW089AAntyLGb"
+              src="/img/nosotros/nosotros-decoracion.webp" width="512" height="512" loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-brand-deep/90 via-brand-deep/20 to-transparent flex flex-col justify-end p-8 text-white">
               <h4 className="text-xl font-bold font-serif mb-2">Decoración</h4>
@@ -201,7 +201,7 @@ export default function AboutPage() {
             <img 
               className="relative w-64 h-64 object-cover rounded-full border-4 border-white shadow-xl" 
               alt="Retrato del propietario de la florería" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIKpsYG-QhurOfhjjr3a5_ft9gAIJO8Ir-9_TeHbDfQQK7TOLPP0QHOrTgBnAYze42IyfWvjpW6oNH2zxpAfIC1k73xeiayI2PN8JC7PfnIE-v25LpWkrVnGcAEH_dgqqCzxwTFemtF76DhXshlQXPCAyGDDnh-IzngG85tKRuGOwQmYUZRtz8D5-GUpBULqZZvLQ-4vbvDO8IRal2DlSeTlnTpfuitnIsOSMfnxsXlf6C4aok2lpdj77OdcoP9FL-B9Z3J-q1Du69"
+              src="/img/nosotros/nosotros-propietario.webp" width="512" height="512" loading="lazy"
             />
           </div>
         </motion.div>

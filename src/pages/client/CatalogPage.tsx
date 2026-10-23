@@ -17,9 +17,12 @@ import {
   ShoppingCart,
   UploadCloud,
   DownloadCloud,
+  WifiOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AdminService } from "../../services/adminService";
+import { obtenerInstantaneaCatalogo } from "../../services/catalogoPublico";
+import { obtenerEstado } from "../../services/estadoConexion";
 import { Product } from "../../types";
 import { useCart } from "../../hooks/useCart";
 import CustomDropdown from "../../components/CustomDropdown";
@@ -38,6 +41,19 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
+/** Imagen de producto que, si no carga (p. ej. sin red y nunca vista), muestra el marcador. */
+function ImagenProducto({ src, alt, className, iconClassName }: { src: string; alt: string; className: string; iconClassName: string }) {
+  const [fallo, setFallo] = useState(false);
+  if (fallo) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Package className={iconClassName} />
+      </div>
+    );
+  }
+  return <img src={src} alt={alt} className={className} referrerPolicy="no-referrer" onError={() => setFallo(true)} />;
+}
+
 export default function CatalogPage() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
@@ -47,6 +63,8 @@ export default function CatalogPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  // Sin conexión y sin catálogo guardado: estado vacío explicativo en lugar del toast.
+  const [sinCatalogoOffline, setSinCatalogoOffline] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
@@ -59,18 +77,23 @@ export default function CatalogPage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setSinCatalogoOffline(false);
       try {
-        let res;
         // Si es admin o empleado, consume la ruta del inventario administrativo.
-        // Si es visitante web o cliente verificado, consume la ruta pública oficial.
+        // Si es visitante web o cliente verificado, la instantánea pública (todos
+        // los productos, también disponible sin conexión).
         if (esAdmin || esEmpleado) {
-          res = await AdminService.getAdminProducts({ size: 100 });
+          const res = await AdminService.getAdminProducts({ size: 100 });
+          setProducts(res.data.items);
         } else {
-          res = await AdminService.getProducts({ size: 100 });
+          setProducts(await obtenerInstantaneaCatalogo());
         }
-        setProducts(res.data.items);
       } catch {
-        showToast("Error al cargar el catálogo", "error");
+        if (!esAdmin && !esEmpleado && (obtenerEstado().sinConexion || !navigator.onLine)) {
+          setSinCatalogoOffline(true);
+        } else {
+          showToast("Error al cargar el catálogo", "error");
+        }
       } finally {
         setLoading(false);
       }
@@ -316,12 +339,14 @@ export default function CatalogPage() {
                             <div className="flex items-center gap-5">
                               <div className="size-16 rounded-full bg-slate-100 overflow-hidden border-2 border-slate-200 group-hover:border-blue-500/50 transition-colors">
                                 {product.imagenUrl ? (
-                                  <img
-                                    src={product.imagenUrl}
-                                    alt={product.nombre}
-                                    className="w-full h-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                  />
+                                  <div className="relative w-full h-full text-slate-300">
+                                    <ImagenProducto
+                                      src={product.imagenUrl}
+                                      alt={product.nombre}
+                                      className="w-full h-full object-cover"
+                                      iconClassName="w-6 h-6"
+                                    />
+                                  </div>
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-slate-300">
                                     <Package className="w-6 h-6" />
@@ -516,11 +541,11 @@ export default function CatalogPage() {
                 <Link to={`/producto/${slugify(product.nombre)}`} className="flex flex-col flex-1">
                   <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
                     {product.imagenUrl ? (
-                      <img
+                      <ImagenProducto
                         src={product.imagenUrl}
                         alt={product.nombre}
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        referrerPolicy="no-referrer"
+                        iconClassName="w-12 h-12 text-slate-200"
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -560,6 +585,22 @@ export default function CatalogPage() {
                 </div>
               </motion.div>
             ))
+          ) : sinCatalogoOffline ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="col-span-full py-32 text-center"
+            >
+              <div className="bg-white rounded-[3rem] p-16 border border-slate-100 shadow-2xl inline-block max-w-lg">
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <WifiOff className="w-10 h-10 text-slate-300" />
+                </div>
+                <h3 className="text-2xl font-black text-[#1A3B5B] mb-4">Sin conexión</h3>
+                <p className="text-slate-500 font-medium">
+                  El catálogo se guardará para verlo sin Internet la próxima vez que entres con conexión.
+                </p>
+              </div>
+            </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0 }}

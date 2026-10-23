@@ -16,6 +16,8 @@ import {
   normalizarUsuario,
 } from '../utils/auth';
 import { notificarCambioDeSesion } from '../utils/userScope';
+import { MisPedidosCache } from '../services/misPedidosCache';
+import { borrarDedicatoriasEnCurso } from '../utils/checkout';
 
 /**
  * Fuente de verdad de la sesión.
@@ -163,6 +165,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     limpiarSesion();
+    // La dedicatoria a medio escribir tampoco debe quedar en la pestaña.
+    borrarDedicatoriasEnCurso();
+    // Lo que el PWA guardó para usarse sin red no debe sobrevivir a la sesión.
+    MisPedidosCache.borrarTodo();
+    if ('caches' in window) {
+      ['api-catalogo', 'api-detalle', 'api-publica'].forEach((nombre) =>
+        caches.delete(nombre).catch(() => { /* noop */ }));
+    }
     setSesion(SIN_SESION);
     notificarCambioDeSesion();
     navigate('/login');

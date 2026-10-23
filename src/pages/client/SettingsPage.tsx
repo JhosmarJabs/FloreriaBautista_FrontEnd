@@ -25,10 +25,12 @@ import { lookupCp } from '../../services/sepomexService';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
 import { estadoPedido } from '../../utils/labels';
 import { useAuth } from '../../hooks/useAuth';
+import RequiereConexion from '../../components/RequiereConexion';
+import { useEstadoConexion } from '../../hooks/useEstadoConexion';
 
 type Tab = 'perfil' | 'direcciones' | 'pedidos' | 'favoritos' | 'notificaciones';
 
-export default function SettingsPage() {
+function SettingsPageContenido() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>('perfil');
   const [user, setUser] = useState<any>(null);
@@ -861,4 +863,11 @@ export default function SettingsPage() {
         )}
     </main>
   );
+}
+
+/** Sin conexión muestra «Necesitas conexión»; al volver, la página se monta de nuevo y recarga sus datos. */
+export default function SettingsPage() {
+  const { sinConexion } = useEstadoConexion();
+  if (sinConexion) return <RequiereConexion texto="Para ver y cambiar tu configuración necesitas Internet." />;
+  return <SettingsPageContenido />;
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -11,13 +11,26 @@ import { DataService } from '../../services/dataService';
 import { AdminService } from '../../services/adminService';
 import { Order } from '../../types';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
-import { formatApiDate } from '../../utils/date';
-import { estadoPedido } from '../../utils/labels';
+import { formatApiDate, parseApiDate, todayISO } from '../../utils/date';
+import { estadoPedido, ESTADO_PEDIDO, SIGUIENTE_ESTADO, ESTADOS_CANCELABLES, type EstadoPedido } from '../../utils/labels';
+import { exportToCSV } from '../../utils/exportUtils';
+import { extractApiError } from '../../utils/apiError';
+import { MOTIVO_CANCELACION_OBLIGATORIO, pedirMotivoCancelacion } from '../../utils/cancelacionPedido';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 
 // Etiqueta y color de cada estado viven en utils/labels.ts. `estadoPedido()`
 // también traduce los valores viejos en minúsculas o en inglés que algún flujo
 // antiguo todavía devuelve, así que aquí no hace falta mantener esa lista.
+
+// Pestañas de "Pedidos recientes": cada una pide al servidor un solo estado
+// (GET /api/admin/orders?estado=), en lugar de filtrar los 4 ya cargados.
+type FiltroPedidos = 'all' | 'pending' | 'en_ruta';
+const ESTADO_PESTANA: Record<FiltroPedidos, EstadoPedido | undefined> = {
+  all:     undefined,
+  pending: 'PENDIENTE_VALIDACION',
+  en_ruta: 'EN_RUTA',
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -28,39 +41,68 @@ export default function DashboardPage() {
     esCliente: isCustomer,
     esEmpleado: isEmployee,
   } = useAuth();
+  const { showToast } = useToast();
   const [stats, setStats]             = useState<any>(null);
   const [alerts, setAlerts]           = useState<any[]>([]);
+  // Total real de insumos críticos; la lista `alerts` trae como máximo los 10 más críticos.
+  const [alertsTotal, setAlertsTotal] = useState(0);
   const [monthlySales, setMonthlySales] = useState<any[]>([]);
+  // Serie original del backend (fecha, total, pedidos) para exportarla tal cual.
+  const [ventasSerie, setVentasSerie]   = useState<{ fecha: string; total: number; pedidos: number }[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [ordersError, setOrdersError]   = useState(false);
-  const [orderFilter, setOrderFilter] = useState<'all' | 'pending' | 'shipped'>('all');
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderFilter, setOrderFilter] = useState<FiltroPedidos>('all');
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null);
+  // Id del pedido cuyo cambio de estado está en curso (evita doble clic).
+  const [actualizandoPedido, setActualizandoPedido] = useState<string | null>(null);
+  // Descarta respuestas viejas si se cambia de pestaña antes de que lleguen.
+  const ultimaCargaPedidos = useRef(0);
   const [currentPage, setCurrentPage] = useState(0);
 
   const pageSize   = 2;
   const totalPages = Math.ceil(alerts.length / pageSize);
   const displayedAlerts = alerts.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
-  const filteredOrders = recentOrders.filter(o => {
-    if (orderFilter === 'all') return true;
-    const s = o.estadoPedido?.toLowerCase();
-    if (orderFilter === 'pending') return s === 'pendiente' || s === 'pending';
-    if (orderFilter === 'shipped') return s === 'enviado'   || s === 'shipped' || s === 'procesando';
-    return false;
-  });
+  const loadOrders = async (filtro: FiltroPedidos) => {
+    const carga = ++ultimaCargaPedidos.current;
+    setOrdersLoading(true);
+    try {
+      const res = await AdminService.getAdminOrders({ size: 4, estado: ESTADO_PESTANA[filtro] });
+      if (carga !== ultimaCargaPedidos.current) return;
+      if (res.success) {
+        setRecentOrders(res.data.items);
+        setOrdersError(false);
+      } else {
+        setRecentOrders([]);
+        setOrdersError(true);
+      }
+    } catch (err) {
+      if (carga !== ultimaCargaPedidos.current) return;
+      console.error("Error cargando pedidos recientes:", err);
+      setRecentOrders([]);
+      setOrdersError(true);
+    } finally {
+      if (carga === ultimaCargaPedidos.current) setOrdersLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    setOpenActionMenu(null);
+    loadOrders(orderFilter);
+  }, [orderFilter]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [statsRes, ordersRes] = await Promise.all([
-          AdminService.getDashboardStats(),
-          AdminService.getAdminOrders({ size: 4 })
-        ]);
-        
+        const statsRes = await AdminService.getDashboardStats();
+
         if (statsRes.success) {
           setStats(statsRes.data);
-          setAlerts(statsRes.data.criticalInventory || []);
+          const criticos = statsRes.data.criticalInventory || [];
+          setAlerts(criticos);
+          // Fallback al largo de la lista si el backend aún no envía el total.
+          setAlertsTotal(statsRes.data.criticalInventoryTotal ?? criticos.length);
           
           // Mapear ventas mensuales para la gráfica (últimos 30 días)
           const todayStr = new Date().toLocaleDateString();
@@ -75,36 +117,55 @@ export default function DashboardPage() {
             };
           });
           setMonthlySales(mappedMonthly);
-        }
-        
-        if (ordersRes.success) {
-          setRecentOrders(ordersRes.data.items);
-          setOrdersError(false);
-        } else {
-          setOrdersError(true);
+          setVentasSerie(statsRes.data.monthlySales);
         }
       } catch (err) {
         console.error("Error cargando dashboard:", err);
-        setOrdersError(true);
       }
     };
     loadDashboardData();
   }, []);
 
-  const handleExportReport = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ stats, monthlySales }, null, 2));
-    const a = document.createElement('a');
-    a.setAttribute("href", dataStr);
-    a.setAttribute("download", "reporte_mensual.json");
-    document.body.appendChild(a); a.click(); a.remove();
+  // Descarga la serie de 30 días de la gráfica como CSV (abre en Excel).
+  const handleExportVentas = async () => {
+    try {
+      const filas = ventasSerie.map(d => ({
+        Fecha: parseApiDate(d.fecha)?.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) ?? d.fecha,
+        Total: d.total,
+        Pedidos: d.pedidos,
+      }));
+      await exportToCSV(filas, `ventas_30_dias_${todayISO()}`);
+    } catch (err) {
+      console.error("Error exportando ventas:", err);
+      showToast('No se pudo exportar', 'error');
+    }
   };
 
-  const handleUpdateOrderStatus = async (_orderId: string, _status: string) => {
+  // Cambia el estado con la máquina de estados del backend (POST /api/orders/{id}).
+  // El backend vuelve a validar la transición; el menú solo ofrece las válidas.
+  const handleUpdateOrderStatus = async (orderId: string, nuevoEstado: EstadoPedido) => {
+    // El cuadro del motivo hace también de confirmación.
+    let motivo: string | undefined;
+    if (nuevoEstado === 'CANCELADO') {
+      const respuesta = pedirMotivoCancelacion('Si el pedido ya se preparó, el inventario se devuelve.');
+      if (respuesta === null || !respuesta) {
+        if (respuesta !== null) showToast(MOTIVO_CANCELACION_OBLIGATORIO, 'error');
+        setOpenActionMenu(null);
+        return;
+      }
+      motivo = respuesta;
+    }
+    setActualizandoPedido(orderId);
     try {
-      const res = await AdminService.getAdminOrders({ size: 4 });
-      setRecentOrders(res.data.items);
-    } catch { /* ignore */ }
-    setOpenActionMenu(null);
+      await AdminService.updateAdminOrderStatus(orderId, nuevoEstado, motivo);
+      showToast('Pedido actualizado', 'success');
+    } catch (err) {
+      showToast(extractApiError(err, 'No se pudo actualizar el pedido'), 'error');
+    } finally {
+      setActualizandoPedido(null);
+      setOpenActionMenu(null);
+      loadOrders(orderFilter);
+    }
   };
 
   if (!user) return (
@@ -132,11 +193,6 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={handleExportReport}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm transition-all">
-                <Download className="w-4 h-4" />
-                Reporte Mensual
-              </button>
               <Link to="/admin/auditoria">
                 <AnimatedButton className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-600/25 transition-all">
                   <TrendingUp className="w-4 h-4" />
@@ -153,12 +209,12 @@ export default function DashboardPage() {
             { 
               label: 'Ventas Totales',  
               value: stats ? `$${stats.totalSales.toLocaleString()}` : ' -- ', 
-              icon: <TrendingUp />,  color: 'text-blue-700 dark:text-blue-300',    bg: 'bg-blue-100/70 dark:bg-blue-500/20',    border: 'border-blue-200 dark:border-blue-500/40',    trend: stats ? '+15.4% mes actual' : '...'
+              icon: <TrendingUp />,  color: 'text-blue-700 dark:text-blue-300',    bg: 'bg-blue-100/70 dark:bg-blue-500/20',    border: 'border-blue-200 dark:border-blue-500/40',    trend: stats ? 'Últimos 30 días' : '...'
             },
             { 
               label: 'Pedidos Totales', 
               value: stats ? stats.orderCount.toString() : ' -- ',             
-              icon: <ShoppingCart />, color: 'text-amber-700 dark:text-amber-300',   bg: 'bg-amber-100/70 dark:bg-amber-500/20',   border: 'border-amber-200 dark:border-amber-500/40',   trend: stats ? 'Activos en sistema' : '...'
+              icon: <ShoppingCart />, color: 'text-amber-700 dark:text-amber-300',   bg: 'bg-amber-100/70 dark:bg-amber-500/20',   border: 'border-amber-200 dark:border-amber-500/40',   trend: stats ? 'Últimos 30 días (sin cancelados)' : '...'
             },
             { 
               label: 'Ticket Promedio', 
@@ -168,7 +224,7 @@ export default function DashboardPage() {
             { 
               label: 'Nuevos Clientes', 
               value: stats ? stats.newCustomers.toString() : ' -- ',           
-              icon: <UserPlus />,    color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: stats ? '+8.2% crecimiento' : '...'
+              icon: <UserPlus />,    color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-100/70 dark:bg-emerald-500/20', border: 'border-emerald-200 dark:border-emerald-500/40', trend: stats ? 'Registrados en 30 días' : '...'
             },
           ].map((s, i) => (
             <motion.div key={i}
@@ -201,12 +257,17 @@ export default function DashboardPage() {
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
                   Alertas de Stock
                 </h2>
-                {alerts.length > 0 && (
+                {alertsTotal > 0 && (
                   <span className="px-2.5 py-1 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-lg border border-rose-100 dark:border-rose-500/20">
-                    {alerts.length} críticos
+                    {alertsTotal} críticos
                   </span>
                 )}
               </div>
+              {alertsTotal > alerts.length && (
+                <p className="-mt-2 text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
+                  Mostrando los {alerts.length} más críticos de {alertsTotal}
+                </p>
+              )}
 
               <div className="flex-1 flex flex-col justify-between gap-3">
                 {alerts.length > 0 ? (
@@ -272,7 +333,8 @@ export default function DashboardPage() {
                   <h2 className="text-base font-black text-slate-900 dark:text-white">Ventas Mensuales</h2>
                   <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimos 30 días</p>
                 </div>
-                <button className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all">
+                <button onClick={handleExportVentas} disabled={ventasSerie.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   <Download className="w-3.5 h-3.5" />
                   Exportar
                 </button>
@@ -294,7 +356,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="w-px h-8 bg-slate-100 dark:bg-slate-700" />
                       <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Promedio por venta</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Promedio por día con ventas</p>
                         <p className="text-xl font-black text-slate-900 dark:text-white mt-0.5">${promedio.toFixed(0)}</p>
                       </div>
                     </div>
@@ -383,8 +445,8 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimas transacciones procesadas</p>
               </div>
               <div className="flex p-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl gap-0.5">
-                {([['all','Todos'], ['pending','Pendientes'], ['shipped','Enviados']] as const).map(([key, label]) => (
-                  <button key={key} onClick={() => setOrderFilter(key as any)}
+                {([['all','Todos'], ['pending','Pendientes'], ['en_ruta','En ruta']] as const).map(([key, label]) => (
+                  <button key={key} onClick={() => setOrderFilter(key)}
                     className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                       orderFilter === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                     }`}>
@@ -424,8 +486,11 @@ export default function DashboardPage() {
                     </tr>
                   )}
 
-                  {!ordersError && filteredOrders.map((order, idx) => {
+                  {!ordersError && recentOrders.map((order, idx) => {
                     const estado = estadoPedido(order.estadoPedido);
+                    const siguiente = SIGUIENTE_ESTADO[order.estadoPedido] ?? null;
+                    const cancelable = ESTADOS_CANCELABLES.includes(order.estadoPedido as EstadoPedido);
+                    const ocupado = actualizandoPedido === order.id;
                     return (
                     <tr key={idx} className="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50/60 dark:hover:bg-slate-700/30 transition-colors group">
                       <td className="px-6 py-4">
@@ -460,18 +525,22 @@ export default function DashboardPage() {
                               exit={{ opacity: 0, scale: 0.95, y: 6 }} transition={{ duration: 0.13 }}
                               className="absolute right-6 top-12 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden z-20">
                               <div className="p-1.5 flex flex-col gap-0.5">
-                                <button onClick={() => handleUpdateOrderStatus(order.id, 'shipped')}
-                                  className="text-left px-3 py-2 text-sm font-medium text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors">
-                                  Marcar como Enviado
-                                </button>
-                                <button onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
-                                  className="text-left px-3 py-2 text-sm font-medium text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg transition-colors">
-                                  Marcar como Entregado
-                                </button>
-                                <div className="h-px bg-slate-100 my-0.5" />
-                                <button onClick={() => handleUpdateOrderStatus(order.id, 'cancelled')}
-                                  className="text-left px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/40 rounded-lg transition-colors">
-                                  Cancelar Pedido
+                                {siguiente && (
+                                  <button onClick={() => handleUpdateOrderStatus(order.id, siguiente)} disabled={ocupado}
+                                    className="text-left px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Avanzar a {ESTADO_PEDIDO[siguiente].label}
+                                  </button>
+                                )}
+                                {cancelable && (
+                                  <button onClick={() => handleUpdateOrderStatus(order.id, 'CANCELADO')} disabled={ocupado}
+                                    className="text-left px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/40 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    Cancelar pedido
+                                  </button>
+                                )}
+                                {(siguiente || cancelable) && <div className="h-px bg-slate-100 dark:bg-slate-700 my-0.5" />}
+                                <button onClick={() => navigate(`/admin/pedidos/${order.id}`)}
+                                  className="text-left px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors">
+                                  Ver detalle
                                 </button>
                               </div>
                             </motion.div>
@@ -485,17 +554,17 @@ export default function DashboardPage() {
               </table>
             </div>
 
-            {filteredOrders.length === 0 && (
+            {recentOrders.length === 0 && (
               <div className="py-12 text-center">
-                <p className="text-sm text-slate-400 dark:text-slate-500">No hay pedidos que mostrar.</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">{ordersLoading ? 'Cargando pedidos...' : 'No hay pedidos que mostrar.'}</p>
               </div>
             )}
 
             <div className="px-6 py-3.5 border-t border-slate-50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center">
-              <span className="text-xs text-slate-400 dark:text-slate-500">{filteredOrders.length} pedidos</span>
-              <button className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors">
+              <span className="text-xs text-slate-400 dark:text-slate-500">{recentOrders.length} pedidos</span>
+              <Link to="/admin/pedidos" className="flex items-center gap-1.5 text-xs font-semibold text-blue-500 hover:text-blue-700 transition-colors">
                 Ver historial completo <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              </Link>
             </div>
           </div>
         </FadeIn>

@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { NotificationsService } from '../services/notificationsService';
 import { useOfflineSync } from '../hooks/useOfflineSync';
+import { useEstadoConexion } from '../hooks/useEstadoConexion';
 import '../styles/panel.css';
 
 interface EmployeeLayoutProps {
@@ -33,6 +34,9 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
   const [showError, setShowError] = useState(false);
   const [notifNoLeidas, setNotifNoLeidas] = useState(0);
   const { isOnline, pendingCount } = useOfflineSync();
+  // La tienda puede no responder aunque haya red: también es "sin conexión".
+  const { servidor } = useEstadoConexion();
+  const sinConexionTienda = isOnline && servidor === 'inaccesible';
 
   useEffect(() => {
     if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -253,13 +257,13 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
             <h2 className="text-lg font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">
               Panel de ventas
             </h2>
-            {!isOnline && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
+            {(!isOnline || sinConexionTienda) && (
+              <span role="status" className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                Sin conexión{pendingCount > 0 ? ` · ${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}` : ''}
+                {sinConexionTienda ? 'Sin conexión con la tienda' : 'Sin conexión'}{pendingCount > 0 ? ` · ${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}` : ''}
               </span>
             )}
-            {isOnline && pendingCount > 0 && (
+            {isOnline && !sinConexionTienda && pendingCount > 0 && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 Sincronizando {pendingCount}

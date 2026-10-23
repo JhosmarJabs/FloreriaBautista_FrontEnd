@@ -9,7 +9,8 @@ import { AdminService } from '../../services/adminService';
 import { OrderDetail } from '../../types';
 import { parseApiDate } from '../../utils/date';
 import { extractApiError } from '../../utils/apiError';
-import { ESTADO_PEDIDO, type EstadoPedido } from '../../utils/labels';
+import { MOTIVO_CANCELACION_OBLIGATORIO, pedirMotivoCancelacion } from '../../utils/cancelacionPedido';
+import { ESTADO_PEDIDO, SIGUIENTE_ESTADO, type EstadoPedido } from '../../utils/labels';
 
 // Estos son los estados reales que maneja el backend (ver Transiciones en OrderService.cs).
 // Etiqueta y color salen de utils/labels.ts: aquí solo se arma el paso del stepper.
@@ -19,14 +20,6 @@ const paso = (key: EstadoPedido) => ({ key, ...ESTADO_PEDIDO[key], color: ESTADO
 const ESTADOS_FLUJO = (['PENDIENTE_VALIDACION', 'EN_PREPARACION', 'EN_RUTA', 'ENTREGADO'] as const).map(paso);
 const ESTADO_CANCELADO = paso('CANCELADO');
 const ESTADO_NO_COMPLETADO = paso('NO_COMPLETADO');
-
-// Siguiente estado permitido segun la maquina de estados del backend
-const SIGUIENTE_ESTADO: Record<string, string | null> = {
-  PENDIENTE_VALIDACION: 'EN_PREPARACION',
-  EN_PREPARACION:        'EN_RUTA',
-  EN_RUTA:               'ENTREGADO',
-  ENTREGADO:             null,
-};
 
 function formatDate(iso: string) {
   const d = parseApiDate(iso);
@@ -70,10 +63,17 @@ export default function AdminOrderDetailPage() {
 
   const handleStatusChange = async (nuevoEstado: string) => {
     if (!id || !order) return;
+    let motivo: string | undefined;
+    if (nuevoEstado === 'CANCELADO') {
+      const respuesta = pedirMotivoCancelacion();
+      if (respuesta === null) return;
+      if (!respuesta) { setUpdateError(MOTIVO_CANCELACION_OBLIGATORIO); return; }
+      motivo = respuesta;
+    }
     setUpdating(true);
     setUpdateError(null);
     try {
-      const res = await AdminService.updateAdminOrderStatus(id, nuevoEstado);
+      const res = await AdminService.updateAdminOrderStatus(id, nuevoEstado, motivo);
       setOrder(res.data);
     } catch (err: any) {
       setUpdateError(extractApiError(err, 'Error al actualizar el estado'));
@@ -287,6 +287,14 @@ export default function AdminOrderDetailPage() {
                   <span className={lbl}>Notas del pedido</span>
                   <p className="text-sm text-slate-600 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 p-3 rounded-lg">
                     "{order.notas}"
+                  </p>
+                </div>
+              )}
+              {isCancelled && order.motivoCancelacion && (
+                <div className="col-span-2">
+                  <span className={lbl}>Motivo de cancelación</span>
+                  <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/40 border border-red-100 dark:border-red-800/50 p-3 rounded-lg">
+                    {order.motivoCancelacion}
                   </p>
                 </div>
               )}

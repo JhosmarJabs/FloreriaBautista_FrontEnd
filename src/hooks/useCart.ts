@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { scopedKey, limpiarClavesLegacy } from '../utils/userScope';
+import { AdminService } from '../services/adminService';
+import type { PricingBreakdown } from '../types';
 
 export interface CartItem {
   id: string;
@@ -12,26 +14,34 @@ export interface CartItem {
 // Clave del carrito aislada por usuario (cart:<id> o cart:guest).
 const cartKey = () => scopedKey('cart');
 
+const leerCarrito = (): CartItem[] => {
+  const savedCart = localStorage.getItem(cartKey());
+  if (!savedCart) return [];
+  try {
+    return JSON.parse(savedCart);
+  } catch (e) {
+    console.error("Error parsing cart", e);
+    return [];
+  }
+};
+
 export const useCart = () => {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  // Inicial perezoso: el primer render ya trae el carrito guardado (si no, las
+  // pantallas que dependen de él, como las recomendaciones, piden con el carrito vacío).
+  const [cart, setCart] = useState<CartItem[]>(leerCarrito);
+
+  // Desglose de precio: lo calcula SIEMPRE el backend (ofertas, descuentos automáticos
+  // y cupón); aquí solo se guarda para mostrarlo. Nunca se envía un total al servidor.
+  const [desglose, setDesglose] = useState<PricingBreakdown | null>(null);
+  const [cupon, setCupon] = useState<string | null>(null);
+  const [calculandoDesglose, setCalculandoDesglose] = useState(false);
+  const [errorDesglose, setErrorDesglose] = useState('');
 
   useEffect(() => {
     // Elimina las claves globales viejas (no aisladas) que filtraban datos entre cuentas.
     limpiarClavesLegacy();
 
-    const loadCart = () => {
-      const savedCart = localStorage.getItem(cartKey());
-      if (savedCart) {
-        try {
-          setCart(JSON.parse(savedCart));
-        } catch (e) {
-          console.error("Error parsing cart", e);
-          setCart([]);
-        }
-      } else {
-        setCart([]);
-      }
-    };
+    const loadCart = () => setCart(leerCarrito());
 
     loadCart();
 
@@ -124,5 +134,43 @@ export const useCart = () => {
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
 
-  return { cart, cartCount, cartTotal, addToCart, removeFromCart, updateQuantity, clearCart };
+  const itemsParaPrecio = () => cart.map(i => ({ productId: i.id, cantidad: i.quantity }));
+
+  // No se llama sola: la invoca el checkout (requiere sesión). Sin argumento conserva el cupón aplicado.
+  const calcularDesglose = async (codigo: string | null = cupon) => {
+    if (cart.length === 0) {
+      setDesglose(null);
+      return;
+    }
+    setCalculandoDesglose(true);
+    setErrorDesglose('');
+    try {
+      const res = await AdminService.calcularPricing(itemsParaPrecio(), codigo || undefined);
+      setDesglose(res.data);
+    } catch (e: any) {
+      setDesglose(null);
+      setErrorDesglose(e?.message || 'No se pudo calcular el total.');
+    } finally {
+      setCalculandoDesglose(false);
+    }
+  };
+
+  // Lanza un Error con el mensaje del backend si el cupón no es válido; el desglose previo se conserva.
+  const aplicarCupon = async (codigo: string) => {
+    const code = codigo.trim().toUpperCase();
+    const res = await AdminService.aplicarCupon(itemsParaPrecio(), code);
+    setDesglose(res.data);
+    setCupon(code);
+    setErrorDesglose('');
+  };
+
+  const quitarCupon = async () => {
+    setCupon(null);
+    await calcularDesglose(null);
+  };
+
+  return {
+    cart, cartCount, cartTotal, addToCart, removeFromCart, updateQuantity, clearCart,
+    desglose, cupon, calculandoDesglose, errorDesglose, calcularDesglose, aplicarCupon, quitarCupon,
+  };
 };

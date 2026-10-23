@@ -30,6 +30,7 @@ export interface CheckoutDraft {
   dedicatoria: string;    // vacío si el cliente no la activó
   shippingCost: number;
   shippingZona: ZonaEnvio;
+  solicitudVentaInstantaneaId?: string;
 }
 
 export interface CompletedOrder extends CheckoutDraft {
@@ -60,7 +61,48 @@ export const getDraft = (): CheckoutDraft | null => {
   }
 };
 
-export const clearDraft = () => localStorage.removeItem(draftKey());
+// Dedicatoria en curso (aún sin "Continuar a revisión"): sobrevive a que la página de
+// datos se desmonte al perder la conexión. Clave propia por usuario, solo de la pestaña;
+// no es un CheckoutDraft parcial (Revisión lo leería como borrador completo).
+const dedicatoriaKey = () => scopedKey('checkout_dedicatoria');
+
+export const saveDedicatoriaEnCurso = (quiere: boolean, texto: string) => {
+  try {
+    if (!quiere && !texto) sessionStorage.removeItem(dedicatoriaKey());
+    else sessionStorage.setItem(dedicatoriaKey(), JSON.stringify({ quiere, texto }));
+  } catch { /* almacenamiento no disponible */ }
+};
+
+export const getDedicatoriaEnCurso = (): { quiere: boolean; texto: string } | null => {
+  try {
+    const raw = sessionStorage.getItem(dedicatoriaKey());
+    return raw ? (JSON.parse(raw) as { quiere: boolean; texto: string }) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const clearDedicatoriaEnCurso = () => {
+  try { sessionStorage.removeItem(dedicatoriaKey()); } catch { /* almacenamiento no disponible */ }
+};
+
+// Al cerrar sesión: borra las dedicatorias en curso de la pestaña, de cualquier cuenta.
+// Va por prefijo porque tras limpiar la sesión la clave con alcance ya apunta a 'guest'.
+export const borrarDedicatoriasEnCurso = () => {
+  try {
+    const claves: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith('checkout_dedicatoria')) claves.push(k);
+    }
+    claves.forEach((k) => sessionStorage.removeItem(k));
+  } catch { /* almacenamiento no disponible */ }
+};
+
+export const clearDraft = () => {
+  localStorage.removeItem(draftKey());
+  clearDedicatoriaEnCurso();
+};
 
 export const saveCompletedOrder = (order: CompletedOrder) => {
   localStorage.setItem(orderKey(), JSON.stringify(order));

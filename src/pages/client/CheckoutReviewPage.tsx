@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   MapPin,
@@ -19,21 +19,23 @@ import {
 import { useCart } from '../../hooks/useCart';
 import { getDraft, saveCompletedOrder, generarFolio } from '../../utils/checkout';
 import { AdminService } from '../../services/adminService';
-import type { PricingBreakdown } from '../../types';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 export default function CheckoutReviewPage() {
   const navigate = useNavigate();
-  const { cart, cartTotal } = useCart();
+  const enLinea = useOnlineStatus();
+  const {
+    cart, cartTotal,
+    desglose: breakdown, cupon: cuponAplicado, calculandoDesglose: pricingLoading, errorDesglose,
+    calcularDesglose, aplicarCupon: aplicarCuponEnCarrito, quitarCupon: quitarCuponDelCarrito,
+  } = useCart();
 
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState('');
 
   const [cuponInput, setCuponInput] = useState('');
-  const [cuponAplicado, setCuponAplicado] = useState<string | null>(null);
   const [cuponError, setCuponError] = useState('');
   const [cuponLoading, setCuponLoading] = useState(false);
-  const [breakdown, setBreakdown] = useState<PricingBreakdown | null>(null);
-  const [pricingLoading, setPricingLoading] = useState(false);
 
   const draft = getDraft();
 
@@ -45,24 +47,11 @@ export default function CheckoutReviewPage() {
   const dedicatoria = (draft?.dedicatoria || '').trim();
   const esAnticipado = draft?.orderType === 'anticipado';
 
-  const pricingItems = cart.map(i => ({ productId: i.id, cantidad: i.quantity }));
-
-  const cargarPricing = useCallback(async (cupon?: string) => {
-    if (cart.length === 0) return;
-    setPricingLoading(true);
-    try {
-      const res = await AdminService.calcularPricing(pricingItems, cupon || undefined);
-      setBreakdown(res.data);
-    } catch {
-      setBreakdown(null);
-    } finally {
-      setPricingLoading(false);
-    }
-  }, [cart]);
-
+  // Recalcula cuando cambia el contenido del carrito (productos o cantidades).
+  const firmaCarrito = cart.map(i => `${i.id}:${i.quantity}`).join(',');
   useEffect(() => {
-    cargarPricing(cuponAplicado || undefined);
-  }, [cart.length]);
+    calcularDesglose();
+  }, [firmaCarrito]);
 
   const aplicarCupon = async () => {
     const code = cuponInput.trim().toUpperCase();
@@ -70,10 +59,7 @@ export default function CheckoutReviewPage() {
     setCuponError('');
     setCuponLoading(true);
     try {
-      const res = await AdminService.aplicarCupon(pricingItems, code);
-      setBreakdown(res.data);
-      setCuponAplicado(code);
-      setCuponError('');
+      await aplicarCuponEnCarrito(code);
     } catch (err: any) {
       setCuponError(err.message || 'Cupón inválido');
     } finally {
@@ -82,11 +68,14 @@ export default function CheckoutReviewPage() {
   };
 
   const quitarCupon = async () => {
-    setCuponAplicado(null);
     setCuponInput('');
     setCuponError('');
-    await cargarPricing();
+    await quitarCuponDelCarrito();
   };
+
+  // El backend aplica solo el mejor descuento (no acumula): un cupón válido puede no ser el que gana.
+  const cuponNoAcumulado = !!cuponAplicado && !!breakdown
+    && !breakdown.descuentosAplicados.some(d => d.origen === 'CUPON');
 
   const subtotalDisplay = breakdown ? breakdown.subtotal : cartTotal;
   const totalDescuentos = breakdown ? breakdown.totalDescuentos : 0;
@@ -111,6 +100,7 @@ export default function CheckoutReviewPage() {
         tipoPedido: draft.orderType === 'anticipado' ? 'ANTICIPADO' : 'INSTANTANEO',
         costoEnvio: draft.shippingCost,
         codigoCupon: cuponAplicado || undefined,
+        solicitudVentaInstantaneaId: draft.solicitudVentaInstantaneaId || undefined,
         notas: [
           draft.timeSlot ? `Horario: ${draft.timeSlot}` : '',
           dedicatoria ? `Dedicatoria: ${dedicatoria}` : '',
@@ -277,14 +267,21 @@ export default function CheckoutReviewPage() {
               {/* Coupon Field */}
               <div className="pt-4 border-t border-slate-100 mb-4">
                 {cuponAplicado ? (
-                  <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span className="text-sm font-bold text-emerald-700">Cupón: {cuponAplicado}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span className="text-sm font-bold text-emerald-700">Cupón: {cuponAplicado}</span>
+                      </div>
+                      <button onClick={quitarCupon} aria-label="Quitar cupón" className="text-slate-400 hover:text-red-500 transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button onClick={quitarCupon} className="text-slate-400 hover:text-red-500 transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
+                    {cuponNoAcumulado && (
+                      <p className="text-xs text-slate-500">
+                        Ya tienes un descuento mayor aplicado; los descuentos no se acumulan.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -354,7 +351,7 @@ export default function CheckoutReviewPage() {
               {/* Pay Button */}
               <button
                 onClick={confirmarPedido}
-                disabled={cart.length === 0 || procesando || pricingLoading}
+                disabled={cart.length === 0 || procesando || pricingLoading || !breakdown || !enLinea}
                 className="w-full mt-8 bg-[#004A99] hover:bg-[#004A99]/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-[#004A99]/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {procesando ? (
@@ -366,6 +363,13 @@ export default function CheckoutReviewPage() {
                   'PAGAR CON MERCADO PAGO'
                 )}
               </button>
+              {!enLinea && <p className="mt-3 text-sm text-amber-700 text-center">Requiere Internet</p>}
+              {enLinea && errorDesglose && !pricingLoading && (
+                <p className="mt-3 text-sm text-red-600 text-center">
+                  No pudimos calcular tu total: {errorDesglose}{' '}
+                  <button onClick={() => calcularDesglose()} className="font-bold underline">Reintentar</button>
+                </p>
+              )}
               {error && <p className="mt-3 text-sm text-red-600 text-center">{error}</p>}
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
                 <Lock className="w-3 h-3" />
