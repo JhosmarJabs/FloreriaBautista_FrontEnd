@@ -23,6 +23,7 @@ import { FadeIn } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { parseApiDate } from '../../utils/date';
 import { ESTADO_PEDIDO, type EstadoPedido } from '../../utils/labels';
+import { MOTIVO_CANCELACION_OBLIGATORIO, pedirMotivoCancelacion } from '../../utils/cancelacionPedido';
 
 // Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs).
 // Etiqueta y color salen de utils/labels.ts: aquí solo se arma el paso del stepper.
@@ -65,10 +66,17 @@ export default function OrderDetailPage() {
 
   const handleStatusChange = async (nuevoEstado: string) => {
     if (!id) return;
+    let motivo: string | undefined;
+    if (nuevoEstado === 'CANCELADO') {
+      const respuesta = pedirMotivoCancelacion();
+      if (respuesta === null) return;
+      if (!respuesta) { showToast(MOTIVO_CANCELACION_OBLIGATORIO, 'error'); return; }
+      motivo = respuesta;
+    }
     setShowStatusModal(false);
     setUpdating(true);
     try {
-      const res = await AdminService.updateAdminOrderStatus(id, nuevoEstado);
+      const res = await AdminService.updateAdminOrderStatus(id, nuevoEstado, motivo);
       setOrder(res.data);
       showToast('Estado actualizado correctamente', 'success');
     } catch (err: any) {
@@ -220,6 +228,12 @@ export default function OrderDetailPage() {
               <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 mt-2">
                 <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Notas del pedido:</p>
                 <p className="text-xs font-serif italic text-slate-600 dark:text-slate-300 leading-relaxed">"{order.notas}"</p>
+              </div>
+            )}
+            {isCancelled && order.motivoCancelacion && (
+              <div className="bg-rose-50 dark:bg-rose-900/20 p-3 rounded-xl border border-rose-100 dark:border-rose-900/40 mt-2">
+                <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1">Motivo de cancelación:</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{order.motivoCancelacion}</p>
               </div>
             )}
           </div>

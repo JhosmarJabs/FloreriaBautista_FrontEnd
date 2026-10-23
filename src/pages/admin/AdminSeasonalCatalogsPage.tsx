@@ -5,7 +5,6 @@ import {
   Search,
   Plus,
   RefreshCw,
-  MoreVertical,
   Calendar,
   Image as ImageIcon,
   ChevronRight,
@@ -194,9 +193,6 @@ export default function AdminSeasonalCatalogsPage() {
                       <p className="text-xs text-amber-600 dark:text-amber-500 font-semibold mt-0.5">{catalog.temporada}</p>
                     )}
                   </div>
-                  <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
                 </div>
 
                 <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2rem] leading-relaxed mb-4">

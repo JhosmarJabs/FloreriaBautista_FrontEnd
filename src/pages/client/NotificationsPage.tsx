@@ -6,6 +6,8 @@ import { FadeIn, StaggerContainer, GlassCard, AnimatedButton } from '../../compo
 import { useNotifications } from '../../hooks/useNotifications';
 import { parseApiDate } from '../../utils/date';
 import { NotificationDto } from '../../services/notificationsService';
+import RequiereConexion from '../../components/RequiereConexion';
+import { useEstadoConexion } from '../../hooks/useEstadoConexion';
 
 const ICON_MAP: Record<string, { icon: React.ElementType; color: string }> = {
   PEDIDO_ENTREGADO:   { icon: Truck,       color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
@@ -45,7 +47,7 @@ function resolverRuta(n: NotificationDto): string | null {
   return null;
 }
 
-export default function NotificationsPage() {
+function NotificationsPageContenido() {
   const navigate = useNavigate();
   const {
     notificaciones, noLeidas, cargando,
@@ -259,4 +261,11 @@ export default function NotificationsPage() {
       </main>
     </div>
   );
+}
+
+/** Sin conexión muestra «Necesitas conexión»; al volver, la página se monta de nuevo y recarga sus datos. */
+export default function NotificationsPage() {
+  const { sinConexion } = useEstadoConexion();
+  if (sinConexion) return <RequiereConexion texto="Para ver tus notificaciones necesitas Internet." />;
+  return <NotificationsPageContenido />;
 }

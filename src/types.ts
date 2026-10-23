@@ -491,6 +491,8 @@ export interface OrderDetail extends Order {
   saldoPendiente: number;
   metodoPago?: string;
   notas?: string;
+  /** Solo en pedidos CANCELADO; null en los cancelados antes de existir el campo. */
+  motivoCancelacion?: string | null;
   tipoEntrega?: string;
   direccion?: OrderDireccion;
   correoCliente?: string;

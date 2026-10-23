@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   MapPin, 
   ChevronRight, 
@@ -19,21 +19,26 @@ import {
 } from 'lucide-react';
 import { useCart } from '../../hooks/useCart';
 import { calcularEnvio } from '../../utils/envio';
-import { saveDraft, getDraft } from '../../utils/checkout';
+import { saveDraft, getDraft, getDedicatoriaEnCurso, saveDedicatoriaEnCurso, clearDedicatoriaEnCurso } from '../../utils/checkout';
 import { AdminService } from '../../services/adminService';
 import { lookupCp } from '../../services/sepomexService';
 import { todayISO } from '../../utils/date';
+import RequiereConexion from '../../components/RequiereConexion';
+import { useEstadoConexion } from '../../hooks/useEstadoConexion';
 
-export default function CheckoutDataPage() {
+function CheckoutDataPageContenido() {
   const navigate = useNavigate();
-  const { cart, cartTotal } = useCart();
+  const [searchParams] = useSearchParams();
+  const solicitudIdParam = searchParams.get('solicitudId');
+  const { cart, cartTotal, desglose, calcularDesglose } = useCart();
   const [address, setAddress] = useState('casa');
   const [orderType, setOrderType] = useState<'instantaneo' | 'anticipado'>('instantaneo');
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState(todayISO());
   const [timeSlot, setTimeSlot] = useState('');
-  const [wantsDedicatoria, setWantsDedicatoria] = useState(false);
-  const [dedicatoria, setDedicatoria] = useState('');
+  // Se inicializan desde la dedicatoria en curso: si la página se desmontó al perder la conexión, no se pierde.
+  const [wantsDedicatoria, setWantsDedicatoria] = useState(() => getDedicatoriaEnCurso()?.quiere ?? false);
+  const [dedicatoria, setDedicatoria] = useState(() => getDedicatoriaEnCurso()?.texto ?? '');
   const [shipping, setShipping] = useState<{ costo: number; etiqueta: string; gratis: boolean; zona: string }>({
     costo: 0, etiqueta: 'Por confirmar', gratis: true, zona: 'desconocida',
   });
@@ -173,7 +178,19 @@ export default function CheckoutDataPage() {
     }
   }, []);
 
-  const total = cartTotal + shipping.costo;
+  // Guarda lo escrito mientras se edita (se borra al continuar a revisión, que lo guarda en el borrador).
+  useEffect(() => {
+    saveDedicatoriaEnCurso(wantsDedicatoria, dedicatoria);
+  }, [wantsDedicatoria, dedicatoria]);
+
+  // Desglose calculado por el backend (ofertas y descuentos automáticos). El cupón se captura en la revisión.
+  const firmaCarrito = cart.map(i => `${i.id}:${i.quantity}`).join(',');
+  useEffect(() => {
+    calcularDesglose();
+  }, [firmaCarrito]);
+
+  const subtotal = desglose ? desglose.subtotal : cartTotal;
+  const total = (desglose ? desglose.total : cartTotal) + shipping.costo;
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 pt-32 min-h-screen font-display bg-[#f0f7ff]">
@@ -408,6 +425,7 @@ export default function CheckoutDataPage() {
                 // exactamente lo mismo: dirección, tipo de pedido, fecha/horario,
                 // dedicatoria y costo de envío ya calculado.
                 const mensaje = wantsDedicatoria ? dedicatoria.trim() : '';
+                clearDedicatoriaEnCurso();
                 saveDraft({
                   address: {
                     label: selectedAddress?.label || '',
@@ -425,6 +443,7 @@ export default function CheckoutDataPage() {
                   dedicatoria: mensaje,
                   shippingCost: shipping.costo,
                   shippingZona: shipping.zona as any,
+                  solicitudVentaInstantaneaId: solicitudIdParam || undefined,
                 });
                 navigate('/checkout/revision');
               }}
@@ -475,8 +494,14 @@ export default function CheckoutDataPage() {
             <div className="border-t border-dashed border-slate-200 pt-4 space-y-3">
               <div className="flex justify-between text-sm text-slate-600">
                 <span>Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>${subtotal.toFixed(2)}</span>
               </div>
+              {desglose?.descuentosAplicados.map((d, i) => (
+                <div key={i} className="flex justify-between text-sm text-emerald-600">
+                  <span>{d.nombre}</span>
+                  <span className="font-medium">-${d.monto.toFixed(2)}</span>
+                </div>
+              ))}
               <div className="flex justify-between text-sm text-slate-600">
                 <span>
                   Envío
@@ -607,3 +632,9 @@ export default function CheckoutDataPage() {
   );
 }
 
+/** Sin conexión muestra «Necesitas conexión»; al volver, la página se monta de nuevo y recarga sus datos. */
+export default function CheckoutDataPage() {
+  const { sinConexion } = useEstadoConexion();
+  if (sinConexion) return <RequiereConexion texto="Para continuar con tu compra necesitas Internet." />;
+  return <CheckoutDataPageContenido />;
+}

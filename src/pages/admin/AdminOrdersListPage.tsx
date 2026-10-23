@@ -349,7 +349,7 @@ export default function AdminOrdersListPage() {
                                 </button>
                               </div>
                             ) : s.orderId ? (
-                              <button onClick={() => navigate(`/admin/orders/${s.orderId}`)}
+                              <button onClick={() => navigate(`/admin/pedidos/${s.orderId}`)}
                                 className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
                                 Ver pedido
                               </button>

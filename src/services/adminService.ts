@@ -47,8 +47,9 @@ import {
   ErrorReport,
   ResolucionAccion,
 } from '../types';
-import { isJwtExpired, limpiarSesion } from '../utils/auth';
+import { isJwtExpired } from '../utils/auth';
 import { apiCache } from './apiCache';
+import { fetchConSesion, renovarOCerrarSesion } from './renovacionSesion';
 
 const API_BASE = '/api/admin';
 const TOKEN_URL = '/api/dev/token';
@@ -147,6 +148,7 @@ export interface WebOrderInput {
   };
   items: { productId: string; cantidad: number; notas?: string | null }[];
   codigoCupon?: string | null;
+  solicitudVentaInstantaneaId?: string | null;
 }
 
 // ── Solicitudes de venta instantanea (admin) ────────────────────
@@ -175,16 +177,6 @@ let cachedToken: string | null = null;
 let tokenExpiry: number = 0;
 
 
-// Limpia la sesión y manda al login. Se usa window.location (no useNavigate)
-// porque este archivo no es un componente/hook de React. `limpiarSesion` borra
-// también la clave heredada 'user', que si sobrevive revive una sesión vieja.
-const redirectToLogin = () => {
-  limpiarSesion();
-  if (window.location.pathname !== '/login') {
-    window.location.href = '/login';
-  }
-};
-
 const getToken = async (): Promise<string> => {
   // Usar el JWT real del usuario logueado si está disponible y no expirado
   const stored = localStorage.getItem('accessToken');
@@ -192,11 +184,12 @@ const getToken = async (): Promise<string> => {
     if (!isJwtExpired(stored)) {
       return stored;
     }
-    // El token de la sesión expiró: cerrar sesión y mandar al login en vez
-    // de dejar que cada pantalla truene con un "Error al cargar X" genérico.
-    console.warn('[AdminService] Token JWT expirado. Redirigiendo a /login.');
-    redirectToLogin();
-    throw new Error('Sesión expirada. Redirigiendo al inicio de sesión…');
+    // Sin red no se puede saber si la sesión sigue siendo válida: se deja como
+    // está (solo un rechazo real del servidor la cierra) y la llamada falla.
+    if (!navigator.onLine) throw new Error('Sin conexión a Internet.');
+    // Token vencido o ilegible: renovar con el refresh token (como el interceptor
+    // de axios). Solo si ya no se puede, se cierra la sesión y se va al login.
+    return renovarOCerrarSesion(stored);
   }
 
   const now = Date.now();
@@ -242,7 +235,7 @@ const errorMessage = async (res: Response, fallback: string): Promise<string> =>
 async function cachedGet<T>(url: string, errorMsg: string): Promise<T> {
   const hit = apiCache.get(url);
   if (hit) return hit as T;
-  const res = await fetch(url, { headers: await authHeaders() });
+  const res = await fetchConSesion(url, { headers: await authHeaders() });
   if (!res.ok) throw new Error(await errorMessage(res, errorMsg));
   const json = await res.json();
   apiCache.set(url, json);
@@ -253,7 +246,7 @@ async function mutate<T>(
   method: string, url: string, body?: unknown, invalidatePattern?: string, errorMsg = 'Error'
 ): Promise<T> {
   if (invalidatePattern) apiCache.invalidate(invalidatePattern);
-  const res = await fetch(url, {
+  const res = await fetchConSesion(url, {
     method,
     headers: await authHeaders(),
     ...(body !== undefined && { body: JSON.stringify(body) }),
@@ -265,7 +258,7 @@ async function mutate<T>(
 export const AdminService = {
   // ─── Base de datos ────────────────────────────────────────────
   getDatabaseHealth: async (): Promise<HealthCheckResponse> => {
-    const res = await fetch(`${API_BASE}/database/health`, {
+    const res = await fetchConSesion(`${API_BASE}/database/health`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error('Error al obtener estado de la base de datos');
@@ -273,7 +266,7 @@ export const AdminService = {
   },
 
   runMaintenance: async (): Promise<MaintenanceResponse> => {
-    const res = await fetch(`${API_BASE}/database/mantenimiento`, {
+    const res = await fetchConSesion(`${API_BASE}/database/mantenimiento`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -282,7 +275,7 @@ export const AdminService = {
   },
 
   getDatabaseMonitor: async (): Promise<DatabaseMonitorResponse> => {
-    const res = await fetch(`${API_BASE}/database/monitor`, {
+    const res = await fetchConSesion(`${API_BASE}/database/monitor`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error('Error al obtener datos del monitor de base de datos');
@@ -291,7 +284,7 @@ export const AdminService = {
 
   // ─── Respaldos ────────────────────────────────────────────────
   getBackups: async (): Promise<BackupJobsResponse> => {
-    const res = await fetch(`${API_BASE}/backups`, {
+    const res = await fetchConSesion(`${API_BASE}/backups`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error('Error al obtener lista de respaldos');
@@ -299,7 +292,7 @@ export const AdminService = {
   },
 
   getDriveBackups: async (): Promise<BackupsResponse> => {
-    const res = await fetch(`${API_BASE}/backups/drive`, {
+    const res = await fetchConSesion(`${API_BASE}/backups/drive`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error('Error al obtener respaldos de Drive');
@@ -310,7 +303,7 @@ export const AdminService = {
     descripcion: string,
     destino: string = 'DRIVE'
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await fetch(`${API_BASE}/backups/full`, {
+    const res = await fetchConSesion(`${API_BASE}/backups/full`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ descripcion, formato: 'BACKUP', destino }),
@@ -323,7 +316,7 @@ export const AdminService = {
     nombreTabla: string,
     descripcion: string
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await fetch(`${API_BASE}/backups/tabla`, {
+    const res = await fetchConSesion(`${API_BASE}/backups/tabla`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ nombreTabla, descripcion }),
@@ -336,7 +329,7 @@ export const AdminService = {
     frecuencia: string,
     hora: string
   ): Promise<{ success: boolean; message: string }> => {
-    const res = await fetch(`${API_BASE}/backups/config`, {
+    const res = await fetchConSesion(`${API_BASE}/backups/config`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ frecuencia, hora }),
@@ -346,7 +339,7 @@ export const AdminService = {
   },
 
   getScheduler: async (): Promise<SchedulerConfigResponse> => {
-    const res = await fetch(`${API_BASE}/scheduler`, {
+    const res = await fetchConSesion(`${API_BASE}/scheduler`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error('Error al obtener configuración del scheduler');
@@ -360,7 +353,7 @@ export const AdminService = {
     hora: number;
     mantenimientoActivo: boolean;
   }): Promise<SchedulerConfigResponse> => {
-    const res = await fetch(`${API_BASE}/scheduler`, {
+    const res = await fetchConSesion(`${API_BASE}/scheduler`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -370,7 +363,7 @@ export const AdminService = {
   },
 
   triggerAutomaticBackup: async (): Promise<{ success: boolean; message: string }> => {
-    const res = await fetch(`${API_BASE}/backups/full`, {
+    const res = await fetchConSesion(`${API_BASE}/backups/full`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ 
@@ -383,7 +376,7 @@ export const AdminService = {
   },
 
   restoreBackup: async (backupId: string): Promise<{ success: boolean; message: string }> => {
-    const res = await fetch(`${API_BASE}/backups/${backupId}/restore`, {
+    const res = await fetchConSesion(`${API_BASE}/backups/${backupId}/restore`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -406,9 +399,9 @@ export const AdminService = {
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
     const qs = query.toString();
-    const res = await fetch(`/api/products${qs ? `?${qs}` : ''}`, {
-      headers: await authHeaders(),
-    });
+    // Endpoint público: sin Authorization, para que el service worker pueda
+    // guardar la respuesta (nunca guarda peticiones con credenciales).
+    const res = await fetchConSesion(`/api/products${qs ? `?${qs}` : ''}`);
     if (!res.ok) throw new Error('Error al obtener productos');
     return res.json();
   },
@@ -429,7 +422,7 @@ export const AdminService = {
     if (params.page !== undefined) query.set('page', String(params.page));
     if (params.size !== undefined) query.set('size', String(params.size));
     const qs = query.toString();
-    const res = await fetch(`/api/employee/products${qs ? `?${qs}` : ''}`, {
+    const res = await fetchConSesion(`/api/employee/products${qs ? `?${qs}` : ''}`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error('Error al obtener productos');
@@ -455,14 +448,14 @@ export const AdminService = {
   },
 
   getInventoryIndex: async (): Promise<{ items: InventoryItem[]; sincronizadoEn: string }> => {
-    const res = await fetch(`${API_BASE}/inventory/index`, { headers: await authHeaders() });
+    const res = await fetchConSesion(`${API_BASE}/inventory/index`, { headers: await authHeaders() });
     if (!res.ok) throw new Error(await errorMessage(res, 'Error al cargar índice de inventario'));
     const json = await res.json();
     return json.data;
   },
 
   getInventoryDelta: async (desde: string): Promise<{ items: InventoryItem[]; sincronizadoEn: string }> => {
-    const res = await fetch(`${API_BASE}/inventory/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
+    const res = await fetchConSesion(`${API_BASE}/inventory/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
     if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar inventario'));
     const json = await res.json();
     return json.data;
@@ -489,7 +482,7 @@ export const AdminService = {
     body: RegisterMovementRequest,
   ): Promise<SingleResponse<InventoryMovement>> => {
     apiCache.invalidate('/inventory');
-    const res = await fetch(`${API_BASE}/inventory/movements`, {
+    const res = await fetchConSesion(`${API_BASE}/inventory/movements`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -547,7 +540,7 @@ export const AdminService = {
 
   createSupplyOrder: async (body: SupplyOrderInput): Promise<SingleResponse<SupplyOrderDetail>> => {
     apiCache.invalidate('/supply-orders');
-    const res = await fetch(`${API_BASE}/supply-orders`, {
+    const res = await fetchConSesion(`${API_BASE}/supply-orders`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -558,7 +551,7 @@ export const AdminService = {
 
   updateSupplyOrder: async (id: string, body: SupplyOrderInput): Promise<SingleResponse<SupplyOrderDetail>> => {
     apiCache.invalidate('/supply-orders');
-    const res = await fetch(`${API_BASE}/supply-orders/${id}`, {
+    const res = await fetchConSesion(`${API_BASE}/supply-orders/${id}`, {
       method: 'PUT',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -569,7 +562,7 @@ export const AdminService = {
 
   sendSupplyOrder: async (id: string): Promise<SingleResponse<SupplyOrderDetail>> => {
     apiCache.invalidate('/supply-orders');
-    const res = await fetch(`${API_BASE}/supply-orders/${id}/enviar`, {
+    const res = await fetchConSesion(`${API_BASE}/supply-orders/${id}/enviar`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -583,7 +576,7 @@ export const AdminService = {
   ): Promise<SingleResponse<SupplyOrderDetail>> => {
     apiCache.invalidate('/supply-orders');
     apiCache.invalidate('/inventory');
-    const res = await fetch(`${API_BASE}/supply-orders/${id}/recepcion`, {
+    const res = await fetchConSesion(`${API_BASE}/supply-orders/${id}/recepcion`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -594,7 +587,7 @@ export const AdminService = {
 
   cancelSupplyOrder: async (id: string, motivo?: string): Promise<SingleResponse<SupplyOrderDetail>> => {
     apiCache.invalidate('/supply-orders');
-    const res = await fetch(`${API_BASE}/supply-orders/${id}/cancelar`, {
+    const res = await fetchConSesion(`${API_BASE}/supply-orders/${id}/cancelar`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ motivo: motivo ?? null }),
@@ -605,7 +598,7 @@ export const AdminService = {
 
   createInventoryItem: async (body: any): Promise<SingleResponse<InventoryItem>> => {
     apiCache.invalidate('/inventory');
-    const res = await fetch(`${API_BASE}/inventory`, {
+    const res = await fetchConSesion(`${API_BASE}/inventory`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -616,7 +609,7 @@ export const AdminService = {
 
   updateInventoryItem: async (id: string, body: any): Promise<SingleResponse<InventoryItem>> => {
     apiCache.invalidate('/inventory');
-    const res = await fetch(`${API_BASE}/inventory/${id}`, {
+    const res = await fetchConSesion(`${API_BASE}/inventory/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -627,7 +620,7 @@ export const AdminService = {
 
   deleteInventoryItem: async (id: string): Promise<ApiResponse<any>> => {
     apiCache.invalidate('/inventory');
-    const res = await fetch(`${API_BASE}/inventory/${id}/delete`, {
+    const res = await fetchConSesion(`${API_BASE}/inventory/${id}/delete`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -674,26 +667,40 @@ export const AdminService = {
   },
 
   getProductsIndex: async (): Promise<{ items: Product[]; sincronizadoEn: string }> => {
-    const res = await fetch(`${API_BASE}/products/index`, { headers: await authHeaders() });
+    const res = await fetchConSesion(`${API_BASE}/products/index`, { headers: await authHeaders() });
     if (!res.ok) throw new Error(await errorMessage(res, 'Error al cargar índice de productos'));
     const json = await res.json();
     return json.data;
   },
 
   getProductsDelta: async (desde: string): Promise<{ items: Product[]; sincronizadoEn: string }> => {
-    const res = await fetch(`${API_BASE}/products/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
+    const res = await fetchConSesion(`${API_BASE}/products/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
     if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar productos'));
     const json = await res.json();
     return json.data;
   },
 
   getAdminProductById: async (productId: string): Promise<SingleResponse<ProductDetail>> => {
-    return cachedGet(`${API_BASE}/products/${productId}`, 'Error al obtener producto');
+    const res = await cachedGet<SingleResponse<ProductDetail>>(
+      `${API_BASE}/products/${productId}`, 'Error al obtener producto'
+    );
+    if (!res.data?.receta) return res;
+    return {
+      ...res,
+      data: {
+        ...res.data,
+        receta: res.data.receta.map((r: any) => ({
+          ...r,
+          flowerNombre: r.flowerNombre ?? r.nombre ?? '',
+          flowerPrecioCosto: r.flowerPrecioCosto ?? r.precioCosto ?? 0,
+        })),
+      },
+    };
   },
 
   createAdminProduct: async (body: ProductBody): Promise<ApiResponse<Product>> => {
     apiCache.invalidate('/products');
-    const res = await fetch(`${API_BASE}/products`, {
+    const res = await fetchConSesion(`${API_BASE}/products`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -705,7 +712,7 @@ export const AdminService = {
   updateAdminProduct: async (productId: string, body: ProductBody): Promise<ApiResponse<Product>> => {
     apiCache.invalidate('/products');
     apiCache.invalidate('/products/kpis');
-    const res = await fetch(`${API_BASE}/products/${productId}`, {
+    const res = await fetchConSesion(`${API_BASE}/products/${productId}`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -716,7 +723,7 @@ export const AdminService = {
 
   // ─── Exportación ──────────────────────────────────────────────
   exportAdminProducts: async (): Promise<Blob> => {
-    const res = await fetch(`${API_BASE}/export/products`, {
+    const res = await fetchConSesion(`${API_BASE}/export/products`, {
       headers: { Authorization: `Bearer ${await getToken()}` },
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -724,7 +731,7 @@ export const AdminService = {
   },
 
   exportAdminInventory: async (): Promise<Blob> => {
-    const res = await fetch(`${API_BASE}/export/inventory`, {
+    const res = await fetchConSesion(`${API_BASE}/export/inventory`, {
       headers: { Authorization: `Bearer ${await getToken()}` },
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -735,7 +742,7 @@ export const AdminService = {
   importAdminProducts: async (file: File): Promise<ImportProductsResponse> => {
     const form = new FormData();
     form.append('archivo', file);
-    const res = await fetch(`${API_BASE}/import/products`, {
+    const res = await fetchConSesion(`${API_BASE}/import/products`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${await getToken()}` },
       body: form,
@@ -747,7 +754,7 @@ export const AdminService = {
   importAdminInventory: async (file: File): Promise<void> => {
     const form = new FormData();
     form.append('archivo', file);
-    const res = await fetch(`${API_BASE}/import/inventory`, {
+    const res = await fetchConSesion(`${API_BASE}/import/inventory`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${await getToken()}` },
       body: form,
@@ -758,7 +765,7 @@ export const AdminService = {
   importFlowers: async (file: File): Promise<ImportProductsResponse> => {
     const form = new FormData();
     form.append('archivo', file);
-    const res = await fetch(`${API_BASE}/import/flowers`, {
+    const res = await fetchConSesion(`${API_BASE}/import/flowers`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${await getToken()}` },
       body: form,
@@ -768,7 +775,7 @@ export const AdminService = {
   },
 
   exportFlowers: async (): Promise<{ blob: Blob; filename: string }> => {
-    const res = await fetch(`${API_BASE}/export/flowers`, {
+    const res = await fetchConSesion(`${API_BASE}/export/flowers`, {
       headers: { Authorization: `Bearer ${await getToken()}` },
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -780,7 +787,7 @@ export const AdminService = {
 
   // ─── Usuario actual ───────────────────────────────────────────
   getCurrentUser: async (): Promise<MeResponse> => {
-    const res = await fetch('/api/users/me', {
+    const res = await fetchConSesion('/api/users/me', {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -794,7 +801,7 @@ export const AdminService = {
     sexo?: string;
     fechaNacimiento?: string;
   }): Promise<MeResponse> => {
-    const res = await fetch('/api/users/me', {
+    const res = await fetchConSesion('/api/users/me', {
       method: 'PUT',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -805,7 +812,7 @@ export const AdminService = {
 
   // ─── Direcciones del usuario ──────────────────────────────────
   getMyAddresses: async (): Promise<UserAddress[]> => {
-    const res = await fetch('/api/users/me/addresses', {
+    const res = await fetchConSesion('/api/users/me/addresses', {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -814,7 +821,7 @@ export const AdminService = {
   },
 
   createMyAddress: async (body: AddressInput): Promise<UserAddress> => {
-    const res = await fetch('/api/users/me/addresses', {
+    const res = await fetchConSesion('/api/users/me/addresses', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -824,7 +831,7 @@ export const AdminService = {
   },
 
   updateMyAddress: async (id: string, body: AddressInput): Promise<UserAddress> => {
-    const res = await fetch(`/api/users/me/addresses/${id}`, {
+    const res = await fetchConSesion(`/api/users/me/addresses/${id}`, {
       method: 'PUT',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -834,7 +841,7 @@ export const AdminService = {
   },
 
   setMyAddressPrincipal: async (id: string): Promise<UserAddress> => {
-    const res = await fetch(`/api/users/me/addresses/${id}/principal`, {
+    const res = await fetchConSesion(`/api/users/me/addresses/${id}/principal`, {
       method: 'PATCH',
       headers: await authHeaders(),
     });
@@ -843,7 +850,7 @@ export const AdminService = {
   },
 
   deleteMyAddress: async (id: string): Promise<void> => {
-    const res = await fetch(`/api/users/me/addresses/${id}`, {
+    const res = await fetchConSesion(`/api/users/me/addresses/${id}`, {
       method: 'DELETE',
       headers: await authHeaders(),
     });
@@ -852,7 +859,7 @@ export const AdminService = {
 
   // ─── Pedidos web + pago Mercado Pago ──────────────────────────
   createWebOrder: async (body: WebOrderInput): Promise<{ id: string; total: number; saldoPendiente: number }> => {
-    const res = await fetch('/api/orders', {
+    const res = await fetchConSesion('/api/orders', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -862,7 +869,7 @@ export const AdminService = {
   },
 
   createMpPreference: async (orderId: string): Promise<{ preferenceId: string; initPoint: string }> => {
-    const res = await fetch('/api/payments/mercadopago/preference', {
+    const res = await fetchConSesion('/api/payments/mercadopago/preference', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ orderId }),
@@ -877,7 +884,7 @@ export const AdminService = {
   },
 
   confirmMpPayment: async (paymentId: string): Promise<{ orderId: string; estado: string; acreditado: boolean }> => {
-    const res = await fetch('/api/payments/mercadopago/confirm', {
+    const res = await fetchConSesion('/api/payments/mercadopago/confirm', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ paymentId }),
@@ -888,7 +895,7 @@ export const AdminService = {
 
   // Confirma el pago buscándolo en MP por id de orden (sin payment_id, ej. localhost).
   confirmMpOrder: async (orderId: string): Promise<{ orderId: string; estado: string; acreditado: boolean }> => {
-    const res = await fetch('/api/payments/mercadopago/confirm-order', {
+    const res = await fetchConSesion('/api/payments/mercadopago/confirm-order', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ orderId }),
@@ -899,16 +906,14 @@ export const AdminService = {
 
   // ─── Producto público por ID ──────────────────────────────────
   getPublicProductById: async (productId: string): Promise<SingleResponse<ProductDetail>> => {
-    const res = await fetch(`/api/products/${productId}`, {
-      headers: await authHeaders(),
-    });
+    const res = await fetchConSesion(`/api/products/${productId}`);
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },
 
   // ─── Pedidos del cliente autenticado ─────────────────────────
   getMyOrders: async (): Promise<ApiResponse<Order>> => {
-    const res = await fetch('/api/orders/my', {
+    const res = await fetchConSesion('/api/orders/my', {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
@@ -936,7 +941,7 @@ export const AdminService = {
   },
 
   getOrdersDelta: async (desde: string): Promise<{ items: Order[]; sincronizadoEn: string }> => {
-    const res = await fetch(`${API_BASE}/orders/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
+    const res = await fetchConSesion(`${API_BASE}/orders/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
     if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar pedidos'));
     const json = await res.json();
     return json.data;
@@ -960,18 +965,24 @@ export const AdminService = {
     idLocalOffline?: string;
   }): Promise<SingleResponse<OrderDetail>> => {
     // Nota: este endpoint vive en /api/orders (OrdersController), no en /api/admin/orders
-    const res = await fetch(`/api/orders/physical`, {
+    const res = await fetchConSesion(`/api/orders/physical`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const texto = await res.text();
+      let mensaje: string | undefined;
+      try { mensaje = JSON.parse(texto)?.message; } catch { /* respuesta sin JSON */ }
+      // status y mensaje permiten distinguir un rechazo del servidor (4xx) de un fallo de red.
+      throw Object.assign(new Error(`Error ${res.status}: ${texto}`), { status: res.status, mensaje });
+    }
     return res.json();
   },
 
   // Registrar un pago (anticipo o liquidación) sobre un pedido ya existente
   registerOrderPayment: async (orderId: string, body: { monto: number; metodo: string }): Promise<SingleResponse<OrderDetail>> => {
-    const res = await fetch(`/api/orders/${orderId}/payments`, {
+    const res = await fetchConSesion(`/api/orders/${orderId}/payments`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -980,12 +991,13 @@ export const AdminService = {
     return res.json();
   },
 
-  updateAdminOrderStatus: async (orderId: string, nuevoEstado: string): Promise<SingleResponse<OrderDetail>> => {
+  // Cancelar exige motivoCancelacion: el backend responde 400 sin él.
+  updateAdminOrderStatus: async (orderId: string, nuevoEstado: string, motivoCancelacion?: string): Promise<SingleResponse<OrderDetail>> => {
     // Nota: este endpoint vive en /api/orders (OrdersController), no en /api/admin/orders
-    const res = await fetch(`/api/orders/${orderId}`, {
+    const res = await fetchConSesion(`/api/orders/${orderId}`, {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ nuevoEstado }),
+      body: JSON.stringify(motivoCancelacion ? { nuevoEstado, motivoCancelacion } : { nuevoEstado }),
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
@@ -1013,7 +1025,7 @@ export const AdminService = {
 
   updateFlower: async (id: string, body: FlowerBody): Promise<{ success: boolean; message: string }> => {
     apiCache.invalidate('/flowers');
-    const res = await fetch(`${API_BASE}/flowers/${id}`, {
+    const res = await fetchConSesion(`${API_BASE}/flowers/${id}`, {
       method: 'PUT',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1024,7 +1036,7 @@ export const AdminService = {
 
   createFlower: async (body: FlowerBody): Promise<{ success: boolean; message: string }> => {
     apiCache.invalidate('/flowers');
-    const res = await fetch(`${API_BASE}/flowers`, {
+    const res = await fetchConSesion(`${API_BASE}/flowers`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1061,7 +1073,7 @@ export const AdminService = {
     motivo: string
   ): Promise<void> => {
     apiCache.invalidate('/users');
-    const res = await fetch(`${API_BASE}/users/${userId}/status`, {
+    const res = await fetchConSesion(`${API_BASE}/users/${userId}/status`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ activo, motivo }),
@@ -1071,7 +1083,7 @@ export const AdminService = {
 
   updateAdminUserRoles: async (userId: string, roles: string[]): Promise<void> => {
     apiCache.invalidate('/users');
-    const res = await fetch(`${API_BASE}/users/${userId}/roles`, {
+    const res = await fetchConSesion(`${API_BASE}/users/${userId}/roles`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ roles }),
@@ -1086,7 +1098,7 @@ export const AdminService = {
 
   asignarResponsableTurno: async (userId: string): Promise<SingleResponse<null>> => {
     apiCache.invalidate('/users');
-    const res = await fetch(`${API_BASE}/users/${userId}/responsable-turno`, {
+    const res = await fetchConSesion(`${API_BASE}/users/${userId}/responsable-turno`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -1096,7 +1108,7 @@ export const AdminService = {
 
   quitarResponsableTurno: async (): Promise<SingleResponse<null>> => {
     apiCache.invalidate('/users');
-    const res = await fetch(`${API_BASE}/users/responsable-turno`, {
+    const res = await fetchConSesion(`${API_BASE}/users/responsable-turno`, {
       method: 'DELETE',
       headers: await authHeaders(),
     });
@@ -1131,7 +1143,7 @@ export const AdminService = {
 
   createAdminUser: async (body: UserBody): Promise<SingleResponse<User>> => {
     apiCache.invalidate('/users');
-    const res = await fetch(`${API_BASE}/users`, {
+    const res = await fetchConSesion(`${API_BASE}/users`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1154,7 +1166,7 @@ export const AdminService = {
 
   createAdminPromotion: async (body: PromotionBody): Promise<SingleResponse<Promotion>> => {
     apiCache.invalidate('/promotions');
-    const res = await fetch(`${API_BASE}/promotions`, {
+    const res = await fetchConSesion(`${API_BASE}/promotions`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1165,7 +1177,7 @@ export const AdminService = {
 
   updateAdminPromotion: async (id: string, body: PromotionBody): Promise<SingleResponse<Promotion>> => {
     apiCache.invalidate('/promotions');
-    const res = await fetch(`${API_BASE}/promotions/${id}`, {
+    const res = await fetchConSesion(`${API_BASE}/promotions/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1176,7 +1188,7 @@ export const AdminService = {
 
   deleteAdminPromotion: async (id: string): Promise<SingleResponse<null>> => {
     apiCache.invalidate('/promotions');
-    const res = await fetch(`${API_BASE}/promotions/${id}/eliminar`, {
+    const res = await fetchConSesion(`${API_BASE}/promotions/${id}/eliminar`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -1220,27 +1232,27 @@ export const AdminService = {
 
   // ─── Ofertas y descuentos (público) ─────────────────────────────
   getOfertasPublicas: async (): Promise<ApiResponse<OfertaPublica[]>> => {
-    const res = await fetch('/api/offers');
+    const res = await fetchConSesion('/api/offers');
     if (!res.ok) throw new Error('Error al obtener ofertas');
     return res.json();
   },
 
   getDescuentosPublicos: async (): Promise<ApiResponse<DescuentoPublico[]>> => {
-    const res = await fetch('/api/discounts');
+    const res = await fetchConSesion('/api/discounts');
     if (!res.ok) throw new Error('Error al obtener descuentos');
     return res.json();
   },
 
   // ─── Temporadas (público) ───────────────────────────────────────
   getTemporadasProximas: async (): Promise<TemporadaProxima[]> => {
-    const res = await fetch('/api/catalogos/temporadas-proximas');
+    const res = await fetchConSesion('/api/catalogos/temporadas-proximas');
     if (!res.ok) throw new Error('Error al obtener temporadas');
     return res.json();
   },
 
   // ─── Pricing / cupón (requiere auth) ────────────────────────────
   calcularPricing: async (items: PricingItem[], codigoCupon?: string): Promise<ApiResponse<PricingBreakdown>> => {
-    const res = await fetch('/api/cart/calcular', {
+    const res = await fetchConSesion('/api/cart/calcular', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ items, codigoCupon: codigoCupon ?? '' }),
@@ -1253,7 +1265,7 @@ export const AdminService = {
   },
 
   aplicarCupon: async (items: PricingItem[], codigoCupon: string): Promise<ApiResponse<PricingBreakdown>> => {
-    const res = await fetch('/api/cart/aplicar-cupon', {
+    const res = await fetchConSesion('/api/cart/aplicar-cupon', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({ items, codigoCupon }),
@@ -1274,7 +1286,7 @@ export const AdminService = {
 
   createQuickSaleTemplate: async (body: SaveQuickSaleTemplateBody): Promise<SingleResponse<QuickSaleTemplate>> => {
     apiCache.invalidate('/quick-sale-templates');
-    const res = await fetch('/api/quick-sale-templates', {
+    const res = await fetchConSesion('/api/quick-sale-templates', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1285,7 +1297,7 @@ export const AdminService = {
 
   updateQuickSaleTemplate: async (id: string, body: SaveQuickSaleTemplateBody): Promise<SingleResponse<QuickSaleTemplate>> => {
     apiCache.invalidate('/quick-sale-templates');
-    const res = await fetch(`/api/quick-sale-templates/${id}`, {
+    const res = await fetchConSesion(`/api/quick-sale-templates/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1296,7 +1308,7 @@ export const AdminService = {
 
   deleteQuickSaleTemplate: async (id: string): Promise<SingleResponse<null>> => {
     apiCache.invalidate('/quick-sale-templates');
-    const res = await fetch(`/api/quick-sale-templates/${id}/eliminar`, {
+    const res = await fetchConSesion(`/api/quick-sale-templates/${id}/eliminar`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -1311,7 +1323,7 @@ export const AdminService = {
 
   updateCms: async (body: SiteSettings): Promise<SingleResponse<SiteSettings>> => {
     apiCache.invalidate('/cms');
-    const res = await fetch(`${API_BASE}/cms`, {
+    const res = await fetchConSesion(`${API_BASE}/cms`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1342,7 +1354,7 @@ export const AdminService = {
 
   createCatalog: async (body: any): Promise<SingleResponse<any>> => {
     apiCache.invalidate('/catalogos');
-    const res = await fetch(`${API_BASE}/catalogos`, {
+    const res = await fetchConSesion(`${API_BASE}/catalogos`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1353,7 +1365,7 @@ export const AdminService = {
 
   updateCatalog: async (id: string, body: any): Promise<SingleResponse<any>> => {
     apiCache.invalidate('/catalogos');
-    const res = await fetch(`${API_BASE}/catalogos/${id}`, {
+    const res = await fetchConSesion(`${API_BASE}/catalogos/${id}`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1366,13 +1378,13 @@ export const AdminService = {
   // Endpoint público (sin auth de admin) — reglas de asociación con fallback a más vendidos.
   getRecommendedProducts: async (productIds: string[], top = 4): Promise<SingleResponse<any[]>> => {
     const ids = productIds.filter(Boolean).join(',');
-    const res = await fetch(`/api/products/recomendados?ids=${encodeURIComponent(ids)}&top=${top}`);
+    const res = await fetchConSesion(`/api/products/recomendados?ids=${encodeURIComponent(ids)}&top=${top}`);
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },
 
   recalcularReglasAsociacion: async (): Promise<SingleResponse<any>> => {
-    const res = await fetch(`${API_BASE}/analytics/reglas-asociacion/recalcular`, {
+    const res = await fetchConSesion(`${API_BASE}/analytics/reglas-asociacion/recalcular`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -1386,7 +1398,7 @@ export const AdminService = {
   },
 
   recalcularSegmentosClientes: async (): Promise<SingleResponse<any>> => {
-    const res = await fetch(`${API_BASE}/analytics/segmentos-clientes/recalcular`, {
+    const res = await fetchConSesion(`${API_BASE}/analytics/segmentos-clientes/recalcular`, {
       method: 'POST',
       headers: await authHeaders(),
     });
@@ -1437,7 +1449,7 @@ export const AdminService = {
     body: { accion: ResolucionAccion; nota?: string; rechazar?: boolean },
   ): Promise<SingleResponse<ErrorReport>> => {
     apiCache.invalidate('/error-reports');
-    const res = await fetch(`${API_BASE}/error-reports/${reporteId}/resolver`, {
+    const res = await fetchConSesion(`${API_BASE}/error-reports/${reporteId}/resolver`, {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1461,7 +1473,7 @@ export const AdminService = {
     creadaEn: string;
     reservaExpiraEn: string | null;
   }>> => {
-    const res = await fetch('/api/solicitudes-venta-instantanea', {
+    const res = await fetchConSesion('/api/solicitudes-venta-instantanea', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify(body),
@@ -1480,7 +1492,7 @@ export const AdminService = {
     creadaEn: string;
     reservaExpiraEn: string | null;
   }>> => {
-    const res = await fetch(`/api/solicitudes-venta-instantanea/${solicitudId}`, {
+    const res = await fetchConSesion(`/api/solicitudes-venta-instantanea/${solicitudId}`, {
       headers: await authHeaders(),
     });
     if (!res.ok) throw new Error(await errorMessage(res, 'Error al consultar solicitud'));

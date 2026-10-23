@@ -73,8 +73,10 @@ export function NavbarCliente() {
             <Link to="/" className="flex items-center gap-3">
               <div className="relative">
                 <img
-                  src="/Logo.png"
+                  src="/Logo-sm.webp"
                   alt="Logo"
+                  width={63}
+                  height={80}
                   className="w-8 h-8 object-contain relative z-10"
                 />
                 <div className="absolute inset-0 bg-[#FBBF24] blur-lg opacity-20 animate-pulse"></div>

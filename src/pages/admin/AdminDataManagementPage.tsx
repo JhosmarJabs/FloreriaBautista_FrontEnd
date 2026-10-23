@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   Clock,
   History,
-  Settings2,
   ChevronRight,
   RefreshCw,
   Package,
@@ -24,6 +23,8 @@ import { AdminService } from '../../services/adminService';
 import { FadeIn, StaggerContainer, GlassCard, AnimatedButton } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { filterCSV } from '../../utils/exportUtils';
+import { apiCache } from '../../services/apiCache';
+import { useNavigate } from 'react-router-dom';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function downloadBlob(blob: Blob, filename: string) {
@@ -156,6 +157,7 @@ function ActionModal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AdminDataManagementPage() {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [systemInfo, setSystemInfo] = useState<any>(null);
   const [loading, setLoading]       = useState(true);
   const [modal, setModal]           = useState<'import' | 'export' | null>(null);
@@ -243,13 +245,9 @@ export default function AdminDataManagementPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Importación, exportación y sincronización masiva de información</p>
         </div>
         <div className="flex items-center gap-3">
-          <AnimatedButton className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
+          <AnimatedButton onClick={() => navigate('/admin/auditoria')} className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-black text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
             <History className="w-4 h-4" />
             Historial
-          </AnimatedButton>
-          <AnimatedButton className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-sm font-black hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all">
-            <Settings2 className="w-4 h-4" />
-            Configurar API
           </AnimatedButton>
         </div>
       </FadeIn>
@@ -350,7 +348,13 @@ export default function AdminDataManagementPage() {
               Las operaciones de importación masiva pueden sobrescribir datos existentes.
               Asegúrese de realizar un respaldo antes de proceder.
             </p>
-            <AnimatedButton className="w-full py-3.5 bg-amber-600 text-white rounded-2xl text-xs font-black hover:bg-amber-700 transition-colors shadow-lg shadow-amber-600/20">
+            <AnimatedButton
+              onClick={() => {
+                // Solo la caché en memoria de este navegador; el servidor no se toca.
+                apiCache.clear();
+                showToast('Caché local limpiada: los datos se volverán a pedir al servidor', 'success');
+              }}
+              className="w-full py-3.5 bg-amber-600 text-white rounded-2xl text-xs font-black hover:bg-amber-700 transition-colors shadow-lg shadow-amber-600/20">
               Limpiar Caché de Datos
             </AnimatedButton>
           </GlassCard>

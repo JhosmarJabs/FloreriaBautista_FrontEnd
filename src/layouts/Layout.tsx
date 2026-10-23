@@ -4,6 +4,7 @@ import Navigation from '../components/Navigation';
 import AnimatedRoutes from '../routes/AppRoutes';
 import { useAuth } from '../hooks/useAuth';
 import { useAlAcercarse } from '../hooks/useAlAcercarse';
+import RutaErrorBoundary from '../components/RutaErrorBoundary';
 
 const AdminLayout = React.lazy(() => import('../layouts/AdminLayout'));
 const EmployeeLayout = React.lazy(() => import('../layouts/EmployeeLayout'));
@@ -43,11 +44,15 @@ export default function Layout() {
     initDataService();
     if ((esEmpleado && !esAdmin) || (esAdmin && location.pathname.startsWith('/empleado'))) {
       return (
-        <Suspense fallback={null}>
-          <EmployeeLayout user={usuario}>
-            <AnimatedRoutes />
-          </EmployeeLayout>
-        </Suspense>
+        <RutaErrorBoundary resetKey={location.pathname}>
+          <Suspense fallback={null}>
+            <EmployeeLayout user={usuario}>
+              <RutaErrorBoundary resetKey={location.pathname}>
+                <AnimatedRoutes />
+              </RutaErrorBoundary>
+            </EmployeeLayout>
+          </Suspense>
+        </RutaErrorBoundary>
       );
     }
 
@@ -72,23 +77,35 @@ export default function Layout() {
     }
 
     return (
-      <Suspense fallback={null}>
-        <AdminLayout user={usuario}>
-          <AnimatedRoutes />
-        </AdminLayout>
-      </Suspense>
+      // Dos niveles: el exterior cubre el chunk del propio layout; el interior (solo el
+      // contenido) deja visible el menú cuando una sección no visitada no carga sin red.
+      <RutaErrorBoundary resetKey={location.pathname}>
+        <Suspense fallback={null}>
+          <AdminLayout user={usuario}>
+            <RutaErrorBoundary resetKey={location.pathname}>
+              <AnimatedRoutes />
+            </RutaErrorBoundary>
+          </AdminLayout>
+        </Suspense>
+      </RutaErrorBoundary>
     );
   }
 
   return (
+    // Dos niveles: el exterior cubre la barra del cliente (otro chunk diferido); el
+    // interior, solo el contenido, conserva encabezado y pie si una página no carga sin red.
+    <RutaErrorBoundary resetKey={location.pathname}>
     <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden min-h-screen flex flex-col">
       {!hideNavAndFooter && (esCliente ? <Suspense fallback={null}><NavbarCliente /></Suspense> : <Navigation />)}
       {/* min-h-screen: mientras la ruta lazy carga, el footer no debe quedar en
           pantalla, o salta hacia abajo al llegar el contenido (CLS). */}
       <div className="flex-grow min-h-screen">
-        <AnimatedRoutes />
+        <RutaErrorBoundary resetKey={location.pathname}>
+          <AnimatedRoutes />
+        </RutaErrorBoundary>
       </div>
       {!hideNavAndFooter && <FooterDiferido />}
     </div>
+    </RutaErrorBoundary>
   );
 }

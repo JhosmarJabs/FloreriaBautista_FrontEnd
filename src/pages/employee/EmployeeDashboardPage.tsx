@@ -148,10 +148,10 @@ export default function EmployeeDashboardPage() {
             <div className="relative z-10 flex flex-col justify-between h-full">
               <p className="text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-[0.2em]">{s.label}</p>
               <div className="mt-1 text-xl font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">{s.value}</div>
-              <p className={`text-[10px] mt-2 font-black uppercase tracking-widest ${s.color} opacity-80 flex items-center gap-1`}>
+              <div className={`text-[10px] mt-2 font-black uppercase tracking-widest ${s.color} opacity-80 flex items-center gap-1`}>
                 <div className="w-1 h-1 rounded-full bg-current animate-pulse" />
                 {s.trend}
-              </p>
+              </div>
             </div>
             {React.cloneElement(s.icon as React.ReactElement, {
               className: `absolute -bottom-4 -right-4 w-20 h-20 ${s.color} opacity-[0.05] group-hover:scale-110 group-hover:rotate-12 transition-all duration-700`,

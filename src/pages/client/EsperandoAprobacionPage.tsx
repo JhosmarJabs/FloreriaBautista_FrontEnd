@@ -9,6 +9,7 @@ import {
   LogLevel,
 } from '@microsoft/signalr';
 import { AdminService } from '../../services/adminService';
+import { VENTA_INSTANTANEA_HUB_URL } from '../../services/realtime';
 
 type Estado = 'PENDIENTE' | 'ACEPTADA' | 'RECHAZADA' | 'EXPIRADA';
 
@@ -76,7 +77,7 @@ export default function EsperandoAprobacionPage() {
     if (!token) return;
 
     const connection = new HubConnectionBuilder()
-      .withUrl('/hubs/venta-instantanea', {
+      .withUrl(VENTA_INSTANTANEA_HUB_URL, {
         accessTokenFactory: () => token,
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000])
@@ -222,7 +223,7 @@ export default function EsperandoAprobacionPage() {
           Tienes 10 minutos para completar el pago.
         </p>
         <button
-          onClick={() => navigate('/checkout/datos')}
+          onClick={() => navigate(`/checkout/datos?solicitudId=${solicitud.id}`)}
           className="px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all"
         >
           Continuar al pago

@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { ROL, rutaInicialPorRol } from '../utils/auth';
 import { useAuth } from '../hooks/useAuth';
-import PantallaCarga from '../components/PantallaCarga';
+import CargaRuta from '../components/CargaRuta';
 // La landing va en el bundle inicial: con lazy, el primer render de React cambiaba
 // el hero del esqueleto HTML por la pantalla de carga y el LCP esperaba al chunk.
 import HomePage from '../pages/client/HomePage';
@@ -51,6 +51,7 @@ const AdminOperationPage = React.lazy(() => import('../pages/admin/AdminOperatio
 const AdminSettingsPage = React.lazy(() => import('../pages/admin/AdminSettingsPage'));
 const AdminDataManagementPage = React.lazy(() => import('../pages/admin/AdminDataManagementPage'));
 const AdminSystemMonitoringPage = React.lazy(() => import('../pages/admin/AdminSystemMonitoringPage'));
+const AdminWhatsAppPage = React.lazy(() => import('../pages/admin/AdminWhatsAppPage'));
 const AdminAuditPage = React.lazy(() => import('../pages/admin/AdminAuditPage'));
 const AdminCashControlPage = React.lazy(() => import('../pages/admin/AdminCashControlPage'));
 const AdminProductDetailPage = React.lazy(() => import('../pages/admin/AdminProductDetailPage'));
@@ -84,14 +85,17 @@ const SessionOrderPage = React.lazy(() => import('../pages/employee/SessionOrder
 const EmployeeSettingsPage = React.lazy(() => import('../pages/employee/EmployeeSettingsPage'));
 const EmployeeNotificationsPage = React.lazy(() => import('../pages/employee/EmployeeNotificationsPage'));
 
-const LazyFallback = <PantallaCarga mensaje="Cargando página..." />;
+// Dentro del contenido (no tapa el encabezado), con retraso y tiempo límite: ver CargaRuta.
+const LazyFallback = <CargaRuta />;
 
 const CssTransition = ({ children }: { children: React.ReactNode }) => (
-  <div className="animate-[pageEnter_0.3s_ease-out_both]">{children}</div>
+  <div className="motion-safe:animate-[pageEnter_0.3s_ease-out_both]">{children}</div>
 );
 
+// Este Suspense (que PageTransition necesita por ser lazy) es el más cercano a la
+// página lazy: con fallback={null} el área de contenido quedaba vacía sin indicador.
 const P = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={null}>
+  <Suspense fallback={LazyFallback}>
     <PageTransition>{children}</PageTransition>
   </Suspense>
 );
@@ -136,6 +140,7 @@ function AdminRoutes() {
         <Route path="respaldos" element={<Suspense fallback={LazyFallback}><P><BackupsPage /></P></Suspense>} />
         <Route path="datos" element={<Suspense fallback={LazyFallback}><P><AdminDataManagementPage /></P></Suspense>} />
         <Route path="monitoreo" element={<Suspense fallback={LazyFallback}><P><AdminSystemMonitoringPage /></P></Suspense>} />
+        <Route path="whatsapp" element={<Suspense fallback={LazyFallback}><P><AdminWhatsAppPage /></P></Suspense>} />
         <Route path="auditoria" element={<Suspense fallback={LazyFallback}><P><AdminAuditPage /></P></Suspense>} />
         <Route path="configuracion" element={<Suspense fallback={LazyFallback}><P><AdminSettingsPage /></P></Suspense>} />
         <Route path="analisis-producto/:id" element={<Suspense fallback={LazyFallback}><P><AdminProductAnalysisPage /></P></Suspense>} />

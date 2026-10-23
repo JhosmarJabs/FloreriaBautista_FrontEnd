@@ -8,6 +8,9 @@ import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
 import { slugify, esGuid } from '../../utils/slug';
 import { useAuth } from '../../hooks/useAuth';
+import { obtenerInstantaneaCatalogo } from '../../services/catalogoPublico';
+import { obtenerEstado } from '../../services/estadoConexion';
+import RequiereConexion from '../../components/RequiereConexion';
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -20,18 +23,35 @@ export default function ProductPage() {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [mainImage, setMainImage] = useState('');
+  const [imagenFallida, setImagenFallida] = useState(false);
   const [aceptaVariacion, setAceptaVariacion] = useState(false);
+  // Ficha reducida: el detalle no está guardado y no hay conexión; se muestra lo
+  // que trae la instantánea del catálogo (sin descripción).
+  const [fichaReducida, setFichaReducida] = useState(false);
+  const [sinConexionSinDatos, setSinConexionSinDatos] = useState(false);
 
   useEffect(() => {
     // Carga los productos "También te podría gustar" reales: primero del mismo
     // catálogo/colección que el admin escogió para este producto, luego de la
-    // misma categoría, y como último respaldo el listado público general.
+    // misma categoría, y como último respaldo la instantánea del catálogo.
     const loadRelated = async (p: any) => {
       const excluir = (items: any[]) =>
         items.filter((it: any) => it.id !== p?.id).slice(0, 4);
 
       const catalogo = p?.catalogos?.[0];
       const categoria = p?.categorias?.[0] || p?.tipo;
+
+      // Respaldo (también sin conexión): mismo tipo desde la instantánea; si no
+      // hay, los primeros de la instantánea. El listado no trae catálogo ni categoría.
+      const respaldo = async () => {
+        try {
+          const items = await obtenerInstantaneaCatalogo();
+          const mismoTipo = excluir(items.filter((it) => p?.tipo && it.tipo === p.tipo));
+          setRelatedProducts(mismoTipo.length > 0 ? mismoTipo : excluir(items));
+        } catch {
+          setRelatedProducts([]);
+        }
+      };
 
       try {
         // 1) Mismo catálogo (lo que el admin agrupó)
@@ -54,11 +74,11 @@ export default function ProductPage() {
           }
         }
 
-        // 3) Respaldo: listado público general
-        const res = await AdminService.getProducts({ size: 8 });
-        setRelatedProducts(excluir(res.data.items));
+        // 3) Respaldo: instantánea del catálogo
+        await respaldo();
       } catch {
-        setRelatedProducts([]);
+        // Catálogo/categoría fallaron por red (no guardados): respaldo offline.
+        await respaldo();
       }
     };
 
@@ -80,20 +100,37 @@ export default function ProductPage() {
 
     const loadProduct = async () => {
       setLoadingProduct(true);
+      setFichaReducida(false);
+      setSinConexionSinDatos(false);
+      setImagenFallida(false);
       let p: any = null;
+      let resumen: any = null;
 
       if (esGuid(id!)) {
         // Compatibilidad: enlaces antiguos que aún traen el id en la URL.
         p = await fetchById(id!);
+        if (!p) {
+          try {
+            resumen = (await obtenerInstantaneaCatalogo()).find((it) => it.id === id) ?? null;
+          } catch { /* sin instantánea */ }
+        }
       } else {
         // URL tipo texto: resolver el slug (nombre) al producto real sin exponer el id.
         try {
-          const res = await AdminService.getProducts({ size: 200 });
-          const match = res.data.items.find((it: any) => slugify(it.nombre) === id);
-          if (match) p = await fetchById(match.id);
+          const items = await obtenerInstantaneaCatalogo();
+          resumen = items.find((it) => slugify(it.nombre) === id) ?? null;
+          if (resumen) p = await fetchById(resumen.id);
         } catch {
           p = null;
         }
+      }
+
+      if (!p && resumen) {
+        // Detalle no disponible (sin conexión y nunca abierto): ficha reducida.
+        p = resumen;
+        setFichaReducida(true);
+      } else if (!p && (obtenerEstado().sinConexion || !navigator.onLine)) {
+        setSinConexionSinDatos(true);
       }
 
       setProduct(p);
@@ -132,6 +169,10 @@ export default function ProductPage() {
         <Loader2 className="w-10 h-10 animate-spin text-brand-coral" />
       </div>
     );
+  }
+
+  if (!product && sinConexionSinDatos) {
+    return <RequiereConexion texto="Necesitas conexión para ver este producto." />;
   }
 
   if (!product) {
@@ -175,10 +216,11 @@ export default function ProductPage() {
         <FadeIn delay={0.2}>
           <div className="space-y-6">
             <div className="relative rounded-[2.5rem] overflow-hidden aspect-square bg-white dark:bg-slate-800 shadow-2xl border border-slate-200/50 dark:border-slate-700/50">
-              {mainImage ? (
+              {mainImage && !imagenFallida ? (
                 <AnimatePresence mode="wait">
                   <motion.img
                     key={mainImage}
+                    onError={() => setImagenFallida(true)}
                     initial={{ opacity: 0, scale: 1.1 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
@@ -207,7 +249,7 @@ export default function ProductPage() {
                     key={idx}
                     whileHover={{ y: -4 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setMainImage(img)}
+                    onClick={() => { setMainImage(img); setImagenFallida(false); }}
                     className={`rounded-2xl overflow-hidden aspect-square border-2 transition-all shadow-md ${mainImage === img ? 'border-brand-coral ring-4 ring-brand-coral/10' : 'border-white dark:border-slate-800 hover:border-brand-coral/50'}`}
                   >
                     <img className="w-full h-full object-cover" src={img} alt={`${product.nombre} ${idx + 1}`} />
@@ -242,7 +284,7 @@ export default function ProductPage() {
             </div>
 
             <p className="text-lg text-slate-500 dark:text-slate-400 mb-10 leading-relaxed">
-              {product.descripcion || 'Un hermoso arreglo floral diseñado con las flores más frescas y seleccionadas para transmitir tus mejores sentimientos.'}
+              {fichaReducida ? 'La descripción completa se verá cuando vuelvas a tener conexión.' : product.descripcion || 'Un hermoso arreglo floral diseñado con las flores más frescas y seleccionadas para transmitir tus mejores sentimientos.'}
             </p>
 
             {/* Customization Form */}

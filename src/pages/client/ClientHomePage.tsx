@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShoppingCart, ArrowRight, Sparkles, Package, MapPin, Eye } from 'lucide-react';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
-import { AdminService } from '../../services/adminService';
+import { obtenerInstantaneaCatalogo } from '../../services/catalogoPublico';
 import { Product } from '../../types';
 import { slugify } from '../../utils/slug';
 import { useAuth } from '../../hooks/useAuth';
@@ -25,8 +25,8 @@ export default function ClientHomePage() {
   useEffect(() => {
     const loadSeasonalProducts = async () => {
       try {
-        const res = await AdminService.getProducts({ size: 10 });
-        setSeasonalProducts(res.data.items.slice(0, 5));
+        const items = await obtenerInstantaneaCatalogo();
+        setSeasonalProducts(items.slice(0, 5));
       } catch {
         setSeasonalProducts([]);
       }

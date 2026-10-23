@@ -152,6 +152,24 @@ export const ESTADOS_PEDIDO: EstadoPedido[] = [
 ];
 
 /**
+ * Siguiente estado del flujo normal, según la máquina de estados del backend
+ * (Transiciones en Backend/Services/OrderService.cs). Los estados que no
+ * aparecen aquí no avanzan.
+ */
+export const SIGUIENTE_ESTADO: Record<string, EstadoPedido | null> = {
+  PENDIENTE_VALIDACION: 'EN_PREPARACION',
+  EN_PREPARACION:       'EN_RUTA',
+  EN_RUTA:              'ENTREGADO',
+  ENTREGADO:            null,
+};
+
+/**
+ * Estados desde los que el backend permite pasar a CANCELADO sin pasar por
+ * PENDIENTE_ANULACION (que se gestiona en su propia pantalla).
+ */
+export const ESTADOS_CANCELABLES: EstadoPedido[] = ['PENDIENTE_VALIDACION', 'EN_PREPARACION'];
+
+/**
  * Valores viejos en minúsculas o en inglés que algunos flujos antiguos todavía
  * devuelven. Se traducen al estado canónico para que no se cuelen etiquetas
  * sueltas como "Enviado" o "Procesando" que ya no existen en el resto del panel.

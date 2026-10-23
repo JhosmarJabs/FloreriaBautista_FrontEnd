@@ -23,10 +23,12 @@ import {
   UsersRound,
   Truck,
   Calculator,
+  MessageCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from '../hooks/useAuth';
 import { NotificationsService } from '../services/notificationsService';
+import WhatsAppDesconectadoBanner from '../components/admin/WhatsAppDesconectadoBanner';
 import '../styles/panel.css';
 
 interface AdminLayoutProps {
@@ -42,14 +44,36 @@ const TECH_OPS_ITEMS = [
     label: "Exportación / importación",
   },
   { to: "/admin/monitoreo", icon: Activity, label: "Monitoreo base de datos" },
+  { to: "/admin/whatsapp", icon: MessageCircle, label: "WhatsApp" },
 ];
+
+const TECH_OPS_STORAGE_KEY = "admin.techOpsOpen";
 
 export default function AdminLayout({ children, user }: AdminLayoutProps) {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isTechOpsOpen, setIsTechOpsOpen] = useState(
-    TECH_OPS_ITEMS.some((item) => location.pathname.startsWith(item.to)),
-  );
+  // Abierto si estoy en una ruta técnica o si el usuario lo dejó abierto
+  // (se guarda en localStorage para conservarlo entre pantallas y recargas).
+  const [isTechOpsOpen, setIsTechOpsOpen] = useState(() => {
+    if (TECH_OPS_ITEMS.some((item) => location.pathname.startsWith(item.to))) {
+      return true;
+    }
+    try {
+      return localStorage.getItem(TECH_OPS_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleTechOps = () => {
+    setIsTechOpsOpen((v) => {
+      try {
+        localStorage.setItem(TECH_OPS_STORAGE_KEY, v ? "0" : "1");
+      } catch {
+        /* almacenamiento bloqueado: el menú funciona igual sin persistir */
+      }
+      return !v;
+    });
+  };
   const [notifNoLeidas, setNotifNoLeidas] = useState(0);
 
   useEffect(() => {
@@ -303,7 +327,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           {/* 9. Operación técnica (submenu) */}
           <div>
             <button
-              onClick={() => setIsTechOpsOpen((v) => !v)}
+              onClick={toggleTechOps}
               className={`w-full flex items-center rounded-xl text-sm font-medium transition-colors duration-150 py-2.5 ${
                 isSidebarOpen
                   ? "px-3 gap-3 justify-between"
@@ -490,6 +514,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             transition={{ duration: 0.3 }}
             className="min-h-full flex flex-col w-full"
           >
+            <WhatsAppDesconectadoBanner />
             {children}
           </motion.div>
         </main>

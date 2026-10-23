@@ -1,4 +1,4 @@
-{
+{  
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
@@ -12,6 +12,24 @@
     }
   ],
   "headers": [
+    {
+      "source": "/(sw.js|registerSW.js)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    },
     {
       "source": "/assets/(.*)",
       "headers": [
@@ -31,7 +49,7 @@
       ]
     },
     {
-      "source": "/(favicon-64.png|Logo-sm.webp|Logo.png|pwa-192x192.png|pwa-512x512.png)",
+      "source": "/(favicon-64.png|Logo-sm.webp|Logo.png|pwa-192x192.png|pwa-512x512.png|pwa-maskable-512.png|apple-touch-icon.png|pwa-screenshot-wide.png|pwa-screenshot-narrow.png)",
       "headers": [
         {
           "key": "Cache-Control",

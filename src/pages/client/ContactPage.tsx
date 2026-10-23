@@ -1,12 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Phone, Mail, Send, MessageSquare, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Send, MessageSquare, Navigation, Loader2, ExternalLink } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { CmsService } from '../../services/cmsService';
 import { AdminService } from '../../services/adminService';
 import { useAuth } from '../../hooks/useAuth';
 import { SiteSettings } from '../../types';
 import { groupHorarios } from '../../utils/horarios';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { Coordenadas, distanciaKm, formatearDistancia, urlRutaMaps } from '../../utils/geo';
+
+/** Resultado de pedir la ubicación al pulsar "Cómo llegar". */
+type EstadoGeo =
+  | { tipo: 'inactivo' }
+  | { tipo: 'cargando' }
+  | { tipo: 'ok'; origen: Coordenadas; km: number; aproximada: boolean }
+  | { tipo: 'denegado' }
+  | { tipo: 'no-disponible' }
+  | { tipo: 'timeout' }
+  /** Sin API de geolocalización (p. ej. página servida por HTTP) o sucursal sin coordenadas. */
+  | { tipo: 'sin-distancia' };
+
+const PRECISION_MAXIMA_M = 100;
 
 export default function ContactPage() {
   const { showToast } = useToast();
@@ -21,8 +36,8 @@ export default function ContactPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [geoLoading, setGeoLoading] = useState(false);
-  const [geoError, setGeoError] = useState<string | null>(null);
+  const [geo, setGeo] = useState<EstadoGeo>({ tipo: 'inactivo' });
+  const enLinea = useOnlineStatus();
 
   useEffect(() => {
     CmsService.getSettings().then(setSettings).catch(() => { /* usa los valores por defecto del markup */ });
@@ -55,41 +70,44 @@ export default function ContactPage() {
     prefillUser();
   }, [usuario]);
 
+  const sucursal: Coordenadas | null =
+    settings?.latitud != null && settings?.longitud != null
+      ? { latitud: settings.latitud, longitud: settings.longitud }
+      : null;
+
+  // La ubicación se pide solo aquí, al pulsar el botón; nunca al cargar la página.
+  // Se queda en memoria: no se guarda ni se envía al backend.
   const handleComoLlegar = () => {
-    if (!settings?.latitud || !settings?.longitud) {
-      if (settings?.direccionUrl) window.open(settings.direccionUrl, '_blank');
+    if (!sucursal || !window.isSecureContext || !('geolocation' in navigator)) {
+      setGeo({ tipo: 'sin-distancia' });
       return;
     }
 
-    if (!navigator.geolocation) {
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${settings.latitud},${settings.longitud}`,
-        '_blank',
-      );
-      return;
-    }
-
-    setGeoLoading(true);
-    setGeoError(null);
+    setGeo({ tipo: 'cargando' });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setGeoLoading(false);
-        window.open(
-          `https://www.google.com/maps/dir/?api=1&origin=${pos.coords.latitude},${pos.coords.longitude}&destination=${settings.latitud},${settings.longitud}`,
-          '_blank',
-        );
+        const origen = { latitud: pos.coords.latitude, longitud: pos.coords.longitude };
+        setGeo({
+          tipo: 'ok',
+          origen,
+          km: distanciaKm(origen, sucursal),
+          aproximada: pos.coords.accuracy > PRECISION_MAXIMA_M,
+        });
       },
-      () => {
-        setGeoLoading(false);
-        setGeoError('No se pudo obtener tu ubicación.');
-        window.open(
-          `https://www.google.com/maps/dir/?api=1&destination=${settings.latitud},${settings.longitud}`,
-          '_blank',
-        );
+      (err) => {
+        // Cualquier error borra la distancia anterior (p. ej. permiso revocado después).
+        if (err.code === err.PERMISSION_DENIED) setGeo({ tipo: 'denegado' });
+        else if (err.code === err.TIMEOUT) setGeo({ tipo: 'timeout' });
+        else setGeo({ tipo: 'no-disponible' });
       },
-      { timeout: 10000 },
+      { timeout: 10000, maximumAge: 60000 },
     );
   };
+
+  // Con coordenadas: ruta hacia la sucursal (con origen si se obtuvo). Sin ellas: Maps por dirección.
+  const urlMaps = sucursal
+    ? urlRutaMaps(sucursal, geo.tipo === 'ok' ? geo.origen : null)
+    : settings?.direccionUrl || null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -169,22 +187,74 @@ export default function ContactPage() {
                       {settings?.direccion || 'Av. Principal S/N, Centro, Huitzitzilingo, Hidalgo, México'}
                     </p>
                   )}
-                  {(settings?.latitud && settings?.longitud || settings?.direccionUrl) && (
+                  {(sucursal || settings?.direccionUrl) && (
                     <button
                       onClick={handleComoLlegar}
-                      disabled={geoLoading}
+                      disabled={geo.tipo === 'cargando'}
                       className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-deep bg-brand-deep/5 hover:bg-brand-deep/10 rounded-lg transition-colors disabled:opacity-60"
                     >
-                      {geoLoading ? (
+                      {geo.tipo === 'cargando' ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <Navigation className="w-3.5 h-3.5" />
                       )}
-                      Cómo llegar
+                      {geo.tipo === 'timeout' ? 'Reintentar' : 'Cómo llegar'}
                     </button>
                   )}
-                  {geoError && (
-                    <p className="text-xs text-amber-600 mt-1">{geoError}</p>
+
+                  {geo.tipo !== 'inactivo' && geo.tipo !== 'cargando' && (
+                    <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-2" aria-live="polite">
+                      {geo.tipo === 'ok' && (
+                        <p className="text-sm text-slate-800">
+                          Estás a{geo.aproximada ? ' aprox.' : ''}{' '}
+                          <strong>{formatearDistancia(geo.km)}</strong>{' '}
+                          <span className="text-xs text-slate-500">en línea recta</span>
+                        </p>
+                      )}
+                      {geo.tipo === 'denegado' && (
+                        <p className="text-xs text-amber-700">
+                          No tenemos permiso para ver tu ubicación. Para calcular la distancia, permite la
+                          ubicación de este sitio desde el candado de la barra de direcciones y vuelve a pulsar
+                          «Cómo llegar».
+                        </p>
+                      )}
+                      {geo.tipo === 'no-disponible' && (
+                        <p className="text-xs text-amber-700">Activa la ubicación de tu dispositivo para calcular la distancia.</p>
+                      )}
+                      {geo.tipo === 'timeout' && (
+                        <p className="text-xs text-amber-700">No pudimos ubicarte. Inténtalo de nuevo.</p>
+                      )}
+
+                      {enLinea ? (
+                        urlMaps && (
+                          <a
+                            href={urlMaps}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-brand-deep hover:bg-brand-deep/90 rounded-lg transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Abrir en Maps
+                          </a>
+                        )
+                      ) : (
+                        <>
+                          {sucursal && (
+                            <p className="text-xs text-slate-600">
+                              Coordenadas: {sucursal.latitud}, {sucursal.longitud}
+                            </p>
+                          )}
+                          <button
+                            disabled
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-brand-deep rounded-lg opacity-50 cursor-not-allowed"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Abrir en Maps
+                          </button>
+                          <p className="text-xs text-slate-500">El mapa estará disponible al recuperar Internet.</p>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

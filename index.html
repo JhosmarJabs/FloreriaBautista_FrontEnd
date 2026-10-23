@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Florería Bautista — arreglos florales artesanales para cada ocasión en San Felipe Orizatlán y alrededores. Envío a domicilio." />
+    <meta name="theme-color" content="#1a3b5b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Fl. Bautista" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preload" as="image" type="image/webp" href="/img/landing/hero.webp" fetchpriority="high" />
@@ -12,6 +18,7 @@
     <title>Florería Bautista — Arreglos Florales Artesanales</title>
     <style>
       body{margin:0;background:#f0f7ff}
+      html.dark body{background:#0b1624}
       .sk,.sk *{box-sizing:border-box}
       .sk{font-family:"Manrope",sans-serif;line-height:1.5}
       .sk-header{position:fixed;top:0;left:0;width:100%;background:rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.1);z-index:50}
@@ -37,6 +44,7 @@
       .sk-boton-1:hover{background:#f0f7ff}
       .sk-boton-2{background:#1a3b5b;color:#fff;border-color:#1a3b5b}
       .sk-boton-2:hover{opacity:.9}
+      html[data-ruta=privada] #root>.sk-header{display:none}
       @media (min-width:40rem){.sk-container{max-width:40rem}.sk-botones{flex-direction:row}}
       @media (min-width:48rem){.sk-container{max-width:48rem}.sk-hero h1{font-size:3.75rem}.sk-hero p{font-size:1.25rem;line-height:1.625}}
       @media (min-width:64rem){.sk-container{max-width:64rem}.sk-hero{padding:12rem 0 10rem}.sk-hero .sk-container{text-align:left}.sk-botones{justify-content:flex-start}}
@@ -47,15 +55,36 @@
   <body>
     <!-- Hero de la landing en HTML puro, fuera de #root para que React no lo destruya:
          HeroSection lo adopta (textos y enlaces del CMS) en lugar de pintar otro. Así el
-         LCP es este hero, pintado antes de que cargue la app. En otras rutas se retira al
-         montar (App.tsx). Si cambias el hero, cambia también HeroSection.tsx. -->
+         LCP es este hero, pintado antes de que cargue la app. En otras rutas (o con sesión)
+         lo quita el script de abajo antes de pintarse; App.tsx lo retira si ninguna ruta lo adopta. Si cambias el hero, cambia también HeroSection.tsx. -->
     <section id="skeleton-hero" class="sk sk-hero">
       <script>
-        // Solo en la landing lleva la imagen de fondo (en otras rutas sería una descarga inútil).
-        if (location.pathname === '/') {
-          document.getElementById('skeleton-hero').insertAdjacentHTML('afterbegin',
+        // El hero es solo de la landing pública sin sesión (/ con sesión redirige al inicio
+        // del cliente o al panel). En cualquier otra ruta se quita ANTES de pintarse, para no
+        // ver el hero ni el título de la portada al abrir /catalogo, /admin/... etc.
+        // Solo se comprueba si existe accessToken: no se lee ni se envía su contenido.
+        (function () {
+          var sk = document.getElementById('skeleton-hero');
+          var ruta = location.pathname;
+          // En el web privado tampoco se muestra la cabecera pública provisional de #root.
+          if (/^\/(admin|empleado)(\/|$)/.test(ruta)) {
+            document.documentElement.setAttribute('data-ruta', 'privada');
+            // Modo oscuro del panel (misma regla que AdminLayout/EmployeeLayout): se aplica
+            // desde ya para que la pantalla de carga no sea un pantallazo blanco.
+            try {
+              var tema = localStorage.getItem('theme');
+              if (tema === 'dark' || (tema === null && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+              }
+            } catch (e) {}
+          }
+          var sesion = false;
+          try { sesion = !!localStorage.getItem('accessToken'); } catch (e) {}
+          if (ruta !== '/' || sesion) { sk.remove(); return; }
+          // Solo en la landing lleva la imagen de fondo (en otras rutas sería una descarga inútil).
+          sk.insertAdjacentHTML('afterbegin',
             '<img class="sk-hero-fondo" src="/img/landing/hero.webp" alt="" fetchpriority="high" /><div class="sk-hero-velo"></div>');
-        }
+        })();
       </script>
       <div class="sk-container">
         <div class="sk-texto">

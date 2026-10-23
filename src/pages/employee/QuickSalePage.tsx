@@ -24,7 +24,6 @@ import { Product, QuickSaleTemplate, QuickSaleTemplateItem } from '../../types';
 import { useToast } from '../../hooks/useToast';
 import { todayISO } from '../../utils/date';
 import { agregarVenta } from '../../services/offlineSalesQueue';
-import { useOfflineSync } from '../../hooks/useOfflineSync';
 
 interface CartItem {
   id: string;
@@ -141,8 +140,6 @@ export default function QuickSalePage() {
 
   const total = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
-  const { refreshCount } = useOfflineSync();
-
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     setIsProcessing(true);
@@ -161,14 +158,20 @@ export default function QuickSalePage() {
       await AdminService.createPhysicalOrder(payload);
       showToast('Venta registrada con éxito', 'success');
       setCart([]);
-    } catch {
+    } catch (err) {
+      // Solo se guarda localmente si no hubo respuesta (red) o fue 5xx.
+      // Un 4xx es un rechazo real (p. ej. sin existencias): se muestra y no se encola.
+      const { status, mensaje } = err as { status?: number; mensaje?: string };
+      if (status !== undefined && status < 500) {
+        showToast(mensaje || 'No se pudo registrar la venta.', 'error');
+        return;
+      }
       await agregarVenta({
         idLocalOffline,
         payload,
         creadoEn: new Date().toISOString(),
         intentos: 0,
       });
-      await refreshCount();
       showToast('Sin conexión — venta guardada localmente', 'info');
       setCart([]);
     } finally {

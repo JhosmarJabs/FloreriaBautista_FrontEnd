@@ -31,18 +31,23 @@ const socialEvents = [
 export default function EventsPage() {
   const [temporadas, setTemporadas] = useState<TemporadaProxima[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const cargar = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const data = await AdminService.getTemporadasProximas();
+      setTemporadas(data);
+    } catch {
+      setTemporadas([]);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const cargar = async () => {
-      try {
-        const data = await AdminService.getTemporadasProximas();
-        setTemporadas(data);
-      } catch {
-        setTemporadas([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     cargar();
   }, []);
 
@@ -76,6 +81,14 @@ export default function EventsPage() {
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-10 h-10 text-brand-deep animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-16">
+            <Calendar className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500 text-lg mb-6">No pudimos cargar las temporadas.</p>
+            <button onClick={cargar} className="px-8 py-3 border-2 border-brand-deep text-brand-deep font-bold rounded-xl hover:bg-brand-deep hover:text-white transition-colors">
+              Reintentar
+            </button>
           </div>
         ) : (
           <>

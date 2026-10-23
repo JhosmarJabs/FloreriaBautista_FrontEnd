@@ -5,7 +5,6 @@ import {
   Library, 
   ImageIcon, 
   Plus, 
-  Trash2, 
   Search, 
   CheckCircle2, 
   Loader2,
@@ -499,11 +498,6 @@ export default function AdminNewCatalogPage() {
             </AnimatedButton>
           </motion.div>
 
-          {isEdit && (
-            <button className="w-full flex items-center justify-center gap-2 py-3 text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-100 dark:border-rose-800/50 rounded-xl text-sm font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all">
-              <Trash2 className="w-4 h-4" /> Eliminar permanentemente
-            </button>
-          )}
         </div>
 
       </div>

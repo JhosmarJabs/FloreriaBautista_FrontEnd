@@ -31,13 +31,14 @@ export default function OffersPage() {
   const [ofertas, setOfertas] = useState<OfertaPublica[]>([]);
   const [descuentos, setDescuentos] = useState<DescuentoPublico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const [sortBy, setSortBy] = useState('discount');
   const [likedItems, setLikedItems] = useState<string[]>([]);
 
-  useEffect(() => {
-    const cargar = async () => {
+  const cargar = async () => {
       setLoading(true);
+      setError(false);
       try {
         const [ofertasRes, descRes] = await Promise.all([
           AdminService.getOfertasPublicas(),
@@ -48,10 +49,13 @@ export default function OffersPage() {
       } catch {
         setOfertas([]);
         setDescuentos([]);
+        setError(true);
       } finally {
         setLoading(false);
       }
-    };
+  };
+
+  useEffect(() => {
     cargar();
   }, []);
 
@@ -223,6 +227,17 @@ export default function OffersPage() {
         {loading ? (
           <div className="flex items-center justify-center py-32">
             <Loader2 className="w-10 h-10 text-brand-deep animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="py-32 text-center">
+            <div className="bg-white/50 backdrop-blur-xl rounded-[3rem] p-16 border border-white/60 inline-block shadow-2xl">
+              <Tag className="w-16 h-16 text-slate-300 mx-auto mb-6" />
+              <h3 className="text-2xl font-black text-brand-deep mb-3">No pudimos cargar las ofertas</h3>
+              <p className="text-slate-500 mb-8 max-w-sm mx-auto">Revisa tu conexión e inténtalo de nuevo.</p>
+              <button onClick={cargar} className="bg-brand-deep text-white px-8 py-3 rounded-xl font-black hover:bg-brand-coral transition-all">
+                Reintentar
+              </button>
+            </div>
           </div>
         ) : filtered.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-32 text-center">

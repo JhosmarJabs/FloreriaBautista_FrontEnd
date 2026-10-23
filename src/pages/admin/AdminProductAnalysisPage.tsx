@@ -6,8 +6,6 @@ import {
   TrendingUp, 
   Activity, 
   BarChart, 
-  AlertCircle,
-  FileText,
   Download,
   ArrowLeft,
   Calendar,
@@ -281,12 +279,6 @@ export default function AdminProductAnalysisPage() {
                   ))}
                </div>
             )}
-            <AnimatedButton className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 shadow-sm transition-all hover:bg-amber-100/50">
-              <AlertCircle className="w-4 h-4" /> Alertas
-            </AnimatedButton>
-            <AnimatedButton className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all">
-              <FileText className="w-4 h-4" /> Reporte Global
-            </AnimatedButton>
           </div>
         </div>
 

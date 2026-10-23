@@ -50,7 +50,7 @@ export default function AdminInventoryPage() {
   const filtros = useMemo(() => {
     const f: ((item: InventoryItem) => boolean)[] = [];
     if (invBajoMin) f.push(i => i.stockActual <= i.stockMinimo);
-    if (invCategoria) f.push(i => i.unidadMedida.toLowerCase() === invCategoria.toLowerCase());
+    if (invCategoria) f.push(i => (i.unidadMedida ?? '').toLowerCase() === invCategoria.toLowerCase());
     return f;
   }, [invBajoMin, invCategoria]);
 
@@ -75,8 +75,8 @@ export default function AdminInventoryPage() {
     showToast('Inventario importado con éxito', 'success');
   };
 
-  const getUnitStyle = (unit: string) => {
-    const u = unit.toLowerCase();
+  const getUnitStyle = (unit: string | null | undefined) => {
+    const u = (unit ?? '').toLowerCase();
     if (u.includes('unid') || u.includes('pza') || u.includes('pieza'))
       return 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20';
     if (u.includes('caja'))
@@ -259,7 +259,7 @@ export default function AdminInventoryPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4"><span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border ${getUnitStyle(item.unidadMedida)}`}>{item.unidadMedida}</span></td>
+                          <td className="px-6 py-4"><span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border ${getUnitStyle(item.unidadMedida)}`}>{item.unidadMedida ?? '—'}</span></td>
                           <td className="px-6 py-4 text-sm font-black text-slate-900 dark:text-white">${item.precioCosto.toFixed(2)}</td>
                           <td className="px-6 py-4 text-xs font-semibold text-slate-500">{item.sucursal}</td>
                           <td className="px-6 py-4 text-lg font-black text-slate-900 dark:text-white">{item.stockActual}</td>

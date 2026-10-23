@@ -2,6 +2,10 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { instalarObservadorConexion } from './services/estadoConexion';
+
+// Antes de montar: el aviso de conexión observa también las primeras peticiones.
+instalarObservadorConexion();
 
 /**
  * En producción el CSS carga sin bloquear el pintado (ver cssNoBloqueante en

@@ -42,3 +42,14 @@ export function formatApiDate(
   const d = parseApiDate(value);
   return d ? d.toLocaleDateString(locale, options) : '—';
 }
+
+/** Tiempo transcurrido desde `desde` (ms desde epoch) en palabras: "hace 5 min", "hace 2 h". */
+export function haceCuanto(desde: number, ahora = Date.now()): string {
+  const minutos = Math.max(0, Math.floor((ahora - desde) / 60_000));
+  if (minutos < 1) return 'hace un momento';
+  if (minutos < 60) return `hace ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+}
