@@ -9,6 +9,7 @@ interface UseNotificationsReturn {
   notificaciones: NotificationDto[];
   noLeidas: number;
   cargando: boolean;
+  error: boolean;
   totalPaginas: number;
   pagina: number;
   marcarLeida: (id: string) => Promise<void>;
@@ -24,6 +25,7 @@ export function useNotifications(size = 20): UseNotificationsReturn {
   const [notificaciones, setNotificaciones] = useState<NotificationDto[]>([]);
   const [noLeidas, setNoLeidas] = useState(0);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [version, setVersion] = useState(0);
@@ -42,6 +44,7 @@ export function useNotifications(size = 20): UseNotificationsReturn {
 
     const cargar = async () => {
       setCargando(true);
+      setError(false);
       try {
         const [lista, count] = await Promise.all([
           NotificationsService.listar(false, pagina, size),
@@ -54,6 +57,7 @@ export function useNotifications(size = 20): UseNotificationsReturn {
         }
       } catch (err) {
         console.error('Error cargando notificaciones:', err);
+        if (!cancelled && mountedRef.current) setError(true);
       } finally {
         if (!cancelled && mountedRef.current) setCargando(false);
       }
@@ -92,6 +96,7 @@ export function useNotifications(size = 20): UseNotificationsReturn {
     notificaciones,
     noLeidas,
     cargando,
+    error,
     totalPaginas,
     pagina,
     marcarLeida,

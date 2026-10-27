@@ -14,8 +14,6 @@ export type EstadoWhatsApp =
   | 'DESCONECTADO'
   | 'SERVICIO_NO_DISPONIBLE';
 
-export type EstadoAccion = 'NINGUNA' | 'PENDIENTE' | 'APLICANDO' | 'DESPLEGADO' | 'APLICADA' | 'ERROR';
-
 export interface WhatsAppEstado {
   configurado: boolean;
   habilitado: boolean;
@@ -54,15 +52,6 @@ export interface WhatsAppDestinatarioRequest {
   nombre: string;
   telefono: string;
   activo?: boolean;
-}
-
-export interface WhatsAppVersion {
-  versionDeseada: string | null;
-  versionAplicada: string | null;
-  accionPendiente: 'NINGUNA' | 'APLICAR_VERSION' | 'REINICIAR';
-  estadoAccion: EstadoAccion;
-  accionMensaje: string | null;
-  accionSolicitadaEn: string | null;
 }
 
 export interface WhatsAppMensaje {
@@ -126,10 +115,8 @@ export const WhatsAppService = {
   actualizarDestinatario: (id: string, dto: WhatsAppDestinatarioRequest) =>
     send<WhatsAppDestinatario>('put', `${BASE}/destinatarios/${id}`, dto),
 
-  version: () => get<WhatsAppVersion>(`${BASE}/version`),
   versionSugerida: () => get<{ version: string | null; fuente: string }>(`${BASE}/version-sugerida`),
-  aplicarVersion: (version: string | null) => send<WhatsAppVersion>('put', `${BASE}/version`, { version }),
-  reiniciar: () => send<WhatsAppVersion>('post', `${BASE}/reiniciar`),
+  reiniciar: () => send<{ estado: EstadoWhatsApp }>('post', `${BASE}/reiniciar`),
 
   mensajes: (limite = 50) => get<WhatsAppMensaje[]>(`${BASE}/mensajes?limite=${limite}`),
 };

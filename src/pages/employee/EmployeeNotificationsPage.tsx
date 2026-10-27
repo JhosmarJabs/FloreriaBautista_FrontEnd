@@ -70,10 +70,10 @@ function resolverRuta(n: NotificationDto): string | null {
 export default function EmployeeNotificationsPage() {
   const navigate = useNavigate();
   const {
-    notificaciones, noLeidas, cargando,
+    notificaciones, noLeidas, cargando, error,
     totalPaginas, pagina, setPagina,
-    marcarLeida, marcarTodasLeidas, eliminar,
-  } = useNotifications();
+    marcarLeida, marcarTodasLeidas, eliminar, recargar,
+  }= useNotifications();
 
   const grupos = useMemo(() => agruparPorFecha(notificaciones), [notificaciones]);
 
@@ -124,7 +124,31 @@ export default function EmployeeNotificationsPage() {
         </header>
       </FadeIn>
 
-      {notificaciones.length === 0 ? (
+      {error ? (
+        <FadeIn>
+          <div
+            role="alert"
+            className="flex flex-col items-center justify-center py-24 text-center bg-white/50 dark:bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-100 dark:border-white/5"
+          >
+            <div className="w-20 h-20 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+              <AlertTriangle className="w-10 h-10 text-amber-500 dark:text-amber-400" />
+            </div>
+            <h3 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white mb-2">
+              No se pudieron cargar las notificaciones
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+              Revisa tu conexión e inténtalo de nuevo.
+            </p>
+            <button
+              type="button"
+              onClick={recargar}
+              className="mt-6 px-5 py-2.5 rounded-xl bg-[#1e3a5f] dark:bg-blue-600 text-white text-xs font-black uppercase tracking-widest hover:bg-[#eab308] hover:text-[#1e3a5f] transition-colors"
+            >
+              Reintentar
+            </button>
+          </div>
+        </FadeIn>
+      ) : notificaciones.length === 0 ? (
         <FadeIn>
           <div className="flex flex-col items-center justify-center py-24 text-center bg-white/50 dark:bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-100 dark:border-white/5">
             <div className="w-20 h-20 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-6 shadow-lg">

@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   MessageCircle, QrCode, Unlink, Send, RefreshCw, Users, Bell, Smartphone,
-  History, Loader2, AlertCircle, CheckCircle2, Plus, Pencil, Power, X,
+  History, Loader2, AlertCircle, CheckCircle2, Plus, Pencil, Power, X, Copy,
 } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { parseApiDate } from '../../utils/date';
 import {
   WhatsAppService, errorWhatsApp,
-  WhatsAppEstado, WhatsAppConfiguracion, WhatsAppDestinatario, WhatsAppVersion,
+  WhatsAppEstado, WhatsAppConfiguracion, WhatsAppDestinatario,
   WhatsAppMensaje, WhatsAppVincular, EstadoWhatsApp,
 } from '../../services/whatsappService';
 
@@ -41,15 +41,6 @@ const ETIQUETA_ESTADO: Record<EstadoWhatsApp, { texto: string; cls: string }> = 
   DESCONECTADO: { texto: 'Desconectado', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' },
   SERVICIO_NO_DISPONIBLE: { texto: 'Servicio no disponible', cls: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' },
   NO_CONFIGURADO: { texto: 'No configurado', cls: 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' },
-};
-
-const ETIQUETA_ACCION: Record<string, string> = {
-  NINGUNA: 'Sin acciones',
-  PENDIENTE: 'Pendiente (la tarea programada la tomará en ≤ 5 min)',
-  APLICANDO: 'Aplicando',
-  DESPLEGADO: 'Desplegado, esperando a que WhatsApp reconecte',
-  APLICADA: 'Aplicada',
-  ERROR: 'Error',
 };
 
 const ETIQUETA_MENSAJE: Record<string, string> = {
@@ -333,59 +324,33 @@ export default function AdminWhatsAppPage() {
     setConfig({ ...config, estadosNotificados: lista });
   };
 
-  // Versión
-  const [version, setVersion] = useState<WhatsAppVersion | null>(null);
-  const [errorVersion, setErrorVersion] = useState<string | null>(null);
-  const [campoVersion, setCampoVersion] = useState('');
-  const [automatica, setAutomatica] = useState(true);
+  // Versión (la sugerida se pega a mano en Render; "Reconectar" reinicia la conexión)
+  const [versionSugerida, setVersionSugerida] = useState<string | null>(null);
   const [avisoVersion, setAvisoVersion] = useState<string | null>(null);
   const [confirmarReinicio, setConfirmarReinicio] = useState(false);
-
-  const cargarVersion = useCallback(async () => {
-    try {
-      const v = await WhatsAppService.version();
-      setVersion(v);
-      setErrorVersion(null);
-      return v;
-    } catch (err) {
-      setErrorVersion(errorWhatsApp(err, 'No se pudo cargar la versión.'));
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    cargarVersion().then(v => {
-      if (v) { setAutomatica(v.versionDeseada === null); setCampoVersion(v.versionDeseada ?? ''); }
-    });
-  }, [cargarVersion]);
 
   const detectarVersion = async () => {
     setOcupado('detectar');
     setAvisoVersion(null);
+    setVersionSugerida(null);
     try {
       const r = await WhatsAppService.versionSugerida();
-      if (r.version) { setCampoVersion(r.version); setAutomatica(false); }
-      else setAvisoVersion('No se pudo detectar; escríbela a mano.');
+      if (r.version) setVersionSugerida(r.version);
+      else setAvisoVersion('No se pudo detectar');
     } catch {
-      setAvisoVersion('No se pudo detectar; escríbela a mano.');
+      setAvisoVersion('No se pudo detectar');
     } finally {
       setOcupado(null);
     }
   };
 
-  const aplicarVersion = async () => {
-    const v = automatica ? null : campoVersion.trim();
-    if (v !== null && !/^\d+\.\d+\.\d+$/.test(v)) { setAvisoVersion('Formato inválido: usa x.y.z (ej. 2.3000.1020885143).'); return; }
-    setOcupado('aplicar');
-    setAvisoVersion(null);
+  const copiarVersion = async () => {
+    if (!versionSugerida) return;
     try {
-      const res = await WhatsAppService.aplicarVersion(v);
-      setVersion(res.data);
-      showToast('Versión solicitada', 'success');
-    } catch (err) {
-      showToast(errorWhatsApp(err), 'error');
-    } finally {
-      setOcupado(null);
+      await navigator.clipboard.writeText(versionSugerida);
+      showToast('Versión copiada', 'success');
+    } catch {
+      // Respaldo silencioso: el texto de la versión queda seleccionable.
     }
   };
 
@@ -393,10 +358,11 @@ export default function AdminWhatsAppPage() {
     setOcupado('reiniciar');
     try {
       const res = await WhatsAppService.reiniciar();
-      setVersion(res.data);
       setConfirmarReinicio(false);
-      showToast('Reinicio solicitado', 'success');
+      showToast(res.message, 'success');
+      cargarEstado();
     } catch (err) {
+      setConfirmarReinicio(false);
       showToast(errorWhatsApp(err), 'error');
     } finally {
       setOcupado(null);
@@ -425,7 +391,6 @@ export default function AdminWhatsAppPage() {
   const noConfigurado = estado !== null && !estado.configurado;
   const conectado = estado?.estado === 'CONECTADO';
   const activos = destinatarios?.filter(d => d.activo).length ?? 0;
-  const accionEnCurso = version?.estadoAccion === 'PENDIENTE' || version?.estadoAccion === 'APLICANDO';
   const insignia = estado ? ETIQUETA_ESTADO[estado.estado] ?? ETIQUETA_ESTADO.DESCONECTADO : null;
 
   return (
@@ -607,57 +572,29 @@ export default function AdminWhatsAppPage() {
 
       {/* 5. Versión de WhatsApp Web */}
       <Seccion icono={<RefreshCw className="w-4 h-4" />} titulo="Versión de WhatsApp Web">
-        {errorVersion ? <ErrorCaja mensaje={errorVersion} onReintentar={cargarVersion} />
-          : !version ? <Cargando />
-          : (
-            <div className="space-y-4">
-              <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <dt className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aplicada</dt>
-                  <dd className="font-bold text-slate-800 dark:text-slate-100">{version.versionAplicada ?? 'Automática / sin registrar'}</dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-black uppercase tracking-widest text-slate-400">Deseada</dt>
-                  <dd className="font-bold text-slate-800 dark:text-slate-100">{version.versionDeseada ?? 'Automática'}</dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-black uppercase tracking-widest text-slate-400">Acción</dt>
-                  <dd className={`font-bold ${version.estadoAccion === 'ERROR' ? 'text-rose-600' : version.estadoAccion === 'APLICADA' ? 'text-emerald-600' : 'text-slate-800 dark:text-slate-100'}`}>
-                    {ETIQUETA_ACCION[version.estadoAccion] ?? version.estadoAccion}
-                    {version.accionSolicitadaEn && <span className="block text-xs font-medium text-slate-400">Solicitada {fechaHora(version.accionSolicitadaEn)}</span>}
-                  </dd>
-                </div>
-              </dl>
-              {version.accionMensaje && (
-                version.estadoAccion === 'ERROR'
-                  ? <ErrorCaja mensaje={version.accionMensaje} />
-                  : <p className="text-xs text-slate-500">{version.accionMensaje}</p>
-              )}
-              <div className="flex flex-col md:flex-row gap-3 md:items-end">
-                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                  <input type="checkbox" checked={automatica} onChange={e => setAutomatica(e.target.checked)} />
-                  Automática (recomendada)
-                </label>
-                <input className={`${input} md:max-w-xs`} value={campoVersion} disabled={automatica}
-                  onChange={e => setCampoVersion(e.target.value)} placeholder="2.3000.1020885143" />
-                <button className={btnSecundario} onClick={detectarVersion} disabled={ocupado === 'detectar'}>
-                  {ocupado === 'detectar' && <Loader2 className="w-4 h-4 animate-spin" />}Detectar última versión
-                </button>
-                <button className={btnPrimario} onClick={aplicarVersion} disabled={accionEnCurso || ocupado === 'aplicar'}>
-                  {ocupado === 'aplicar' && <Loader2 className="w-4 h-4 animate-spin" />}Aplicar
-                </button>
-                <button className={btnSecundario} onClick={() => setConfirmarReinicio(true)} disabled={accionEnCurso}>
-                  <Power className="w-4 h-4" />Reiniciar servicio
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-3 md:items-center">
+            <button className={btnSecundario} onClick={detectarVersion} disabled={ocupado === 'detectar'}>
+              {ocupado === 'detectar' && <Loader2 className="w-4 h-4 animate-spin" />}Detectar última versión
+            </button>
+            {versionSugerida && (
+              <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                <span>Versión sugerida:</span>
+                <span className="font-bold select-all">{versionSugerida}</span>
+                <button className={btnSecundario} onClick={copiarVersion}>
+                  <Copy className="w-4 h-4" />Copiar
                 </button>
               </div>
-              {avisoVersion && <p className="text-xs font-semibold text-amber-600">{avisoVersion}</p>}
-              <p className="text-xs text-slate-400">
-                El cambio lo aplica una tarea programada en un máximo de 5 minutos y el servicio tarda unos minutos en volver.
-                {accionEnCurso && ' Hay una acción en curso.'}
-              </p>
-              <button className="text-xs font-bold text-blue-600 underline" onClick={cargarVersion}>Actualizar estado de la acción</button>
-            </div>
-          )}
+            )}
+            <button className={btnSecundario} onClick={() => setConfirmarReinicio(true)} disabled={ocupado === 'reiniciar'}>
+              <Power className="w-4 h-4" />Reconectar
+            </button>
+          </div>
+          {avisoVersion && <p className="text-xs font-semibold text-amber-600">{avisoVersion}</p>}
+          <p className="text-xs text-slate-400">
+            Si WhatsApp no conecta después de una actualización: 1) pulsa Reconectar; 2) si sigue sin conectar, copia la versión sugerida y pégala en Render, en el servicio de Evolution → Environment → CONFIG_SESSION_PHONE_VERSION → Save. Render reinicia el servicio en unos minutos.
+          </p>
+        </div>
       </Seccion>
 
       {/* 6. Historial */}
@@ -709,8 +646,8 @@ export default function AdminWhatsAppPage() {
           onConfirmar={desvincular} onCancelar={() => setConfirmarDesvincular(false)} />
       )}
       {confirmarReinicio && (
-        <Confirmar titulo="¿Reiniciar el servicio de WhatsApp?" confirmar="Reiniciar" ocupado={ocupado === 'reiniciar'}
-          texto="La tarea programada volverá a desplegar el servicio en un máximo de 5 minutos. Durante unos minutos no se enviarán avisos."
+        <Confirmar titulo="¿Reconectar WhatsApp?" confirmar="Reconectar" ocupado={ocupado === 'reiniciar'}
+          texto="Se reiniciará la conexión con WhatsApp. Durante un momento no se enviarán avisos."
           onConfirmar={reiniciar} onCancelar={() => setConfirmarReinicio(false)} />
       )}
     </div>

@@ -507,6 +507,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 md:p-6 lg:p-8 custom-scrollbar transition-colors">
+          <WhatsAppDesconectadoBanner />
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
@@ -514,7 +515,6 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             transition={{ duration: 0.3 }}
             className="min-h-full flex flex-col w-full"
           >
-            <WhatsAppDesconectadoBanner />
             {children}
           </motion.div>
         </main>
