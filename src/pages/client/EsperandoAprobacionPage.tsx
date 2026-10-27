@@ -100,7 +100,11 @@ export default function EsperandoAprobacionPage() {
     });
 
     connection.onreconnected(async () => {
-      await connection.invoke('SuscribirSolicitud', solicitudId);
+      try {
+        await connection.invoke('SuscribirSolicitud', solicitudId);
+      } catch {
+        // Si falla la suscripcion, queda el polling
+      }
     });
 
     connection

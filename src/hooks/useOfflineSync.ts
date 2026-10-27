@@ -27,6 +27,8 @@ async function enviarVenta(sale: OfflineSale): Promise<ResultadoEnvio> {
       ...sale.payload,
       idLocalOffline: sale.idLocalOffline,
       ventaSincronizadaSinConexion: true,
+      // Instante real de la venta (ISO UTC): el servidor lo valida y lo usa como fecha contable.
+      capturadoEn: sale.creadoEn,
     });
     return 'ok';
   } catch (error) {

@@ -8,7 +8,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { SiteSettings } from '../../types';
 import { groupHorarios } from '../../utils/horarios';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
-import { Coordenadas, distanciaKm, formatearDistancia, urlRutaMaps } from '../../utils/geo';
+import { Coordenadas, distanciaKm, formatearDistancia, urlMapaInsertado, urlRutaMaps } from '../../utils/geo';
 
 /** Resultado de pedir la ubicación al pulsar "Cómo llegar". */
 type EstadoGeo =
@@ -108,6 +108,11 @@ export default function ContactPage() {
   const urlMaps = sucursal
     ? urlRutaMaps(sucursal, geo.tipo === 'ok' ? geo.origen : null)
     : settings?.direccionUrl || null;
+
+  // Mapa insertado: solo la sucursal (nunca la posición del cliente) y solo con Internet.
+  // Sin coordenadas ni dirección real no hay mapa: no se mapea el texto por defecto.
+  const direccionReal = settings?.direccion?.trim() || null;
+  const urlMapa = urlMapaInsertado(sucursal, direccionReal);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -428,6 +433,30 @@ export default function ContactPage() {
             </form>
           </motion.div>
         </div>
+
+        {urlMapa && (
+          <div className="max-w-6xl mx-auto mt-12">
+            {enLinea ? (
+              <iframe
+                title="Mapa de la ubicación de Florería Bautista"
+                src={urlMapa}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+                className="block w-full h-[300px] rounded-2xl shadow-sm border border-slate-100 bg-white"
+              />
+            ) : (
+              <div className="w-full h-[300px] rounded-2xl shadow-sm border border-slate-100 bg-white flex flex-col items-center justify-center gap-2 px-6 text-center">
+                <MapPin className="w-8 h-8 text-brand-deep/60" />
+                <p className="font-bold text-slate-800">El mapa estará disponible al recuperar Internet</p>
+                {direccionReal && <p className="text-sm text-slate-600">{direccionReal}</p>}
+                {sucursal && (
+                  <p className="text-xs text-slate-500">Coordenadas: {sucursal.latitud}, {sucursal.longitud}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

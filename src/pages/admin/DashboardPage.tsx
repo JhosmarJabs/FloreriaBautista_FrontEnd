@@ -105,13 +105,14 @@ export default function DashboardPage() {
           setAlertsTotal(statsRes.data.criticalInventoryTotal ?? criticos.length);
           
           // Mapear ventas mensuales para la gráfica (últimos 30 días)
-          const todayStr = new Date().toLocaleDateString();
+          const todayStr = todayISO();
 
           const mappedMonthly = statsRes.data.monthlySales.map((d: any) => {
-            const date = new Date(d.fecha);
-            const isToday = date.toLocaleDateString() === todayStr;
+            // La API manda 'YYYY-MM-DD': parseApiDate la ancla a medianoche local (new Date la leería en UTC).
+            const date = parseApiDate(d.fecha);
+            const isToday = String(d.fecha).slice(0, 10) === todayStr;
             return {
-              day: isToday ? 'HOY' : String(date.getDate()),
+              day: isToday ? 'HOY' : String(date ? date.getDate() : ''),
               total: d.total,
               orders: d.pedidos
             };
