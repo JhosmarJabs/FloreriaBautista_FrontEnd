@@ -111,6 +111,12 @@ export function reportarRespuesta(res: RespuestaObservada) {
     actualizar({ servidor: 'inaccesible' });
     return;
   }
+  // Una respuesta en vuelo al cortarse la red no prueba que haya red: si el navegador
+  // dice que no la hay, el aviso se mantiene hasta el evento `online`.
+  if (navigator.onLine === false) {
+    actualizar({ servidor: 'ok', datosGuardadosDesde: null });
+    return;
+  }
   actualizar({ red: 'en-linea', servidor: 'ok', datosGuardadosDesde: null });
 }
 

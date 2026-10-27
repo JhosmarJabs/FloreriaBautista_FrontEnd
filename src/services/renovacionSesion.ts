@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { limpiarSesion } from '../utils/auth';
+import { limpiarSesion, normalizarUsuario } from '../utils/auth';
 import { reportarFalloRed, reportarRespuesta } from './estadoConexion';
 
 // Renovación silenciosa de la sesión, compartida por axios (api.ts) y por los
@@ -85,7 +85,8 @@ async function renovarTokens(): Promise<string> {
   localStorage.setItem('accessToken', nuevoAccess);
   if (nuevoRefresh) localStorage.setItem('refreshToken', nuevoRefresh);
   if (data.usuario) {
-    localStorage.setItem('usuario', JSON.stringify(data.usuario));
+    // Misma forma que deja el login (roles canónicos y `role`).
+    localStorage.setItem('usuario', JSON.stringify(normalizarUsuario(data.usuario, nuevoAccess)));
   }
 
   return nuevoAccess;
@@ -136,8 +137,18 @@ export function esRechazoDeSesion(err: unknown): boolean {
   return true;
 }
 
+/** Marca en sessionStorage (sobrevive a la recarga de la misma pestaña) que lee `LoginPage`. */
+export const CLAVE_SESION_EXPIRADA = 'sesionExpirada';
+
 export function redirigirALogin() {
   if (window.location.pathname === '/login') return;
+  // Solo esta redirección (sesión muerta) deja la marca: ni el logout voluntario
+  // ni el caso «sin refresh al abrir» pasan por aquí. No va en la URL (ADM-SES-070).
+  try {
+    sessionStorage.setItem(CLAVE_SESION_EXPIRADA, '1');
+  } catch {
+    /* sessionStorage no disponible: se pierde solo el aviso */
+  }
   const ruta = window.location.pathname + window.location.search;
   const destino = ruta && ruta !== '/'
     ? `/login?redirect=${encodeURIComponent(ruta)}`

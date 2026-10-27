@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle, Wrench } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle, Info, Wrench } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { rutaInicialPorRol } from "../../utils/auth";
+import { CLAVE_SESION_EXPIRADA } from "../../services/renovacionSesion";
 
 const DEV_ACCOUNTS = [
   { label: "Admin", correo: "admin@gmail.com", contrasena: "J@bs1234" },
@@ -20,6 +21,23 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Marca puesta por `redirigirALogin` cuando la sesión murió. Se lee sin borrar
+  // (el inicializador corre dos veces en StrictMode) y se borra en el efecto.
+  const [sesionExpirada] = useState(() => {
+    try {
+      return sessionStorage.getItem(CLAVE_SESION_EXPIRADA) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(CLAVE_SESION_EXPIRADA);
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   const performLogin = async (correoInput: string, contrasenaInput: string) => {
     setError("");
@@ -143,6 +161,19 @@ export default function LoginPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Aviso persistente de sesión expirada (informativo, no es un error de login) */}
+          {sesionExpirada && (
+            <div
+              role="status"
+              className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3"
+            >
+              <Info className="w-5 h-5 text-blue-600 shrink-0" />
+              <p className="text-sm text-blue-800">
+                Tu sesión expiró, inicia sesión otra vez
+              </p>
             </div>
           )}
 
