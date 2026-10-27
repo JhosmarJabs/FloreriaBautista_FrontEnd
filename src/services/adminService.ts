@@ -232,6 +232,10 @@ const errorMessage = async (res: Response, fallback: string): Promise<string> =>
   return `${fallback} (error ${res.status})`;
 };
 
+const errorConEstado = async (res: Response, fallback: string): Promise<Error> =>
+  // El hook de datos distingue un 400 (marca `desde` inválida) de un fallo de red o 5xx.
+  Object.assign(new Error(await errorMessage(res, fallback)), { status: res.status });
+
 async function cachedGet<T>(url: string, errorMsg: string): Promise<T> {
   const hit = apiCache.get(url);
   if (hit) return hit as T;
@@ -456,7 +460,7 @@ export const AdminService = {
 
   getInventoryDelta: async (desde: string): Promise<{ items: InventoryItem[]; sincronizadoEn: string }> => {
     const res = await fetchConSesion(`${API_BASE}/inventory/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar inventario'));
+    if (!res.ok) throw await errorConEstado(res, 'Error al sincronizar inventario');
     const json = await res.json();
     return json.data;
   },
@@ -675,7 +679,7 @@ export const AdminService = {
 
   getProductsDelta: async (desde: string): Promise<{ items: Product[]; sincronizadoEn: string }> => {
     const res = await fetchConSesion(`${API_BASE}/products/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar productos'));
+    if (!res.ok) throw await errorConEstado(res, 'Error al sincronizar productos');
     const json = await res.json();
     return json.data;
   },
@@ -928,7 +932,7 @@ export const AdminService = {
     page?: number;
     size?: number;
     archivado?: boolean;
-  } = {}): Promise<ApiResponse<Order>> => {
+  } = {}, opciones: { forzar?: boolean } = {}): Promise<ApiResponse<Order>> => {
     const query = new URLSearchParams();
     if (params.estado !== undefined) query.set('estado', params.estado);
     if (params.desde !== undefined) query.set('desde', params.desde);
@@ -937,12 +941,15 @@ export const AdminService = {
     if (params.size !== undefined) query.set('size', String(params.size));
     if (params.archivado !== undefined) query.set('archivado', String(params.archivado));
     const qs = query.toString();
-    return cachedGet(`${API_BASE}/orders${qs ? `?${qs}` : ''}`, 'Error al obtener órdenes');
+    const url = `${API_BASE}/orders${qs ? `?${qs}` : ''}`;
+    // FIX-011: «Actualizar» debe ir al servidor; solo se descarta la copia de esta URL.
+    if (opciones.forzar) apiCache.invalidate(url);
+    return cachedGet(url, 'Error al obtener órdenes');
   },
 
   getOrdersDelta: async (desde: string): Promise<{ items: Order[]; sincronizadoEn: string }> => {
     const res = await fetchConSesion(`${API_BASE}/orders/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar pedidos'));
+    if (!res.ok) throw await errorConEstado(res, 'Error al sincronizar pedidos');
     const json = await res.json();
     return json.data;
   },

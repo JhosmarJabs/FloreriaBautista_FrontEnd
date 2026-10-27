@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Search,
   Package,
@@ -19,22 +19,32 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AdminService } from '../../services/adminService';
 import { InventoryItem } from '../../types';
 import { useToast } from '../../hooks/useToast';
+import { useAuth } from '../../hooks/useAuth';
 import { useDatasetEnMemoria } from '../../hooks/useDatasetEnMemoria';
 import { coincideTexto } from '../../utils/textSearch';
 
-const datasetConfig = {
-  cargarTodo: AdminService.getInventoryIndex,
-  cargarDelta: AdminService.getInventoryDelta,
-  getId: (i: InventoryItem) => i.id,
-};
-
 export default function QuickInventoryPage() {
-  const { datos: items, cargando: loading, recargarCompleto, aplicarParche } = useDatasetEnMemoria(datasetConfig);
+  // Último stock confirmado por el servidor de cada insumo que se está ajustando (FIX-012).
+  const stockConfirmado = useRef<Record<string, number>>({});
+  // Una fila que llega por delta sustituye el valor mostrado y el confirmado, y descarta el ajuste sin guardar de esa fila.
+  const datasetConfig = useMemo(() => ({
+    cargarTodo: AdminService.getInventoryIndex,
+    cargarDelta: async (desde: string) => {
+      const res = await AdminService.getInventoryDelta(desde);
+      res.items.forEach(i => { delete stockConfirmado.current[i.id]; });
+      return res;
+    },
+    getId: (i: InventoryItem) => i.id,
+    estaActivo: (i: InventoryItem) => i.activo !== false,
+  }), []);
+  const { datos: items, cargando: loading, sincronizando, sincronizarDelta, aplicarParche } = useDatasetEnMemoria<InventoryItem>(datasetConfig);
   const [saving, setSaving] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sucursalFilter, setSucursalFilter] = useState('Todas');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { showToast } = useToast();
+  // Ajustar el stock es una escritura de inventario: el servidor la reserva al ADMIN (decisión 2026-10-25).
+  const { esAdmin } = useAuth();
 
   const filteredItems = useMemo(() => items.filter(p => {
     const matchesSearch = coincideTexto(p.nombre, searchTerm) || coincideTexto(p.id, searchTerm);
@@ -43,17 +53,21 @@ export default function QuickInventoryPage() {
   }), [items, searchTerm, sucursalFilter]);
 
   const handleAdjust = (id: string, delta: number) => {
+    if (!esAdmin) return;
     const item = items.find(p => p.id === id);
-    if (item) aplicarParche({ ...item, stockActual: Math.max(0, item.stockActual + delta) });
+    if (!item) return;
+    if (!(id in stockConfirmado.current)) stockConfirmado.current[id] = item.stockActual;
+    aplicarParche({ ...item, stockActual: Math.max(0, item.stockActual + delta) });
   };
 
   const handleSave = async (id: string) => {
+    if (!esAdmin) return;
     const item = items.find(p => p.id === id);
     if (!item) return;
 
     setSaving(id);
     try {
-      await AdminService.updateInventoryItem(id, {
+      const respuesta = await AdminService.updateInventoryItem(id, {
         nombre: item.nombre,
         stockActual: item.stockActual,
         stockMinimo: item.stockMinimo,
@@ -63,9 +77,23 @@ export default function QuickInventoryPage() {
         esFlorPrimaria: item.esFlorPrimaria,
         imagenUrl: item.imagenUrl
       });
+      delete stockConfirmado.current[id];
+      const guardado = (respuesta as any)?.data?.stockActual;
+      if (typeof guardado === 'number' && guardado !== item.stockActual) {
+        aplicarParche({ ...item, stockActual: guardado });
+      }
       showToast('Stock guardado en servidor', 'success');
     } catch (error) {
-      showToast('Error al persistir cambios en la API', 'error');
+      // El servidor no aceptó el valor: la tarjeta vuelve al último stock confirmado.
+      if (id in stockConfirmado.current) {
+        aplicarParche({ ...item, stockActual: stockConfirmado.current[id] });
+        delete stockConfirmado.current[id];
+      }
+      const sinPermiso = error instanceof Error && error.message.startsWith('Error 403');
+      showToast(
+        sinPermiso ? 'No tienes permiso para guardar el stock' : 'Error al persistir cambios en la API',
+        'error',
+      );
     } finally {
       setSaving(null);
     }
@@ -100,11 +128,11 @@ export default function QuickInventoryPage() {
         
         <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={() => recargarCompleto()}
-            disabled={loading}
+            onClick={() => sincronizarDelta()}
+            disabled={loading || sincronizando}
             className="flex items-center gap-3 px-6 py-4 bg-white dark:bg-slate-800 border border-slate-100 dark:border-white/5 text-[#1e3a5f] dark:text-slate-300 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50"
           >
-            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={loading || sincronizando ? 'animate-spin' : ''} />
             Sincronizar
           </button>
         </div>
@@ -243,6 +271,7 @@ export default function QuickInventoryPage() {
                     </div>
                   </div>
                   
+                  {esAdmin && (
                   <div className="flex items-center gap-2">
                     <button 
                       onClick={() => handleAdjust(item.id, -1)}
@@ -257,6 +286,7 @@ export default function QuickInventoryPage() {
                       <Plus size={18} />
                     </button>
                   </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -265,6 +295,7 @@ export default function QuickInventoryPage() {
                     <History size={14} className="text-[#eab308]" />
                     Bitácora
                   </button>
+                  {esAdmin && (
                   <button 
                     onClick={() => handleSave(item.id)}
                     disabled={saving === item.id}
@@ -277,6 +308,7 @@ export default function QuickInventoryPage() {
                     )}
                     {saving === item.id ? 'SINC...' : 'REGISTRAR'}
                   </button>
+                  )}
                 </div>
               </div>
             </motion.div>

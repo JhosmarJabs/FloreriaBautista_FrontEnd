@@ -7,6 +7,9 @@ export interface Product {
   imagenUrl: string | null;
   stock: number | null;
   esReal?: boolean;
+  /** `false` = dado de baja; el delta lo trae así para que la lista lo quite. */
+  activo?: boolean;
+  actualizadoEn?: string | null;
   permiteVentaInstantanea?: boolean;
   limiteVentaInstantanea?: number | null;
 }
@@ -423,6 +426,9 @@ export interface InventoryItem {
   precioUnidadCompra?: number | null;
   unidadCompra?: string | null;
   vidaUtilDias?: number | null;
+  /** `false` = dado de baja; el delta lo trae así para que la lista lo quite. */
+  activo?: boolean;
+  actualizadoEn?: string | null;
 }
 
 export type MovementType = 'ENTRADA' | 'SALIDA' | 'AJUSTE';

@@ -17,11 +17,15 @@ import { filterCSV } from '../../utils/exportUtils';
 import { useDatasetEnMemoria } from '../../hooks/useDatasetEnMemoria';
 import { useLocalSort } from '../../hooks/useLocalSort';
 import { SortableColumnHeader } from '../../components/SortableColumnHeader';
+import { CLAVE_INVENTARIO } from '../../services/listasAdmin';
 
 const datasetConfig = {
   cargarTodo: AdminService.getInventoryIndex,
   cargarDelta: AdminService.getInventoryDelta,
   getId: (i: InventoryItem) => i.id,
+  // El conjunto sobrevive a la navegación (volver de editar no baja el índice) y las bajas salen del delta.
+  clave: CLAVE_INVENTARIO,
+  estaActivo: (i: InventoryItem) => i.activo !== false,
 };
 
 export default function AdminInventoryPage() {
@@ -37,7 +41,7 @@ export default function AdminInventoryPage() {
   const [invCategoria, setInvCategoria] = useState('');
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
 
-  const { datos, cargando, error, recargarCompleto } = useDatasetEnMemoria(datasetConfig);
+  const { datos, cargando, sincronizando, error, recargarCompleto, sincronizarDelta, aplicarParche } = useDatasetEnMemoria(datasetConfig);
 
   useEffect(() => {
     AdminService.getAdminInventoryKpis().then(r => { if (r?.success) setKpis(r.data); }).catch(() => {});
@@ -201,8 +205,8 @@ export default function AdminInventoryPage() {
           </AnimatePresence>
         </div>
 
-        <button onClick={() => recargarCompleto()} className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-slate-600 dark:text-slate-400">
-          <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
+        <button onClick={() => sincronizarDelta()} disabled={cargando || sincronizando} className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-slate-600 dark:text-slate-400">
+          <RefreshCw className={`w-4 h-4 ${cargando || sincronizando ? 'animate-spin' : ''}`} />
         </button>
 
         <div className="flex bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-1.5 rounded-xl ml-auto">
@@ -316,7 +320,10 @@ export default function AdminInventoryPage() {
       </motion.div>
 
       <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onConfirm={handleImportConfirm} title="Importar Insumos" />
-      <MovementsModal isOpen={isMovementsModalOpen} onClose={() => setIsMovementsModalOpen(false)} onRegistered={() => recargarCompleto()} />
+      <MovementsModal isOpen={isMovementsModalOpen} onClose={() => setIsMovementsModalOpen(false)} insumos={datos} onRegistered={mov => {
+        const fila = datos.find(d => d.id === mov.inventoryItemId);
+        if (fila) aplicarParche({ ...fila, stockActual: mov.stockDespues, bajoMinimo: mov.stockDespues <= fila.stockMinimo });
+      }} />
     </div>
   );
 }

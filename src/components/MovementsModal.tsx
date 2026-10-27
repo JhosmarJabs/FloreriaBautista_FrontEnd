@@ -9,12 +9,15 @@ import { InventoryItem, InventoryMovement, MovementType, MotivoCategoria } from 
 import { AnimatedButton } from './Animations';
 import { useToast } from '../hooks/useToast';
 import { formatApiDate } from '../utils/date';
+import { coincideTexto } from '../utils/textSearch';
 
 interface MovementsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Se invoca tras registrar un movimiento para refrescar el inventario del padre. */
-  onRegistered?: () => void;
+  /** Lista de insumos que el padre ya tiene en memoria. Si viene, el selector no pide nada al servidor. */
+  insumos?: InventoryItem[];
+  /** Se invoca tras registrar un movimiento, con el movimiento devuelto por el servidor. */
+  onRegistered?: (movimiento: InventoryMovement) => void;
 }
 
 type Tab = 'historial' | 'registrar';
@@ -33,7 +36,7 @@ const tipoBadge = (tipo: string) => {
   }
 };
 
-export default function MovementsModal({ isOpen, onClose, onRegistered }: MovementsModalProps) {
+export default function MovementsModal({ isOpen, onClose, insumos, onRegistered }: MovementsModalProps) {
   const { showToast } = useToast();
   const [tab, setTab] = useState<Tab>('historial');
 
@@ -81,13 +84,13 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
     if (isOpen && tab === 'historial') loadMovements();
   }, [isOpen, tab, loadMovements]);
 
-  // Cargar catálogo de insumos al abrir
+  // Cargar catálogo de insumos al abrir (solo si el padre no entregó la lista en memoria)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || insumos) return;
     AdminService.getAdminInventory({ size: 1000 })
       .then(res => setItems(res.data.items))
       .catch(() => { /* silencioso: el selector quedará vacío */ });
-  }, [isOpen]);
+  }, [isOpen, insumos]);
 
   // Reiniciar estado al cerrar
   useEffect(() => {
@@ -108,10 +111,11 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
   }, [isOpen]);
 
   const filteredItems = useMemo(() => {
-    const q = itemSearch.trim().toLowerCase();
-    if (!q) return items.slice(0, 50);
-    return items.filter(i => i.nombre.toLowerCase().includes(q)).slice(0, 50);
-  }, [items, itemSearch]);
+    const fuente = insumos ?? items;
+    const q = itemSearch.trim();
+    if (!q) return fuente.slice(0, 50);
+    return fuente.filter(i => coincideTexto(i.nombre, q)).slice(0, 50);
+  }, [insumos, items, itemSearch]);
 
   const usaUnidadesCompra = tipo === 'ENTRADA' && porUnidadCompra;
 
@@ -146,7 +150,7 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
 
     setSaving(true);
     try {
-      await AdminService.registerAdminInventoryMovement({
+      const res = await AdminService.registerAdminInventoryMovement({
         inventoryItemId: selectedItem.id,
         tipo,
         cantidad: cant,
@@ -156,7 +160,7 @@ export default function MovementsModal({ isOpen, onClose, onRegistered }: Moveme
         rendimientoObservado: rendObservado,
       });
       showToast('Movimiento registrado', 'success');
-      onRegistered?.();
+      if (res?.data) onRegistered?.(res.data);
       // Limpiar y volver al historial
       setSelectedItem(null);
       setCantidad('');

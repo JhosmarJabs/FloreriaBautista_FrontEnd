@@ -13,6 +13,7 @@ import { AnimatedButton } from '../../components/Animations';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
 import { useToast } from '../../hooks/useToast';
+import { parchearProductoEnLista, quitarProductoDeLista } from '../../services/listasAdmin';
 import { FadeIn } from '../../components/Animations';
 
 
@@ -309,11 +310,14 @@ export default function ProductManagementPage() {
       activo: true
     };
     try {
+      // La respuesta de la escritura parchea la lista conservada: volver a ella no descarga el índice.
       if (isEdit && id) {
-        await AdminService.updateAdminProduct(id, body);
+        const respuesta = await AdminService.updateAdminProduct(id, body);
+        parchearProductoEnLista((respuesta as any)?.data);
         showToast('Producto actualizado', 'success');
       } else {
-        await AdminService.createAdminProduct(body);
+        const respuesta = await AdminService.createAdminProduct(body);
+        parchearProductoEnLista((respuesta as any)?.data);
         showToast('Producto creado', 'success');
       }
       navigate('/admin/productos');
@@ -334,6 +338,7 @@ export default function ProductManagementPage() {
       };
 
       await AdminService.updateAdminProduct(id, body);
+      quitarProductoDeLista(id);
       showToast('Producto desactivado correctamente', 'success');
       navigate('/admin/productos');
     } catch {

@@ -10,6 +10,7 @@ import { Product, ProductKpis } from '../../types';
 import { useDatasetEnMemoria } from '../../hooks/useDatasetEnMemoria';
 import { useLocalSort } from '../../hooks/useLocalSort';
 import { SortableColumnHeader } from '../../components/SortableColumnHeader';
+import { CLAVE_PRODUCTOS } from '../../services/listasAdmin';
 
 const ESTADOS = ['', 'ACTIVO', 'INACTIVO', 'BORRADOR'];
 const PAGE_SIZE = 100;
@@ -36,6 +37,9 @@ const datasetConfig = {
   cargarTodo: AdminService.getProductsIndex,
   cargarDelta: AdminService.getProductsDelta,
   getId: (p: Product) => p.id,
+  // El conjunto sobrevive a la navegación (volver de editar no baja el índice) y las bajas salen del delta.
+  clave: CLAVE_PRODUCTOS,
+  estaActivo: (p: Product) => p.activo !== false,
 };
 
 export default function AdminProductsListPage() {
@@ -47,7 +51,7 @@ export default function AdminProductsListPage() {
   const [soloReales, setSoloReales] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
-  const { datos, cargando, error, recargarCompleto } = useDatasetEnMemoria(datasetConfig);
+  const { datos, cargando, sincronizando, error, recargarCompleto, sincronizarDelta } = useDatasetEnMemoria(datasetConfig);
 
   useEffect(() => {
     AdminService.getAdminProductsKpis().then(r => setKpis(r.data)).catch(() => {});
@@ -104,11 +108,11 @@ export default function AdminProductsListPage() {
             Gestión de recetas
           </button>
           <button
-            onClick={() => recargarCompleto()}
-            disabled={cargando}
+            onClick={() => sincronizarDelta()}
+            disabled={cargando || sincronizando}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/40 border border-slate-200 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 px-3 py-2 rounded-xl transition-all"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${cargando || sincronizando ? 'animate-spin' : ''}`} />
             Actualizar
           </button>
           <button
@@ -207,7 +211,7 @@ export default function AdminProductsListPage() {
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-300 py-20">
             <ShoppingBag className="w-12 h-12" />
             <p className="text-sm font-semibold text-slate-400 dark:text-slate-500">
-              {activeFilters > 0 ? 'Sin resultados con estos filtros' : 'Sin productos registrados'}
+              {busqueda.trim() ? `Sin resultados para «${busqueda.trim()}»` : activeFilters > 0 ? 'Sin resultados con estos filtros' : 'Sin productos registrados'}
             </p>
             {activeFilters === 0 && (
               <button onClick={() => navigate('/admin/productos/nuevo')} className="text-xs font-bold text-blue-500 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-lg mt-1">
