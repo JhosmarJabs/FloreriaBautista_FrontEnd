@@ -114,7 +114,7 @@ export default function QuickInventoryPage() {
   }
 
   return (
-    <div className="w-full h-full space-y-6 max-w-[1500px] mx-auto p-4 md:p-2">
+    <div className="w-full h-full space-y-6 max-w-[1500px] mx-auto p-0 md:p-2">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
         <div>
@@ -183,7 +183,7 @@ export default function QuickInventoryPage() {
         </div>
         
         <div className="flex items-center gap-3 w-full lg:w-auto">
-          <div className="relative flex-1 lg:w-56">
+          <div className="relative flex-1 min-w-0 lg:w-56">
             <Filter className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <select 
               className="w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f]/10 text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] dark:text-slate-300 appearance-none cursor-pointer transition-colors shadow-inner"
@@ -225,7 +225,7 @@ export default function QuickInventoryPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ delay: index * 0.05 }}
-              className={`bg-white/95 dark:bg-slate-800/40 backdrop-blur-xl rounded-[1.5rem] p-4 border border-slate-100 dark:border-white/5 hover:border-blue-500/20 hover:shadow-xl transition-all group flex relative overflow-hidden ${viewMode === 'list' ? 'flex-row items-center gap-6' : 'flex-col gap-4'}`}
+              className={`bg-white/95 dark:bg-slate-800/40 backdrop-blur-xl min-w-0 rounded-[1.5rem] p-4 border border-slate-100 dark:border-white/5 hover:border-blue-500/20 hover:shadow-xl transition-all group flex relative overflow-hidden ${viewMode === 'list' ? 'flex-row items-center gap-6' : 'flex-col gap-4'}`}
             >
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-12 -mt-12 group-hover:scale-110 transition-transform duration-1000" />
               
@@ -250,9 +250,9 @@ export default function QuickInventoryPage() {
               </div>
 
               {/* Product Info */}
-              <div className="flex-1 space-y-4 relative z-10">
+              <div className="flex-1 min-w-0 space-y-4 relative z-10">
                 <div className="flex justify-between items-start">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0 break-words">
                     <span className="text-[9px] font-black text-[#eab308] dark:text-blue-400 uppercase tracking-[0.3em] mb-1 inline-block">{item.sucursal}</span>
                     <h3 className="text-xl font-serif font-bold text-[#1e3a5f] dark:text-white leading-tight group-hover:text-blue-600 transition-colors uppercase">{item.nombre}</h3>
                     <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">ID: {item.id.slice(0, 10).toUpperCase()}</p>
@@ -260,7 +260,7 @@ export default function QuickInventoryPage() {
                 </div>
 
                 {/* Stock Controls */}
-                <div className="bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex items-center justify-between group-hover:bg-white transition-all shadow-inner">
+                <div className="bg-slate-50/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-3 group-hover:bg-white transition-all shadow-inner">
                   <div className="space-y-0.5">
                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Disponible</span>
                     <div className="flex items-baseline gap-1">

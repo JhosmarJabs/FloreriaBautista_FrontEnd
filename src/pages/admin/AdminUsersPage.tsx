@@ -337,7 +337,7 @@ export default function AdminUsersPage() {
             <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Usuarios del Sistema</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Gestión de cuentas de clientes, empleados y administradores</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <AnimatedButton onClick={loadUsers} className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
             </AnimatedButton>
@@ -373,13 +373,13 @@ export default function AdminUsersPage() {
 
       {/* Tools */}
       <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
-        <div className="flex-1 min-w-[280px] relative">
+        <div className="flex-1 min-w-0 basis-full sm:basis-auto sm:min-w-[280px] relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" placeholder="Buscar por nombre, correo..."
             className="w-full pl-12 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium dark:text-slate-200 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        <select className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer min-w-[180px]"
+        <select className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer w-full sm:w-auto sm:min-w-[180px]"
           value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
           {ROLE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>

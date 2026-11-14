@@ -236,10 +236,10 @@ export default function EmployeeSettingsPage() {
             {/* ── Apariencia ── */}
             {activeSection === 'appearance' && (
               <motion.div key="appearance" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.4 }}
-                className={cardCls + " p-12"}>
+                className={cardCls + " p-6 sm:p-12"}>
                 <div className="max-w-2xl mx-auto space-y-12">
-                   <div className="text-center space-y-4 px-4">
-                       <h3 className="text-4xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter uppercase">Atmósfera Visual</h3>
+                   <div className="text-center space-y-4 px-0 sm:px-4">
+                       <h3 className="text-2xl sm:text-4xl break-words font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter uppercase">Atmósfera Visual</h3>
                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-sm mx-auto italic">"Ajuste el matiz de su terminal según el espíritu de la jornada."</p>
                    </div>
                    
@@ -331,13 +331,13 @@ export default function EmployeeSettingsPage() {
             {/* ── Seguridad ── */}
             {activeSection === 'security' && (
               <motion.div key="security" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.4 }}
-                className={cardCls + " p-12"}>
+                className={cardCls + " p-6 sm:p-12"}>
                 <div className="max-w-md mx-auto space-y-12">
-                   <div className="text-center space-y-4 px-8">
+                   <div className="text-center space-y-4 px-0 sm:px-8">
                        <div className="size-24 bg-rose-50 dark:bg-rose-500/10 rounded-[3rem] flex items-center justify-center mx-auto mb-8 border border-rose-100 dark:border-white/5 shadow-2xl shadow-rose-500/10 rotate-3 group hover:rotate-0 transition-transform duration-700">
                            <Shield className="w-12 h-12 text-rose-600 animate-pulse" />
                        </div>
-                       <h3 className="text-4xl font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter uppercase">Resguardo de Acceso</h3>
+                       <h3 className="text-2xl sm:text-4xl break-words font-serif font-bold text-[#1e3a5f] dark:text-white tracking-tighter uppercase">Resguardo de Acceso</h3>
                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black leading-relaxed italic uppercase tracking-[0.3em]">Gestione sus llaves maestras con absoluta cautela.</p>
                    </div>
                    

@@ -63,6 +63,7 @@ function resolverRuta(n: NotificationDto): string | null {
     case 'Order': return `/empleado/pedidos/${n.entidadId}`;
     case 'InventoryItem': return `/empleado/inventario`;
     case 'SolicitudVentaInstantanea': return `/empleado/venta-rapida`;
+    case 'SolicitudEvento': return '/admin/eventos';
     default: return null;
   }
 }
