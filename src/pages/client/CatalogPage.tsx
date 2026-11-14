@@ -25,6 +25,7 @@ import { obtenerInstantaneaCatalogo } from "../../services/catalogoPublico";
 import { obtenerEstado } from "../../services/estadoConexion";
 import { Product } from "../../types";
 import { useCart } from "../../hooks/useCart";
+import { useOfertasVigentes, precioEfectivo, tieneOfertaValida, porcentajeOferta } from "../../hooks/useOfertasVigentes";
 import CustomDropdown from "../../components/CustomDropdown";
 import { useToast } from "../../hooks/useToast";
 import {
@@ -57,6 +58,7 @@ function ImagenProducto({ src, alt, className, iconClassName }: { src: string; a
 export default function CatalogPage() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { ofertasPorProducto } = useOfertasVigentes();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { esCliente, esAdmin, esEmpleado } = useAuth();
@@ -145,7 +147,7 @@ export default function CatalogPage() {
         product.id.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory =
         selectedCategory === "Todos" || product.tipo === selectedCategory;
-      const matchesPrice = product.precioBase <= priceRange;
+      const matchesPrice = precioEfectivo(product, ofertasPorProducto.get(product.id)) <= priceRange;
       const matchesType =
         selectedType === "Todos los tipos" || product.tipo === selectedType;
       const matchesStock = showInStockOnly === "Todas" || (product.stock ?? 0) > 0;
@@ -159,7 +161,7 @@ export default function CatalogPage() {
       if (imgDiff !== 0) return imgDiff;
       return a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" });
     });
-  }, [products, searchTerm, selectedCategory, priceRange, selectedType, showInStockOnly]);
+  }, [products, searchTerm, selectedCategory, priceRange, selectedType, showInStockOnly, ofertasPorProducto]);
 
   // Al cambiar de página, subir al inicio para ver los primeros productos de esa página.
   useEffect(() => {
@@ -183,7 +185,7 @@ export default function CatalogPage() {
 
   const handleAddToCart = (product: Product) => {
     if (esCliente) {
-      addToCart(product);
+      addToCart({ ...product, price: precioEfectivo(product, ofertasPorProducto.get(product.id)) });
       showToast(`¡${product.nombre} añadido al carrito!`, "success");
     } else {
       setIsLoginModalOpen(true);
@@ -572,9 +574,28 @@ export default function CatalogPage() {
                 </Link>
 
                 <div className="px-4 pb-4 pt-2 flex items-center justify-between gap-2">
-                  <span className="text-xl font-black text-[#1A3B5B]">
-                    ${product.precioBase.toLocaleString()}
-                  </span>
+                  {(() => {
+                    const oferta = ofertasPorProducto.get(product.id);
+                    return tieneOfertaValida(product, oferta) ? (
+                      <div className="flex flex-col min-w-0">
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xl font-black text-brand-coral">
+                            ${oferta.precioOferta.toLocaleString()}
+                          </span>
+                          <span className="text-[10px] font-black bg-brand-coral text-white rounded-full px-1.5 py-0.5">
+                            -{porcentajeOferta(product, oferta)}%
+                          </span>
+                        </span>
+                        <span className="text-xs font-bold line-through text-slate-400">
+                          ${product.precioBase.toLocaleString()}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xl font-black text-[#1A3B5B]">
+                        ${product.precioBase.toLocaleString()}
+                      </span>
+                    );
+                  })()}
                   <AnimatedButton
                     className="w-10 h-10 shrink-0 rounded-full bg-[#FF7F7D] hover:bg-[#1A3B5B] text-white flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300"
                     onClick={() => handleAddToCart(product)}

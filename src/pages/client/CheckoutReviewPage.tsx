@@ -229,7 +229,11 @@ export default function CheckoutReviewPage() {
             <Info className="text-[#004A99] w-6 h-6 flex-shrink-0" />
             <div className="text-sm text-slate-600 leading-relaxed">
               <p className="font-bold mb-1">Políticas de Entrega:</p>
-              Al confirmar tu pedido, aceptas nuestras condiciones de servicio. Las flores pueden variar ligeramente de la foto según disponibilidad estacional.
+              Al confirmar tu pedido aceptas nuestros{' '}
+              <Link to="/terminos-y-condiciones" target="_blank" rel="noopener" className="text-[#004A99] font-semibold underline">Términos y condiciones</Link>
+              {' '}y la política de{' '}
+              <Link to="/cancelaciones-y-reembolsos" target="_blank" rel="noopener" className="text-[#004A99] font-semibold underline">Cancelaciones y reembolsos</Link>.
+              {' '}Las flores pueden variar ligeramente de la foto según disponibilidad de temporada.
             </div>
           </div>
         </div>

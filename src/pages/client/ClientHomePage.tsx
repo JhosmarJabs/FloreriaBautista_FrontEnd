@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../hooks/useCart';
+import { useOfertasVigentes, precioEfectivo, tieneOfertaValida } from '../../hooks/useOfertasVigentes';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ShoppingCart, ArrowRight, Sparkles, Package, MapPin, Eye } from 'lucide-react';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton } from '../../components/Animations';
@@ -18,6 +19,7 @@ export default function ClientHomePage() {
   const { usuario: user, esCliente } = useAuth();
   const userName = user?.nombre?.split(' ')[0] || 'invitado';
   const { addToCart } = useCart();
+  const { ofertasPorProducto } = useOfertasVigentes();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [seasonalProducts, setSeasonalProducts] = useState<Product[]>([]);
@@ -36,7 +38,7 @@ export default function ClientHomePage() {
 
   const handleAddToCart = (product: Product) => {
     if (esCliente) {
-      addToCart(product);
+      addToCart({ ...product, price: precioEfectivo(product, ofertasPorProducto.get(product.id)) });
       showToast(`${product.nombre} añadido al carrito`, 'success');
     } else {
       setIsLoginModalOpen(true);
@@ -196,7 +198,17 @@ export default function ClientHomePage() {
 
                   {/* Precio flotante */}
                   <div className="absolute top-4 right-4 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md text-brand-deep dark:text-white px-3.5 py-1.5 rounded-full text-sm font-black shadow-lg">
-                    ${product.precioBase.toLocaleString()}
+                    {(() => {
+                      const oferta = ofertasPorProducto.get(product.id);
+                      return tieneOfertaValida(product, oferta) ? (
+                        <span className="flex flex-col items-end leading-tight">
+                          <span className="text-brand-coral">${oferta.precioOferta.toLocaleString()}</span>
+                          <span className="text-[10px] font-bold line-through text-slate-400">${product.precioBase.toLocaleString()}</span>
+                        </span>
+                      ) : (
+                        <>${product.precioBase.toLocaleString()}</>
+                      );
+                    })()}
                   </div>
 
                   {/* Ver detalles al hover */}

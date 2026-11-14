@@ -195,7 +195,7 @@ export default function OffersPage() {
         {/* Filter Bar */}
         {ofertas.length > 0 && (
           <section className="mb-10 flex flex-wrap items-center justify-between gap-6 p-4 bg-white/40 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-xl shadow-black/5">
-            <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto min-w-0 sm:flex-nowrap sm:overflow-x-auto sm:pb-0 no-scrollbar">
               {categories.map(cat => (
                 <button
                   key={cat}
@@ -210,10 +210,10 @@ export default function OffersPage() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center space-x-4 bg-white/50 p-2 rounded-xl border border-white/60">
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto min-w-0 bg-white/50 p-2 rounded-xl border border-white/60">
               <Filter className="w-4 h-4 text-slate-400 ml-2" />
-              <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Ordenar:</span>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="text-sm font-bold border-none bg-transparent focus:ring-0 text-brand-deep cursor-pointer pr-8">
+              <span className="hidden sm:inline text-xs font-black text-slate-400 uppercase tracking-widest">Ordenar:</span>
+              <select aria-label="Ordenar ofertas" value={sortBy} onChange={e => setSortBy(e.target.value)} className="min-w-0 flex-1 sm:flex-none text-sm font-bold border-none bg-transparent focus:ring-0 text-brand-deep cursor-pointer pr-2 sm:pr-8">
                 <option value="discount">Mayor Descuento</option>
                 <option value="price-asc">Precio: Menor a Mayor</option>
                 <option value="price-desc">Precio: Mayor a Menor</option>
