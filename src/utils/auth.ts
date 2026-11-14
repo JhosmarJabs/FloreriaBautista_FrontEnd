@@ -1,4 +1,5 @@
 import { DatasetStore } from '../services/datasetStore';
+import { apiCache } from '../services/apiCache';
 
 // Utilidades de autenticación/rol del usuario en el cliente.
 //
@@ -188,4 +189,5 @@ export function limpiarSesion(): void {
   });
   // Los conjuntos en memoria y las copias locales son de la cuenta que se va.
   DatasetStore.borrarTodo();
+  apiCache.clear();
 }

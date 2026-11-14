@@ -18,6 +18,7 @@ import {
 import { notificarCambioDeSesion } from '../utils/userScope';
 import { MisPedidosCache } from '../services/misPedidosCache';
 import { borrarDedicatoriasEnCurso } from '../utils/checkout';
+import { apiCache } from '../services/apiCache';
 
 /**
  * Fuente de verdad de la sesión.
@@ -155,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       /* noop */
     }
 
+    apiCache.clear();
     setSesion({ usuario, token });
 
     // Aísla el carrito por usuario y fusiona lo agregado como invitado.
