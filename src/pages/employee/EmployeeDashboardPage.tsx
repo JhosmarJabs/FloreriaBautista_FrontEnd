@@ -177,7 +177,8 @@ export default function EmployeeDashboardPage() {
           </div>
 
           <div className="bg-white/90 dark:bg-slate-800/40 backdrop-blur-xl rounded-2xl border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden">
-            <table className="w-full">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px]">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-slate-900/20">
                   <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] w-1/6">Folio</th>
@@ -219,6 +220,7 @@ export default function EmployeeDashboardPage() {
                 </AnimatePresence>
               </tbody>
             </table>
+            </div>
           </div>
         </section>
 

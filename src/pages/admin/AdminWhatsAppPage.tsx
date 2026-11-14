@@ -21,7 +21,7 @@ const REGEX_TELEFONO = /^52\d{10,11}$/;
 
 const ESTADOS_PEDIDO: { valor: string; etiqueta: string }[] = [
   { valor: 'EN_PREPARACION', etiqueta: 'En preparación' },
-  { valor: 'EN_RUTA', etiqueta: 'En ruta' },
+  { valor: 'EN_RUTA', etiqueta: 'En camino' },
   { valor: 'ENTREGADO', etiqueta: 'Entregado' },
   { valor: 'CANCELADO', etiqueta: 'Cancelado' },
   { valor: 'PENDIENTE_ANULACION', etiqueta: 'Pendiente de anulación' },

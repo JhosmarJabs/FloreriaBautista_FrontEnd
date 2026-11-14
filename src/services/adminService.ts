@@ -39,6 +39,8 @@ import {
   QuickSaleTemplate,
   SaveQuickSaleTemplateBody,
   SiteSettings,
+  DocumentoLegalAdmin,
+  SeccionLegal,
   InventoryKpis,
   ProductKpis,
   SeasonalCatalogKpis,
@@ -1001,11 +1003,17 @@ export const AdminService = {
   // Cancelar exige motivoCancelacion: el backend responde 400 sin él.
   updateAdminOrderStatus: async (orderId: string, nuevoEstado: string, motivoCancelacion?: string): Promise<SingleResponse<OrderDetail>> => {
     // Nota: este endpoint vive en /api/orders (OrdersController), no en /api/admin/orders
-    const res = await fetchConSesion(`/api/orders/${orderId}`, {
-      method: 'POST',
-      headers: await authHeaders(),
-      body: JSON.stringify(motivoCancelacion ? { nuevoEstado, motivoCancelacion } : { nuevoEstado }),
-    });
+    let res: Response;
+    try {
+      res = await fetchConSesion(`/api/orders/${orderId}`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify(motivoCancelacion ? { nuevoEstado, motivoCancelacion } : { nuevoEstado }),
+      });
+    } finally {
+      // Éxito o error, la siguiente lectura de pedidos (lista y detalle) debe ir al servidor, no a apiCache.
+      apiCache.invalidate(`${API_BASE}/orders`);
+    }
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },
@@ -1337,6 +1345,19 @@ export const AdminService = {
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
+  },
+
+  // Páginas legales y ayuda. apiCache.invalidate('/cms') también limpia '/api/cms/legal'
+  // (público) y '/api/admin/cms/legal' porque la clave contiene '/cms'.
+  getContenidoLegal: async (): Promise<SingleResponse<DocumentoLegalAdmin[]>> => {
+    return cachedGet(`${API_BASE}/cms/legal`, 'Error al obtener las páginas legales');
+  },
+
+  updateContenidoLegal: async (
+    slug: string,
+    body: { titulo: string; secciones: SeccionLegal[]; notasRevision: string | null; esProvisional: boolean },
+  ): Promise<SingleResponse<DocumentoLegalAdmin>> => {
+    return mutate('PUT', `${API_BASE}/cms/legal/${encodeURIComponent(slug)}`, body, '/cms/legal', 'No se pudo guardar la página');
   },
 
   // ─── Catálogos globales ────────────────────────────────────────

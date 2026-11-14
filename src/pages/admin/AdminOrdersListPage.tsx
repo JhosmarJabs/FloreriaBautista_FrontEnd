@@ -220,7 +220,7 @@ export default function AdminOrdersListPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <AnimatedButton onClick={() => { setVerSolicitudes(v => !v); if (verArchivo) { setVerArchivo(false); setPage(1); } }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all border ${
                 verSolicitudes
@@ -335,6 +335,13 @@ export default function AdminOrdersListPage() {
                                 {s.escaladaAEmpleadoEn ? 'Escalada' : `${minutosDesdeCreacion} min`}
                               </div>
                             )}
+                            {s.estado === 'RECHAZADA' && s.motivoRechazo && (
+                              <div
+                                title={s.motivoRechazo}
+                                className="text-[10px] text-red-600 dark:text-red-400 font-medium mt-0.5 max-w-[14rem] mx-auto break-words">
+                                {s.motivoRechazo}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                             {creada.toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -401,7 +408,7 @@ export default function AdminOrdersListPage() {
 
       {/* Tools / Filters */}
       <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
-        <div className="flex-1 min-w-[280px] relative">
+        <div className="flex-1 min-w-0 basis-full sm:basis-auto sm:min-w-[280px] relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar por cliente o número de pedido…"
@@ -511,7 +518,7 @@ export default function AdminOrdersListPage() {
         ) : (
           <>
             {viewMode === 'table' ? (
-              <div className="overflow-x-auto flex-1">
+              <div className="relative overflow-x-auto flex-1">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700/50">

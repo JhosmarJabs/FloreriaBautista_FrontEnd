@@ -27,7 +27,10 @@ const POLLING_INTERVAL = 5_000;
 export default function EsperandoAprobacionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const solicitudId = searchParams.get('id') || getSavedSolicitudId();
+  // El id guardado se lee una sola vez al montar: la página borra la clave al decidirse
+  // y no debe perder la solicitud que está mostrando.
+  const [savedIdAtMount] = useState(getSavedSolicitudId);
+  const solicitudId = searchParams.get('id') || savedIdAtMount;
 
   const [solicitud, setSolicitud] = useState<SolicitudInfo | null>(null);
   const [loading, setLoading] = useState(true);
