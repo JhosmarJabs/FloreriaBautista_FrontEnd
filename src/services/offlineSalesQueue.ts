@@ -15,6 +15,12 @@ export interface OfflineSale {
   creadoEn: string;
   intentos: number;
   error?: string;
+  /**
+   * Id (claim `sub` del JWT) de quien capturó la venta. La venta solo se envía con la sesión de
+   * ese usuario, porque el servidor la atribuye al dueño del token. Opcional: los registros
+   * guardados antes de este campo no lo tienen.
+   */
+  usuarioId?: string;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -43,11 +49,19 @@ export async function agregarVenta(sale: OfflineSale): Promise<void> {
   });
 }
 
-export async function obtenerPendientes(): Promise<OfflineSale[]> {
+/**
+ * Ventas de la cola que le corresponden a `usuarioId`. Incluye los registros sin `usuarioId`
+ * (guardados antes de que se registrara el dueño): no hay forma de saber quién los capturó y
+ * retenerlos los dejaría atascados para siempre, así que conservan el comportamiento anterior
+ * y se atienden con la sesión activa.
+ */
+export async function obtenerPendientes(usuarioId: string | null): Promise<OfflineSale[]> {
+  if (!usuarioId) return [];
   const db = await openDb();
   return new Promise((resolve, reject) => {
     const req = tx(db, 'readonly').getAll();
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () =>
+      resolve((req.result as OfflineSale[]).filter((s) => !s.usuarioId || s.usuarioId === usuarioId));
     req.onerror = () => reject(req.error);
   });
 }
@@ -65,11 +79,6 @@ export async function actualizarVenta(sale: OfflineSale): Promise<void> {
   return agregarVenta(sale);
 }
 
-export async function contarPendientes(): Promise<number> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const req = tx(db, 'readonly').count();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
+export async function contarPendientes(usuarioId: string | null): Promise<number> {
+  return (await obtenerPendientes(usuarioId)).length;
 }

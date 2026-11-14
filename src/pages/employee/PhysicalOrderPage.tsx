@@ -26,9 +26,12 @@ import { lookupCp } from '../../services/sepomexService';
 import { useToast } from '../../hooks/useToast';
 import { todayISO } from '../../utils/date';
 import { agregarVenta } from '../../services/offlineSalesQueue';
+import { useAuth } from '../../hooks/useAuth';
+import { idDesdeJwt } from '../../utils/auth';
 
 export default function PhysicalOrderPage() {
   const { showToast } = useToast();
+  const { token } = useAuth();
   const [items, setItems] = useState<{ id: number; productId: string; name: string; quantity: number; price: number; image?: string }[]>([]);
   // Se incrementa en cada reset para forzar un remount limpio de la tabla:
   // evita que AnimatePresence deje un renglón "fantasma" a medio animar
@@ -270,6 +273,8 @@ export default function PhysicalOrderPage() {
         payload,
         creadoEn: new Date().toISOString(),
         intentos: 0,
+        // Dueño de la venta: solo se enviará con su sesión (mismo claim `sub` que usa el servidor).
+        usuarioId: idDesdeJwt(token) ?? undefined,
       });
       showToast('Sin conexión — pedido guardado localmente', 'info');
       resetForm();

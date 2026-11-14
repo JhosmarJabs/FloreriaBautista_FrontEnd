@@ -24,6 +24,8 @@ import { Product, QuickSaleTemplate, QuickSaleTemplateItem } from '../../types';
 import { useToast } from '../../hooks/useToast';
 import { todayISO } from '../../utils/date';
 import { agregarVenta } from '../../services/offlineSalesQueue';
+import { useAuth } from '../../hooks/useAuth';
+import { idDesdeJwt } from '../../utils/auth';
 
 interface CartItem {
   id: string;
@@ -70,6 +72,7 @@ export default function QuickSalePage() {
   const [search, setSearch] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { showToast } = useToast();
+  const { token } = useAuth();
 
   const load = async () => {
     setLoading(true);
@@ -171,6 +174,8 @@ export default function QuickSalePage() {
         payload,
         creadoEn: new Date().toISOString(),
         intentos: 0,
+        // Dueño de la venta: solo se enviará con su sesión (mismo claim `sub` que usa el servidor).
+        usuarioId: idDesdeJwt(token) ?? undefined,
       });
       showToast('Sin conexión — venta guardada localmente', 'info');
       setCart([]);

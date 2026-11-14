@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ChevronRight, Layout, Image, Type, Star, Tag, Clock, Phone,
-  Save, Eye, Megaphone, RefreshCw, MapPin, ExternalLink, Share2,
+  Save, Eye, Megaphone, RefreshCw, MapPin, ExternalLink, Share2, Scale, FileText,
 } from 'lucide-react';
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa';
 import type { IconType } from 'react-icons';
@@ -11,6 +12,10 @@ import { useToast } from '../../hooks/useToast';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface HorarioItem extends Horario {}
+
+// Mismos patrones que valida el servidor (CmsService.ActualizarAsync).
+const PATRON_RFC = /^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$/;
+const PATRON_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -44,19 +49,22 @@ export default function AdminCmsPage() {
   const [bannerTitulo, setBannerTitulo] = useState('');
   const [bannerSubtitulo, setBannerSubtitulo] = useState('');
   const [bannerCta, setBannerCta] = useState('Ver catálogo');
-  const [horarios, setHorarios] = useState<HorarioItem[]>(defaultHorarios);
+  const [horarios, setHorarios] = useState<HorarioItem[]>([]);
   const [nombreTienda, setNombreTienda] = useState('Florería Bautista');
   const [telefono, setTelefono] = useState('');
   const [direccion, setDireccion] = useState('');
   const [direccionUrl, setDireccionUrl] = useState('');
   const [correo, setCorreo] = useState('');
+  const [razonSocial, setRazonSocial] = useState('');
+  const [rfc, setRfc] = useState('');
+  const [correoPrivacidad, setCorreoPrivacidad] = useState('');
   const [facebookUrl, setFacebookUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [destacados, setDestacados] = useState<string[]>([]);
   const [latitud, setLatitud] = useState('');
   const [longitud, setLongitud] = useState('');
-  const [anuncioTexto, setAnuncioTexto] = useState('🌸 Envío gratis en pedidos mayores a $500 MXN');
+  const [anuncioTexto, setAnuncioTexto] = useState('');
   const [anuncioActivo, setAnuncioActivo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
@@ -74,17 +82,20 @@ export default function AdminCmsPage() {
       setDireccion(s.direccion || '');
       setDireccionUrl(s.direccionUrl || '');
       setCorreo(s.correo || '');
+      setRazonSocial(s.razonSocial || '');
+      setRfc(s.rfc || '');
+      setCorreoPrivacidad(s.correoPrivacidad || '');
       setFacebookUrl(s.facebookUrl || '');
       setInstagramUrl(s.instagramUrl || '');
       setWhatsappUrl(s.whatsappUrl || '');
       setBannerTitulo(s.bannerTitulo || '');
       setBannerSubtitulo(s.bannerSubtitulo || '');
       setBannerCta(s.bannerCta || 'Ver catálogo');
-      setHorarios(s.horarios && s.horarios.length > 0 ? s.horarios : defaultHorarios);
+      setHorarios(s.horarios ?? []);
       setDestacados(s.destacados ?? []);
       setLatitud(s.latitud != null ? String(s.latitud) : '');
       setLongitud(s.longitud != null ? String(s.longitud) : '');
-      setAnuncioTexto(s.anuncioTexto || '🌸 Envío gratis en pedidos mayores a $500 MXN');
+      setAnuncioTexto(s.anuncioTexto ?? '');
       setAnuncioActivo(s.anuncioActivo ?? false);
     } catch {
       // si falla, se quedan los valores por defecto para poder configurarlos desde cero
@@ -95,22 +106,56 @@ export default function AdminCmsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const rfcNormalizado = rfc.trim().toUpperCase();
+  const errorRfc = rfcNormalizado && !PATRON_RFC.test(rfcNormalizado)
+    ? 'El RFC no tiene un formato válido (ej. BAUJ800101AB1).' : '';
+  const errorCorreoPrivacidad = correoPrivacidad.trim() && !PATRON_CORREO.test(correoPrivacidad.trim())
+    ? 'El correo de privacidad no es válido.' : '';
+  // Vacío = sin coordenada; si hay texto debe ser un número completo ("20.1abc" o "20,1" no valen).
+  const numeroCompleto = (v: string) => Number.isFinite(Number(v.trim()));
+  const errorLatitud = latitud.trim() && !numeroCompleto(latitud)
+    ? 'La latitud debe ser un número, por ejemplo 20.1167.' : '';
+  const errorLongitud = longitud.trim() && !numeroCompleto(longitud)
+    ? 'La longitud debe ser un número, por ejemplo -98.7333.' : '';
+
+  // updateCms lanza `Error <status>: <cuerpo>`; el middleware responde {status, message}.
+  const mensajeDelServidor = (err: unknown): string | null => {
+    const texto = err instanceof Error ? err.message : '';
+    const inicio = texto.indexOf('{');
+    if (inicio < 0) return null;
+    try {
+      const msg = JSON.parse(texto.slice(inicio))?.message;
+      return typeof msg === 'string' && msg.trim() ? msg : null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleSave = async () => {
+    const errorForm = errorRfc || errorCorreoPrivacidad || errorLatitud || errorLongitud;
+    if (errorForm) {
+      showToast(errorForm, 'error');
+      return;
+    }
     setSaving(true);
     try {
       await AdminService.updateCms({
         nombreTienda, telefono, direccion, direccionUrl, correo,
+        razonSocial: razonSocial.trim(), rfc: rfcNormalizado, correoPrivacidad: correoPrivacidad.trim(),
         facebookUrl, instagramUrl, whatsappUrl,
         bannerTitulo, bannerSubtitulo, bannerCta,
         horarios, destacados: destacados.filter(d => d.trim()),
-        latitud: latitud.trim() ? parseFloat(latitud) : null,
-        longitud: longitud.trim() ? parseFloat(longitud) : null,
+        latitud: latitud.trim() ? Number(latitud.trim()) : null,
+        longitud: longitud.trim() ? Number(longitud.trim()) : null,
         anuncioTexto, anuncioActivo,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch {
-      showToast('No se pudieron guardar los cambios. Verifica tu sesión e intenta de nuevo.', 'error');
+    } catch (err) {
+      showToast(
+        mensajeDelServidor(err) ?? 'No se pudieron guardar los cambios. Verifica tu sesión e intenta de nuevo.',
+        'error',
+      );
     } finally {
       setSaving(false);
     }
@@ -136,7 +181,13 @@ export default function AdminCmsPage() {
             <p className="text-xs text-slate-400 dark:text-slate-500">Gestiona el contenido visual: banners, horarios, información de contacto y destacados</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            to="/admin/cms/legal"
+            className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-purple-600 bg-white dark:bg-slate-800 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-slate-200 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-500/50 px-3 py-2 rounded-xl transition-all"
+          >
+            <FileText className="w-3.5 h-3.5" /> Páginas legales y ayuda
+          </Link>
           <button
             onClick={() => window.open('/?preview=1', '_blank', 'noopener,noreferrer')}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-purple-600 bg-white dark:bg-slate-800 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-slate-200 dark:border-slate-700 hover:border-purple-200 dark:hover:border-purple-500/50 px-3 py-2 rounded-xl transition-all"
@@ -205,6 +256,20 @@ export default function AdminCmsPage() {
               title="Horarios de Atención"
               description="Se muestran en la página de Contacto y en el footer"
             />
+            {horarios.length === 0 && (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Sin horario configurado: la página pública muestra el horario genérico.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setHorarios(defaultHorarios)}
+                  className="text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 px-3 py-1.5 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-all"
+                >
+                  Usar horario base
+                </button>
+              </div>
+            )}
             <div className="space-y-2">
               {horarios.map((h, i) => (
                 <div key={h.dia} className="flex items-center gap-3">
@@ -229,6 +294,15 @@ export default function AdminCmsPage() {
                 </div>
               ))}
             </div>
+            {horarios.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setHorarios([])}
+                className="mt-3 text-xs font-semibold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 px-3 py-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-500/20 transition-all"
+              >
+                Quitar horario
+              </button>
+            )}
           </div>
 
           {/* Productos destacados */}
@@ -323,6 +397,35 @@ export default function AdminCmsPage() {
             </div>
           </div>
 
+          {/* Datos legales del negocio */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+            <SectionHeader
+              icon={Scale}
+              color="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20"
+              title="Datos legales"
+              description="Se publican en el footer y en las páginas legales (Aviso de privacidad, Términos...)"
+            />
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="cms-razon-social" className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Razón social</label>
+                <input id="cms-razon-social" type="text" maxLength={200} value={razonSocial} onChange={e => setRazonSocial(e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label htmlFor="cms-rfc" className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">RFC</label>
+                <input id="cms-rfc" type="text" maxLength={13} value={rfc} onChange={e => setRfc(e.target.value.toUpperCase())} placeholder="Ej. BAUJ800101AB1" aria-invalid={!!errorRfc} className={inp} />
+                {errorRfc && <p role="alert" className="mt-1 text-[11px] font-semibold text-red-500">{errorRfc}</p>}
+              </div>
+              <div>
+                <label htmlFor="cms-correo-privacidad" className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Correo para privacidad</label>
+                <input id="cms-correo-privacidad" type="text" maxLength={150} value={correoPrivacidad} onChange={e => setCorreoPrivacidad(e.target.value)} aria-invalid={!!errorCorreoPrivacidad} className={inp} />
+                {errorCorreoPrivacidad && <p role="alert" className="mt-1 text-[11px] font-semibold text-red-500">{errorCorreoPrivacidad}</p>}
+                <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                  Donde los clientes piden acceso, corrección o borrado de sus datos. Si lo dejas vacío se usa el correo de contacto.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Geolocalización de la sucursal */}
           <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
             <SectionHeader
@@ -334,11 +437,13 @@ export default function AdminCmsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Latitud</label>
-                <input value={latitud} onChange={e => setLatitud(e.target.value)} placeholder="Ej. 20.1167" className={inp} />
+                <input value={latitud} onChange={e => setLatitud(e.target.value)} placeholder="Ej. 20.1167" aria-invalid={!!errorLatitud} className={inp} />
+                {errorLatitud && <p role="alert" className="mt-1 text-[11px] font-semibold text-red-500">{errorLatitud}</p>}
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Longitud</label>
-                <input value={longitud} onChange={e => setLongitud(e.target.value)} placeholder="Ej. -98.7333" className={inp} />
+                <input value={longitud} onChange={e => setLongitud(e.target.value)} placeholder="Ej. -98.7333" aria-invalid={!!errorLongitud} className={inp} />
+                {errorLongitud && <p role="alert" className="mt-1 text-[11px] font-semibold text-red-500">{errorLongitud}</p>}
               </div>
             </div>
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-2">
@@ -390,7 +495,7 @@ export default function AdminCmsPage() {
             <div className="space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-wider">Texto del anuncio</label>
-                <input type="text" value={anuncioTexto} onChange={e => setAnuncioTexto(e.target.value)} className={inp} />
+                <input type="text" value={anuncioTexto} onChange={e => setAnuncioTexto(e.target.value)} placeholder="🌸 Envío gratis en pedidos mayores a $500 MXN" className={inp} />
               </div>
               <button
                 onClick={() => setAnuncioActivo(v => !v)}

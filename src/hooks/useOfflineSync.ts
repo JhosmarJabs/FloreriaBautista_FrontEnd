@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { isAxiosError } from 'axios';
 import api from '../services/api';
+import { useAuth } from './useAuth';
+import { idDesdeJwt } from '../utils/auth';
 import {
   obtenerPendientes,
   eliminarVenta,
@@ -49,21 +51,28 @@ async function enviarVenta(sale: OfflineSale): Promise<ResultadoEnvio> {
 export function useOfflineSync() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
+  // Dueño de la sesión activa (claim `sub`, el mismo que usa el servidor para atribuir la venta).
+  const { token } = useAuth();
+  const usuarioId = idDesdeJwt(token);
 
   const refreshCount = useCallback(async () => {
-    try { setPendingCount(await contarPendientes()); } catch { /* IndexedDB unavailable */ }
-  }, []);
+    try { setPendingCount(await contarPendientes(usuarioId)); } catch { /* IndexedDB unavailable */ }
+  }, [usuarioId]);
 
   const syncAll = useCallback(async () => {
-    if (sincronizando || !navigator.onLine) return;
+    // Sin sesión no se envía nada: cada venta solo sale con la sesión de quien la capturó.
+    if (sincronizando || !navigator.onLine || !usuarioId) return;
     sincronizando = true;
     try {
-      const pendientes = await obtenerPendientes();
+      const pendientes = await obtenerPendientes(usuarioId);
       const ordenadas = pendientes.sort(
         (a, b) => new Date(a.creadoEn).getTime() - new Date(b.creadoEn).getTime(),
       );
       for (const sale of ordenadas) {
         if (sale.intentos >= MAX_RETRIES) continue;
+        // La sesión pudo cambiar a mitad de la ronda (p. ej. cierre de sesión): se comprueba antes
+        // de cada envío para no mandar la venta de A con el token de B.
+        if (idDesdeJwt(localStorage.getItem('accessToken')) !== usuarioId) break;
         const resultado = await enviarVenta(sale);
         if (resultado === 'ok') {
           await eliminarVenta(sale.idLocalOffline);
@@ -75,7 +84,7 @@ export function useOfflineSync() {
       sincronizando = false;
       await refreshCount();
     }
-  }, [refreshCount]);
+  }, [refreshCount, usuarioId]);
 
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); syncAll(); };
