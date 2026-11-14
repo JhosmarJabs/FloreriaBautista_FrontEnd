@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Si cambia una ruta legal en src/constants/legal.ts, actualiza también este archivo. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://floreriabautista.vercel.app/</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/catalogo</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/nosotros</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/contacto</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/ofertas</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/eventos</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/testimonios</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/aviso-de-privacidad</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/terminos-y-condiciones</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/envios-y-entregas</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/cancelaciones-y-reembolsos</loc></url>
+  <url><loc>https://floreriabautista.vercel.app/preguntas-frecuentes</loc></url>
+</urlset>

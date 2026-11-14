@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ShoppingCart, Menu, X, Bell, Settings, LogOut, User, ChevronDown, PlusCircle } from "lucide-react";
+import { ShoppingCart, Menu, X, Bell, Settings, LogOut, User, ChevronDown, PlusCircle, Package } from "lucide-react";
 import { useCart } from "../hooks/useCart";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../hooks/useAuth";
@@ -342,6 +342,14 @@ export function NavbarCliente() {
                     >
                       <Bell className="w-5 h-5" />
                       <span className="font-bold">Notificaciones</span>
+                    </Link>
+                    <Link
+                      to="/mis-pedidos"
+                      className="flex items-center gap-3 p-3 text-white/80 hover:text-white transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Package className="w-5 h-5" />
+                      <span className="font-bold">Mis pedidos</span>
                     </Link>
                     <Link
                       to="/configuracion"

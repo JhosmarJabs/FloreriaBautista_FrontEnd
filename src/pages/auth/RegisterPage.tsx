@@ -272,6 +272,14 @@ export default function RegisterPage() {
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Crear cuenta'}
             </button>
 
+            <p className="text-xs text-slate-500 leading-relaxed text-center">
+              Florería Bautista usará tu nombre, correo y teléfono para crear tu cuenta y atender tus pedidos y, si no te opones, para estadísticas de compra.
+              Puedes oponerte o ejercer tus derechos ARCO como se explica en el{' '}
+              <Link to="/aviso-de-privacidad" target="_blank" rel="noopener" className="text-brand-coral font-semibold hover:underline">Aviso de privacidad</Link>.
+              {' '}Al crear tu cuenta aceptas los{' '}
+              <Link to="/terminos-y-condiciones" target="_blank" rel="noopener" className="text-brand-coral font-semibold hover:underline">Términos y condiciones</Link>.
+            </p>
+
             <div className="text-center pt-1">
               <p className="text-sm text-slate-600">
                 ¿Ya tienes cuenta?{' '}

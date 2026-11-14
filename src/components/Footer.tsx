@@ -15,6 +15,7 @@ const FaWhatsapp = () => (
 import { CmsService } from '../services/cmsService';
 import { SiteSettings } from '../types';
 import { groupHorarios } from '../utils/horarios';
+import { PAGINAS_LEGALES } from '../constants/legal';
 
 export default function Footer() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -110,10 +111,23 @@ export default function Footer() {
       </div>
       {/* Bottom Bar */}
       <div className="bg-[#132c45] py-5">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 space-y-3">
+          <nav aria-label="Políticas y ayuda">
+            <ul className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-sm">
+              {PAGINAS_LEGALES.map((p, i) => (
+                <li key={p.slug} className="flex items-center gap-2">
+                  {i > 0 && <span aria-hidden="true" className="text-gray-500">·</span>}
+                  <Link className="text-gray-300 hover:text-white transition-colors" to={p.ruta}>{p.nombreCorto}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
           <p className="text-center text-gray-400 text-sm tracking-wide">
-            © 2026 Florería Bautista. Todos los derechos reservados. San Felipe Orizatlán, Hidalgo.
+            © {new Date().getFullYear()} {settings?.razonSocial?.trim() || settings?.nombreTienda?.trim() || 'Florería Bautista'}. Todos los derechos reservados. San Felipe Orizatlán, Hidalgo.
           </p>
+          {settings?.rfc?.trim() && (
+            <p className="text-center text-gray-400 text-xs tracking-wide">RFC: {settings.rfc.trim()}</p>
+          )}
         </div>
       </div>
     </footer>

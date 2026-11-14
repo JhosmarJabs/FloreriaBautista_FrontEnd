@@ -5,6 +5,7 @@ import { asegurarInstantaneaEnCache } from './catalogoPublico';
  * los dos únicos datos públicos que necesitan las páginas estáticas para verse sin
  * conexión (ver matriz en vite.config.ts):
  *   - /api/cms                  textos, horarios y dirección (portada, Quiénes somos, Contacto, pie)
+ *   - /api/cms/legal            páginas legales, preguntas frecuentes (≈25 KB sin comprimir)
  *   - /api/products?size=1000   información del catálogo (instantánea)
  *
  * NO precarga chunks (el código de las páginas estáticas va en el precache del build) ni
@@ -20,6 +21,7 @@ import { asegurarInstantaneaEnCache } from './catalogoPublico';
  */
 
 const URL_CMS = '/api/cms';
+const URL_CMS_LEGAL = '/api/cms/legal';
 
 let listo: Promise<boolean> | null = null;
 let hecho = false;
@@ -59,6 +61,7 @@ export function cargarDatosOffline() {
     // Caché antigua de versiones anteriores (reemplazada por api-catalogo y api-detalle).
     try { await caches.delete('api-publica'); } catch { /* silencioso */ }
     try { await fetch(URL_CMS, { priority: 'low' } as RequestInit); } catch { /* silencioso */ }
+    try { await fetch(URL_CMS_LEGAL, { priority: 'low' } as RequestInit); } catch { /* silencioso */ }
     try { await asegurarInstantaneaEnCache(); } catch { /* silencioso */ }
   });
 }
