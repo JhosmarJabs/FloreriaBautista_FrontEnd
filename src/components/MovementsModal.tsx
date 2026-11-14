@@ -257,7 +257,11 @@ export default function MovementsModal({ isOpen, onClose, insumos, onRegistered 
                         </td>
                         <td className="px-4 py-3 text-sm font-black text-slate-900 dark:text-white">{m.cantidad}</td>
                         <td className="px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                          {m.stockAntes} <span className="text-slate-300 dark:text-slate-600">→</span> <span className="text-slate-800 dark:text-slate-200">{m.stockDespues}</span>
+                          {m.stockAntes == null || m.stockDespues == null ? (
+                            <span className="text-slate-400 dark:text-slate-500 font-medium italic" title="Movimiento anterior al registro de existencias">Sin dato</span>
+                          ) : (
+                            <>{m.stockAntes} <span className="text-slate-300 dark:text-slate-600">→</span> <span className="text-slate-800 dark:text-slate-200">{m.stockDespues}</span></>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-xs text-slate-400 max-w-[200px] truncate">{m.motivo || '—'}</td>
                         <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">

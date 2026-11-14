@@ -322,7 +322,10 @@ export default function AdminInventoryPage() {
       <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onConfirm={handleImportConfirm} title="Importar Insumos" />
       <MovementsModal isOpen={isMovementsModalOpen} onClose={() => setIsMovementsModalOpen(false)} insumos={datos} onRegistered={mov => {
         const fila = datos.find(d => d.id === mov.inventoryItemId);
-        if (fila) aplicarParche({ ...fila, stockActual: mov.stockDespues, bajoMinimo: mov.stockDespues <= fila.stockMinimo });
+        if (fila) {
+          const stockNuevo = mov.stockDespues ?? fila.stockActual;
+          aplicarParche({ ...fila, stockActual: stockNuevo, bajoMinimo: stockNuevo <= fila.stockMinimo });
+        }
       }} />
     </div>
   );
