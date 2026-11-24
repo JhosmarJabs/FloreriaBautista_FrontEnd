@@ -23,7 +23,7 @@ import { FadeIn } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { parseApiDate } from '../../utils/date';
 import { ESTADO_PEDIDO, type EstadoPedido } from '../../utils/labels';
-import { MOTIVO_CANCELACION_OBLIGATORIO, pedirMotivoCancelacion } from '../../utils/cancelacionPedido';
+import { extractApiError } from '../../utils/apiError';
 
 // Estados reales del backend (ver Transiciones en Backend/Services/OrderService.cs).
 // Etiqueta y color salen de utils/labels.ts: aquí solo se arma el paso del stepper.
@@ -66,21 +66,14 @@ export default function OrderDetailPage() {
 
   const handleStatusChange = async (nuevoEstado: string) => {
     if (!id) return;
-    let motivo: string | undefined;
-    if (nuevoEstado === 'CANCELADO') {
-      const respuesta = pedirMotivoCancelacion();
-      if (respuesta === null) return;
-      if (!respuesta) { showToast(MOTIVO_CANCELACION_OBLIGATORIO, 'error'); return; }
-      motivo = respuesta;
-    }
     setShowStatusModal(false);
     setUpdating(true);
     try {
-      const res = await AdminService.updateAdminOrderStatus(id, nuevoEstado, motivo);
+      const res = await AdminService.updateAdminOrderStatus(id, nuevoEstado);
       setOrder(res.data);
       showToast('Estado actualizado correctamente', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Error al actualizar el estado', 'error');
+      showToast(extractApiError(err, 'Error al actualizar el estado'), 'error');
     } finally {
       setUpdating(false);
     }
@@ -112,7 +105,7 @@ export default function OrderDetailPage() {
       await load(); // Recarga el pedido para reflejar el saldo actualizado.
       showToast(monto >= order.saldoPendiente ? 'Pedido liquidado correctamente' : 'Anticipo registrado', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Error al registrar el pago', 'error');
+      showToast(extractApiError(err, 'Error al registrar el pago'), 'error');
     } finally {
       setProcessingPayment(false);
     }
@@ -474,18 +467,6 @@ export default function OrderDetailPage() {
                       {e.key === order.estadoPedido && <Check className="w-5 h-5 text-emerald-600" />}
                     </button>
                   ))}
-                  <button
-                    onClick={() => handleStatusChange('CANCELADO')}
-                    disabled={isCancelled || order.estadoPedido === 'ENTREGADO'}
-                    className="group flex items-center justify-between px-5 py-4 border-2 border-rose-100 dark:border-rose-900/40 rounded-2xl transition-all hover:border-rose-300 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/40 text-rose-500">
-                        <X size={20} />
-                      </div>
-                      <span className="font-bold text-rose-600 dark:text-rose-400">Cancelar Pedido</span>
-                    </div>
-                  </button>
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 p-8 bg-slate-50/50 dark:bg-slate-900/30 border-t border-slate-50 dark:border-slate-700">

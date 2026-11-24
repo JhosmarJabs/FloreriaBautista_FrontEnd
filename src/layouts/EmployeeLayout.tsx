@@ -14,10 +14,12 @@ import {
   Settings,
   Package,
   ArrowLeftRight,
+  Menu,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
-import { NotificationsService } from '../services/notificationsService';
+import { usePantallaChica } from '../hooks/usePantallaChica';
+import { NotificationsService, NOTIFICACIONES_CAMBIARON_EVENT } from '../services/notificationsService';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { useEstadoConexion } from '../hooks/useEstadoConexion';
 import '../styles/panel.css';
@@ -30,7 +32,15 @@ interface EmployeeLayoutProps {
 export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const esMovil = usePantallaChica();
+  const [sidebarEscritorioAbierto, setSidebarEscritorioAbierto] = useState(true);
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
+  // En celular el drawer se muestra siempre expandido; el modo minimizado (72 px) solo aplica en escritorio.
+  const isSidebarOpen = esMovil || sidebarEscritorioAbierto;
+  // El drawer se cierra al cambiar de ruta (incluye "Ir a Empleado" / "Ir a Administrador").
+  useEffect(() => {
+    setMenuMovilAbierto(false);
+  }, [location.pathname]);
   const [showError, setShowError] = useState(false);
   const [notifNoLeidas, setNotifNoLeidas] = useState(0);
   const { isOnline, pendingCount } = useOfflineSync();
@@ -53,6 +63,21 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
       .catch(() => {});
     return () => { cancelled = true; };
   }, [location.pathname]);
+
+  // Cambios en vivo o acciones del usuario: se vuelve a pedir el contador real al servidor.
+  useEffect(() => {
+    let cancelled = false;
+    const refrescar = () => {
+      NotificationsService.contarNoLeidas()
+        .then(c => { if (!cancelled) setNotifNoLeidas(c); })
+        .catch(() => {});
+    };
+    window.addEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    };
+  }, []);
 
   const { logout: handleLogout, esAdmin } = useAuth();
 
@@ -95,12 +120,28 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
         }}
       />
 
+      {/* Overlay del menú móvil (render condicional simple, sin AnimatePresence) */}
+      {esMovil && menuMovilAbierto && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40"
+          onClick={() => setMenuMovilAbierto(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ── Sidebar ── */}
       <motion.aside
-        initial={{ x: -260 }}
-        animate={{ x: 0, width: isSidebarOpen ? 256 : 72 }}
+        initial={esMovil ? { x: -280, width: 256 } : { x: -260 }}
+        animate={
+          esMovil
+            ? { x: menuMovilAbierto ? 0 : -280, width: 256 }
+            : { x: 0, width: sidebarEscritorioAbierto ? 256 : 72 }
+        }
         transition={{ type: "spring", stiffness: 280, damping: 28 }}
-        className="bg-[#1e3a5f] dark:bg-[#0b1624] border-r border-[#1e3a5f]/20 dark:border-white/5 shadow-2xl flex flex-col flex-shrink-0 z-20 overflow-hidden transition-colors relative"
+        inert={esMovil && !menuMovilAbierto ? true : undefined}
+        className={`bg-[#1e3a5f] dark:bg-[#0b1624] border-r border-[#1e3a5f]/20 dark:border-white/5 shadow-2xl flex flex-col overflow-hidden transition-colors ${
+          esMovil ? "fixed inset-y-0 left-0 z-40" : "flex-shrink-0 z-20 relative"
+        }`}
       >
         {/* Sidebar background overlay */}
         <div className="absolute inset-0 bg-black/10 pointer-events-none" />
@@ -230,7 +271,11 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
         {/* Footer Sidebar */}
         <div className="p-3 border-t border-white/10 relative z-10">
           <button
-            onClick={() => setIsSidebarOpen((v) => !v)}
+            onClick={() =>
+              esMovil
+                ? setMenuMovilAbierto(false)
+                : setSidebarEscritorioAbierto((v) => !v)
+            }
             className={`w-full flex items-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all shadow-inner shadow-black/20 ${
               isSidebarOpen ? "gap-3" : "justify-center"
             }`}
@@ -252,8 +297,17 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         {/* Top Navbar */}
-        <header className="h-16 bg-white/95 dark:bg-[#0b1624]/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-6 md:px-10 flex-shrink-0 z-10 transition-colors">
-          <div className="flex items-center gap-3">
+        <header className="h-16 bg-white/95 dark:bg-[#0b1624]/95 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 flex items-center justify-between gap-3 px-4 md:px-10 flex-shrink-0 z-10 transition-colors">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMenuMovilAbierto(true)}
+              aria-label="Abrir menú"
+              aria-expanded={menuMovilAbierto}
+              className="md:hidden p-2 -ml-2 rounded-lg text-[#1e3a5f] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
             <h2 className="text-lg font-serif font-bold text-[#1e3a5f] dark:text-white leading-none">
               Panel de ventas
             </h2>
@@ -270,7 +324,7 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
               </span>
             )}
           </div>
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 md:gap-8 flex-shrink-0">
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold text-[#1e3a5f] dark:text-slate-100">

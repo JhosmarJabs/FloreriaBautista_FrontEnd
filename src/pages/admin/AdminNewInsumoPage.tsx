@@ -7,6 +7,7 @@ import { FadeIn, AnimatedButton } from '../../components/Animations';
 import ImageUploader from '../../components/ImageUploader';
 import { uploadToCloudinary } from '../../services/cloudinaryService';
 import { useToast } from '../../hooks/useToast';
+import { parchearInsumoEnLista, quitarInsumoDeLista } from '../../services/listasAdmin';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const TIPOS = ['Insumos', 'Accesorios', 'Bases', 'Follaje', 'Flores', 'Empaque', 'Otros'];
@@ -204,10 +205,12 @@ export default function AdminNewInsumoPage() {
       if (isEdit && id) {
         // En backend AdminInventoryController no tiene PUT aún mapeado en el servicio frontend?
         // Revisamos adminService.ts... Sí, hay que añadirlo.
-        await AdminService.updateInventoryItem(id, body);
+        const respuesta = await AdminService.updateInventoryItem(id, body);
+        parchearInsumoEnLista(respuesta?.data);
         showToast('Insumo actualizado correctamente', 'success');
       } else {
-        await AdminService.createInventoryItem(body);
+        const respuesta = await AdminService.createInventoryItem(body);
+        parchearInsumoEnLista(respuesta?.data);
         showToast('Insumo registrado en inventario correctamente', 'success');
       }
       
@@ -225,6 +228,7 @@ export default function AdminNewInsumoPage() {
     try {
       setSaving(true);
       await AdminService.deleteInventoryItem(id);
+      quitarInsumoDeLista(id);
       showToast('Insumo eliminado con éxito', 'success');
       navigate('/admin/inventario');
     } catch (err: any) {

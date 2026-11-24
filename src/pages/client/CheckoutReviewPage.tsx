@@ -152,9 +152,9 @@ export default function CheckoutReviewPage() {
         <p className="text-slate-600">Casi terminamos. Por favor, verifica que toda la información sea correcta.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 xl:gap-12">
         {/* Left Column: Order Details */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="lg:col-span-7 xl:col-span-8 space-y-8">
           {/* Dirección de Envío */}
           <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex items-center justify-between mb-4">
@@ -229,13 +229,17 @@ export default function CheckoutReviewPage() {
             <Info className="text-[#004A99] w-6 h-6 flex-shrink-0" />
             <div className="text-sm text-slate-600 leading-relaxed">
               <p className="font-bold mb-1">Políticas de Entrega:</p>
-              Al confirmar tu pedido, aceptas nuestras condiciones de servicio. Las flores pueden variar ligeramente de la foto según disponibilidad estacional.
+              Al confirmar tu pedido aceptas nuestros{' '}
+              <Link to="/terminos-y-condiciones" target="_blank" rel="noopener" className="text-[#004A99] font-semibold underline">Términos y condiciones</Link>
+              {' '}y la política de{' '}
+              <Link to="/cancelaciones-y-reembolsos" target="_blank" rel="noopener" className="text-[#004A99] font-semibold underline">Cancelaciones y reembolsos</Link>.
+              {' '}Las flores pueden variar ligeramente de la foto según disponibilidad de temporada.
             </div>
           </div>
         </div>
 
         {/* Right Column: Summary */}
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-5 xl:col-span-4">
           <div className="lg:sticky lg:top-32 space-y-6">
             <div className="bg-white p-6 rounded-xl shadow-xl border border-slate-100">
               <h3 className="text-xl font-serif font-bold mb-6 border-b border-slate-100 pb-4 text-slate-900">Resumen del Pedido</h3>
@@ -294,7 +298,7 @@ export default function CheckoutReviewPage() {
                           value={cuponInput}
                           onChange={e => setCuponInput(e.target.value.toUpperCase())}
                           onKeyDown={e => e.key === 'Enter' && aplicarCupon()}
-                          className="w-full pl-9 pr-4 py-2.5 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#004A99]/30 focus:border-[#004A99] outline-none transition-all uppercase"
+                          className="w-full min-w-0 text-ellipsis pl-9 pr-4 py-2.5 text-sm font-mono bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#004A99]/30 focus:border-[#004A99] outline-none transition-all uppercase"
                         />
                       </div>
                       <button
@@ -312,39 +316,39 @@ export default function CheckoutReviewPage() {
 
               {/* Totals */}
               <div className="space-y-3 pt-4 border-t border-slate-100">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between gap-3 text-sm">
                   <span className="text-slate-600">Subtotal</span>
-                  <span className="font-medium text-slate-900">${subtotalDisplay.toFixed(2)}</span>
+                  <span className="shrink-0 whitespace-nowrap font-medium text-slate-900">${subtotalDisplay.toFixed(2)}</span>
                 </div>
 
                 {/* Discount Breakdown */}
                 {breakdown && breakdown.descuentosAplicados.length > 0 && breakdown.descuentosAplicados.map((d, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-emerald-600 flex items-center gap-1">
+                  <div key={i} className="flex justify-between gap-3 text-sm">
+                    <span className="min-w-0 text-emerald-600 flex items-center gap-1">
                       <Tag className="w-3 h-3" />
                       {d.nombre}
                     </span>
-                    <span className="font-medium text-emerald-600">-${d.monto.toFixed(2)}</span>
+                    <span className="shrink-0 whitespace-nowrap font-medium text-emerald-600">-${d.monto.toFixed(2)}</span>
                   </div>
                 ))}
 
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between gap-3 text-sm">
                   <span className="text-slate-600">Envío</span>
-                  <span className={`font-medium ${shippingCost > 0 ? 'text-slate-900' : 'text-green-600'}`}>
+                  <span className={`shrink-0 whitespace-nowrap font-medium ${shippingCost > 0 ? 'text-slate-900' : 'text-green-600'}`}>
                     {shippingCost > 0 ? `$${shippingCost.toFixed(2)}` : '¡Gratis!'}
                   </span>
                 </div>
 
                 {totalDescuentos > 0 && (
-                  <div className="flex justify-between text-sm pt-2 border-t border-dashed border-slate-200">
+                  <div className="flex justify-between gap-3 text-sm pt-2 border-t border-dashed border-slate-200">
                     <span className="text-emerald-600 font-semibold">Ahorras</span>
-                    <span className="font-bold text-emerald-600">-${totalDescuentos.toFixed(2)}</span>
+                    <span className="shrink-0 whitespace-nowrap font-bold text-emerald-600">-${totalDescuentos.toFixed(2)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between text-lg font-bold pt-4 text-slate-900">
+                <div className="flex justify-between gap-3 text-lg font-bold pt-4 text-slate-900">
                   <span>Total</span>
-                  <span className="text-[#004A99]">${totalFinal.toFixed(2)} MXN</span>
+                  <span className="shrink-0 whitespace-nowrap text-[#004A99]">${totalFinal.toFixed(2)} MXN</span>
                 </div>
               </div>
 

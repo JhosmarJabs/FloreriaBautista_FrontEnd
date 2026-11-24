@@ -1,3 +1,6 @@
+import { DatasetStore } from '../services/datasetStore';
+import { apiCache } from '../services/apiCache';
+
 // Utilidades de autenticación/rol del usuario en el cliente.
 //
 // Este archivo es la ÚNICA copia del vocabulario de roles de la app. Antes cada
@@ -184,4 +187,7 @@ export function limpiarSesion(): void {
       /* noop */
     }
   });
+  // Los conjuntos en memoria y las copias locales son de la cuenta que se va.
+  DatasetStore.borrarTodo();
+  apiCache.clear();
 }

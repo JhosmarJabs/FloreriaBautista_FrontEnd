@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { normalizar, coincideTexto } from '../utils/textSearch';
 
 export type SortOrder = 'asc' | 'desc' | null;
@@ -51,13 +51,22 @@ function comparar(a: any, b: any, order: 'asc' | 'desc'): number {
   return order === 'asc' ? cmp : -cmp;
 }
 
+// Constantes de módulo: los valores por defecto no deben cambiar de identidad en cada render
+// (el reinicio de página depende de la identidad de `filtros`).
+const SIN_CAMPOS: never[] = [];
+const SIN_FILTROS: never[] = [];
+
 export function useLocalSort<T extends Record<string, any>>(
   config: UseLocalSortConfig<T>
 ): UseLocalSortResult<T> {
-  const { datos, busqueda = '', camposBusqueda = [], filtros = [], pageSize = 100 } = config;
+  const { datos, busqueda = '', camposBusqueda = SIN_CAMPOS, filtros = SIN_FILTROS, pageSize = 100 } = config;
 
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: '', order: null });
   const [page, setPage] = useState(1);
+
+  // Al cambiar la búsqueda o los filtros locales la vista vuelve a la página 1.
+  // No depende de `datos`: un parche sobre una fila no debe saltar de página.
+  useEffect(() => { setPage(1); }, [busqueda, filtros]);
 
   const toggleSort = useCallback((field: string) => {
     setSortConfig(prev => {
@@ -107,16 +116,19 @@ export function useLocalSort<T extends Record<string, any>>(
   const totalFiltrados = datosOrdenados.length;
   const totalPages = Math.max(1, Math.ceil(totalFiltrados / pageSize));
 
+  // Nunca se muestra una página fuera de rango (p. ej. filtro de servidor que reduce los datos).
+  const paginaEfectiva = Math.min(Math.max(1, page), totalPages);
+
   const datosPaginados = useMemo(() => {
-    const inicio = (page - 1) * pageSize;
+    const inicio = (paginaEfectiva - 1) * pageSize;
     return datosOrdenados.slice(inicio, inicio + pageSize);
-  }, [datosOrdenados, page, pageSize]);
+  }, [datosOrdenados, paginaEfectiva, pageSize]);
 
   return {
     datosPaginados,
     datosFiltrados: datosOrdenados,
     totalFiltrados,
-    page,
+    page: paginaEfectiva,
     setPage,
     totalPages,
     sortConfig,

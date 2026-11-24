@@ -199,7 +199,7 @@ export default function AdminSeasonalCatalogsPage() {
                   {catalog.descripcion}
                 </p>
 
-                <div className="flex items-center justify-between text-xs pt-4 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-4 border-t border-slate-100 dark:border-slate-700">
                   <div className="flex flex-col gap-1">
                     <span className="text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap">
                       {catalog.productCatalogos?.length || 0} productos
@@ -213,7 +213,7 @@ export default function AdminSeasonalCatalogsPage() {
                   </div>
                   <button 
                     onClick={() => navigate(`/admin/catalogos/editar/${catalog.id}`)}
-                    className="px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 hover:bg-amber-50 dark:hover:bg-amber-900/30 text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-600 hover:border-amber-200 dark:hover:border-amber-500/50 transition-all"
+                    className="shrink-0 px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 hover:bg-amber-50 dark:hover:bg-amber-900/30 text-slate-600 dark:text-slate-300 hover:text-amber-600 dark:hover:text-amber-500 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-600 hover:border-amber-200 dark:hover:border-amber-500/50 transition-all"
                   >
                     Gestionar
                   </button>

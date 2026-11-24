@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ShoppingCart, Menu, X, Bell, Settings, LogOut, User, ChevronDown, PlusCircle } from "lucide-react";
+import { ShoppingCart, Menu, X, Bell, Settings, LogOut, User, ChevronDown, PlusCircle, Package } from "lucide-react";
 import { useCart } from "../hooks/useCart";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../hooks/useAuth";
+import { NotificationsService, NOTIFICACIONES_CAMBIARON_EVENT } from "../services/notificationsService";
 
 const menuItems = [
   { name: "Inicio", href: "/" },
@@ -22,6 +23,25 @@ export function NavbarCliente() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   // Sesión desde el contexto, no releyendo localStorage por componente.
   const { usuario: user, esAdmin, esEmpleado, logout } = useAuth();
+  const location = useLocation();
+  const [noLeidas, setNoLeidas] = useState(0);
+
+  // Punto rojo de la campana: solo si hay avisos sin leer. Se recalcula al cambiar de ruta
+  // y cuando /notificaciones avisa de cambios (marcar leído, marcar todo, borrar).
+  useEffect(() => {
+    let cancelled = false;
+    const refrescar = () => {
+      NotificationsService.contarNoLeidas()
+        .then(c => { if (!cancelled) setNoLeidas(c); })
+        .catch(() => { if (!cancelled) setNoLeidas(0); });
+    };
+    refrescar();
+    window.addEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -155,7 +175,9 @@ export function NavbarCliente() {
                   aria-label="Notificaciones"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-[#1A3B5B]"></span>
+                  {noLeidas > 0 && (
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-[#1A3B5B]"></span>
+                  )}
                 </motion.button>
               </Link>
             </div>
@@ -293,7 +315,7 @@ export function NavbarCliente() {
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="md:hidden overflow-hidden"
             >
-              <div className="py-6 space-y-6">
+              <div className="pb-6 pt-[calc(1.5rem+var(--aviso-conexion-h,0px))] space-y-6">
                 {/* Mobile Nav Links */}
                 <nav className="grid grid-cols-2 gap-3">
                   {menuItems.map((item) => (
@@ -342,6 +364,14 @@ export function NavbarCliente() {
                     >
                       <Bell className="w-5 h-5" />
                       <span className="font-bold">Notificaciones</span>
+                    </Link>
+                    <Link
+                      to="/mis-pedidos"
+                      className="flex items-center gap-3 p-3 text-white/80 hover:text-white transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Package className="w-5 h-5" />
+                      <span className="font-bold">Mis pedidos</span>
                     </Link>
                     <Link
                       to="/configuracion"

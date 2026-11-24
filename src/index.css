@@ -15,6 +15,7 @@
 @source not "./components/ImageUploader.tsx";
 @source not "./components/ModalAprobacionInstantanea.tsx";
 @source not "./components/ModalPedidoNuevo60s.tsx";
+@source not "./components/PanelNotificaciones.tsx";
 @source not "./components/MovementsModal.tsx";
 @source not "./components/RealtimeModals.tsx";
 @source not "./components/RealtimeWrapper.tsx";

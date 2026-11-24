@@ -42,6 +42,10 @@ export default function Layout() {
 
   if ((esAdmin || esEmpleado) && !hideNavAndFooter) {
     initDataService();
+    if (!isPreview && (location.pathname === '/' || location.pathname === '/dashboard')) {
+      return <Navigate to={esAdmin ? "/admin/dashboard" : "/empleado/dashboard"} replace />;
+    }
+
     if ((esEmpleado && !esAdmin) || (esAdmin && location.pathname.startsWith('/empleado'))) {
       return (
         <RutaErrorBoundary resetKey={location.pathname}>
@@ -56,18 +60,15 @@ export default function Layout() {
       );
     }
 
-    if (!isPreview && (location.pathname === '/' || location.pathname === '/dashboard')) {
-      return <Navigate to={esAdmin ? "/admin/dashboard" : "/empleado/dashboard"} replace />;
-    }
-
     if (isPreview && (location.pathname === '/' || location.pathname === '/dashboard')) {
       return (
-        <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden min-h-screen flex flex-col">
-          <div className="sticky top-0 z-50 bg-slate-900 text-white text-xs font-bold text-center py-2 px-4">
+        <div className="bg-brand-light font-sans text-brand-deep overflow-x-clip min-h-screen flex flex-col">
+          <div className="sticky top-0 z-[60] bg-slate-900 text-white text-xs font-bold text-center py-2 px-4">
             Vista previa del sitio público — los cambios no publicados no se ven aquí.{' '}
             <button onClick={() => window.close()} className="underline hover:text-slate-300">Cerrar</button>
           </div>
-          <Navigation />
+          {/* La barra es fixed top-0: en vista previa baja 32 px (alto de la franja) sin tocar Navigation. */}
+          <div className="[&>header]:top-8"><Navigation /></div>
           <div className="flex-grow min-h-screen">
             <AnimatedRoutes />
           </div>
@@ -95,11 +96,11 @@ export default function Layout() {
     // Dos niveles: el exterior cubre la barra del cliente (otro chunk diferido); el
     // interior, solo el contenido, conserva encabezado y pie si una página no carga sin red.
     <RutaErrorBoundary resetKey={location.pathname}>
-    <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden min-h-screen flex flex-col">
+    <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden supports-[overflow:clip]:overflow-x-clip min-h-screen flex flex-col">
       {!hideNavAndFooter && (esCliente ? <Suspense fallback={null}><NavbarCliente /></Suspense> : <Navigation />)}
       {/* min-h-screen: mientras la ruta lazy carga, el footer no debe quedar en
           pantalla, o salta hacia abajo al llegar el contenido (CLS). */}
-      <div className="flex-grow min-h-screen">
+      <div className="flex-grow min-h-screen pt-[var(--aviso-conexion-h,0px)]">
         <RutaErrorBoundary resetKey={location.pathname}>
           <AnimatedRoutes />
         </RutaErrorBoundary>

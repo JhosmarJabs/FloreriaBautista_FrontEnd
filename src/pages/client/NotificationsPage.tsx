@@ -111,7 +111,7 @@ function NotificationsPageContenido() {
                   className="text-[10px] font-black uppercase tracking-widest text-[#1e3a5f] dark:text-blue-400 hover:text-[#eab308] transition-colors flex items-center gap-2 border-b-2 border-transparent hover:border-[#eab308] pb-1"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  Limpiar Bitácora
+                  Marcar todo como leído
                 </button>
               )}
 

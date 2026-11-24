@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, Star, Lock, ShoppingCart, MessageCircle, Info, HelpCircle, Loader2, Package } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../hooks/useCart';
+import { useOfertasVigentes, precioEfectivo, tieneOfertaValida, porcentajeOferta } from '../../hooks/useOfertasVigentes';
 import { FadeIn, ScaleIn, StaggerContainer, AnimatedButton, GlassCard } from '../../components/Animations';
 import { useToast } from '../../hooks/useToast';
 import { AdminService } from '../../services/adminService';
@@ -18,6 +19,7 @@ export default function ProductPage() {
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { addToCart } = useCart();
+  const { ofertasPorProducto } = useOfertasVigentes();
   const { esCliente } = useAuth();
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
@@ -156,7 +158,7 @@ export default function ProductPage() {
 
   const handleAddToCart = (p: any) => {
     if (esCliente) {
-      addToCart(p);
+      addToCart({ ...p, price: precioEfectivo(p, ofertasPorProducto.get(p.id)) });
       showToast(`${p.nombre} añadido al carrito`, 'success');
     } else {
       setIsLoginModalOpen(true);
@@ -279,7 +281,18 @@ export default function ProductPage() {
                 <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">(48 Reseñas Verificadas)</span>
               </div>
               <div className="text-4xl font-black text-slate-900 dark:text-white">
-                ${product.precioBase} <span className="text-lg font-bold text-slate-400 ml-2 uppercase tracking-widest">MXN</span>
+                {tieneOfertaValida(product, ofertasPorProducto.get(product.id)) ? (
+                  <span className="flex items-baseline flex-wrap gap-x-3 gap-y-1">
+                    <span className="text-brand-coral">${ofertasPorProducto.get(product.id)!.precioOferta}</span>
+                    <span className="text-xl font-bold line-through text-slate-400">${product.precioBase}</span>
+                    <span className="text-xs font-black bg-brand-coral text-white rounded-full px-2.5 py-1">
+                      -{porcentajeOferta(product, ofertasPorProducto.get(product.id)!)}%
+                    </span>
+                    <span className="text-lg font-bold text-slate-400 uppercase tracking-widest">MXN</span>
+                  </span>
+                ) : (
+                  <>${product.precioBase} <span className="text-lg font-bold text-slate-400 ml-2 uppercase tracking-widest">MXN</span></>
+                )}
               </div>
             </div>
 
@@ -427,7 +440,7 @@ export default function ProductPage() {
               <div className="space-y-4">
                 {[
                   { q: '¿Cómo cuido mi ramo?', a: 'Corta tallos 2cm en diagonal y cambia agua cada 2 días.' },
-                  { q: '¿A qué zonas envían?', a: 'Entregas en toda la región Huitzitzilingo-Orizatlán.' }
+                  { q: '¿A qué zonas envían?', a: 'Enviamos a domicilio; el costo depende del código postal de entrega. Consulta las tarifas en Envíos y entregas.', enlace: true }
                 ].map((faq, i) => (
                   <details key={i} className="group bg-white dark:bg-slate-800 rounded-2xl p-6 cursor-pointer border border-slate-100 dark:border-slate-700 transition-all hover:border-brand-coral">
                     <summary className="list-none flex justify-between items-center text-sm font-bold uppercase tracking-widest">
@@ -435,6 +448,11 @@ export default function ProductPage() {
                       <ChevronRight className="w-4 h-4 group-open:rotate-90 transition-transform" />
                     </summary>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-4 leading-relaxed">{faq.a}</p>
+                    {faq.enlace && (
+                      <Link to="/envios-y-entregas" className="inline-block mt-2 text-sm font-semibold text-brand-coral hover:underline">
+                        Ver envíos y entregas
+                      </Link>
+                    )}
                   </details>
                 ))}
               </div>
@@ -472,21 +490,26 @@ export default function ProductPage() {
                   )}
                 </div>
 
-                <div className="p-8 flex flex-col flex-1">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <span className="text-[10px] font-black text-brand-coral uppercase tracking-widest mb-1 block">
-                        {p.tipo}
-                      </span>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-brand-coral transition-colors duration-300">
-                        {p.nombre}
-                      </h3>
-                    </div>
-                    <div className="text-xl font-black text-slate-900 dark:text-white">
-                      ${p.precioBase}
+                <div className="p-8 lg:p-6 xl:p-8 flex flex-col flex-1">
+                  <span className="text-[10px] font-black text-brand-coral uppercase tracking-widest mb-1 block truncate">
+                    {p.tipo}
+                  </span>
+                  <div className="mb-4">
+                    <h3 className="break-words text-xl lg:text-lg xl:text-xl font-bold text-slate-900 dark:text-white group-hover:text-brand-coral transition-colors duration-300">
+                      {p.nombre}
+                    </h3>
+                    <div className="mt-2 text-xl font-black text-slate-900 dark:text-white">
+                      {tieneOfertaValida(p, ofertasPorProducto.get(p.id)) ? (
+                        <span className="flex items-baseline gap-2 flex-wrap leading-tight">
+                          <span className="whitespace-nowrap text-brand-coral">${ofertasPorProducto.get(p.id)!.precioOferta}</span>
+                          <span className="whitespace-nowrap text-xs font-bold line-through text-slate-400">${p.precioBase}</span>
+                        </span>
+                      ) : (
+                        <span className="whitespace-nowrap">${p.precioBase}</span>
+                      )}
                     </div>
                   </div>
-                  
+
                   <div className="mt-auto space-y-3">
                     <Link to={`/producto/${slugify(p.nombre)}`} className="block">
                       <AnimatedButton className="w-full py-3.5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl font-bold text-sm">

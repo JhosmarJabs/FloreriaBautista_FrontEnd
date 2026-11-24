@@ -20,14 +20,18 @@ import {
   FlaskConical,
   Zap,
   Tag,
+  CalendarHeart,
   UsersRound,
   Truck,
   Calculator,
   MessageCircle,
+  Menu,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from '../hooks/useAuth';
-import { NotificationsService } from '../services/notificationsService';
+import { usePantallaChica } from '../hooks/usePantallaChica';
+import { NotificationsService, NOTIFICACIONES_CAMBIARON_EVENT } from '../services/notificationsService';
+import PanelNotificaciones from '../components/PanelNotificaciones';
 import WhatsAppDesconectadoBanner from '../components/admin/WhatsAppDesconectadoBanner';
 import '../styles/panel.css';
 
@@ -51,7 +55,15 @@ const TECH_OPS_STORAGE_KEY = "admin.techOpsOpen";
 
 export default function AdminLayout({ children, user }: AdminLayoutProps) {
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const esMovil = usePantallaChica();
+  const [sidebarEscritorioAbierto, setSidebarEscritorioAbierto] = useState(true);
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false);
+  // En celular el drawer se muestra siempre expandido; el modo minimizado (72 px) solo aplica en escritorio.
+  const isSidebarOpen = esMovil || sidebarEscritorioAbierto;
+  // El drawer se cierra al cambiar de ruta (incluye "Ir a Empleado" / "Ir a Administrador").
+  useEffect(() => {
+    setMenuMovilAbierto(false);
+  }, [location.pathname]);
   // Abierto si estoy en una ruta técnica o si el usuario lo dejó abierto
   // (se guarda en localStorage para conservarlo entre pantallas y recargas).
   const [isTechOpsOpen, setIsTechOpsOpen] = useState(() => {
@@ -75,6 +87,16 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
     });
   };
   const [notifNoLeidas, setNotifNoLeidas] = useState(0);
+  const [notifAbierta, setNotifAbierta] = useState(false);
+
+  useEffect(() => { setNotifAbierta(false); }, [location.pathname]);
+
+  useEffect(() => {
+    if (!notifAbierta) return;
+    const alTeclear = (e: KeyboardEvent) => { if (e.key === 'Escape') setNotifAbierta(false); };
+    document.addEventListener('keydown', alTeclear);
+    return () => document.removeEventListener('keydown', alTeclear);
+  }, [notifAbierta]);
 
   useEffect(() => {
     if (
@@ -95,6 +117,21 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [location.pathname]);
+
+  // Cambios en vivo o acciones del usuario: se vuelve a pedir el contador real al servidor.
+  useEffect(() => {
+    let cancelled = false;
+    const refrescar = () => {
+      NotificationsService.contarNoLeidas()
+        .then(c => { if (!cancelled) setNotifNoLeidas(c); })
+        .catch(() => {});
+    };
+    window.addEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    };
+  }, []);
 
   const { logout: handleLogout } = useAuth();
 
@@ -130,12 +167,28 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-900 transition-colors">
+      {/* Overlay del menú móvil (render condicional simple, sin AnimatePresence) */}
+      {esMovil && menuMovilAbierto && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40"
+          onClick={() => setMenuMovilAbierto(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ── Sidebar ── */}
       <motion.aside
-        initial={{ x: -260 }}
-        animate={{ x: 0, width: isSidebarOpen ? 256 : 72 }}
+        initial={esMovil ? { x: -280, width: 256 } : { x: -260 }}
+        animate={
+          esMovil
+            ? { x: menuMovilAbierto ? 0 : -280, width: 256 }
+            : { x: 0, width: sidebarEscritorioAbierto ? 256 : 72 }
+        }
         transition={{ type: "spring", stiffness: 280, damping: 28 }}
-        className="bg-[#1e3a5f] dark:bg-[#0f172a] border-r border-black/30 dark:border-white/5 shadow-2xl flex flex-col flex-shrink-0 z-20 overflow-hidden transition-colors"
+        inert={esMovil && !menuMovilAbierto ? true : undefined}
+        className={`bg-[#1e3a5f] dark:bg-[#0f172a] border-r border-black/30 dark:border-white/5 shadow-2xl flex flex-col overflow-hidden transition-colors ${
+          esMovil ? "fixed inset-y-0 left-0 z-40" : "flex-shrink-0 z-20"
+        }`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center px-[18px] border-b border-white/10 overflow-hidden">
@@ -231,6 +284,17 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             <Label>Promociones</Label>
           </Link>
 
+          {/* Eventos (solicitudes de cotización) */}
+          <Link
+            to="/admin/eventos"
+            className={linkCls(
+              location.pathname.startsWith("/admin/eventos"),
+            )}
+          >
+            <CalendarHeart className="w-5 h-5 flex-shrink-0" />
+            <Label>Eventos</Label>
+          </Link>
+
           {/* Plantillas de venta */}
           <Link
             to="/admin/plantillas-venta"
@@ -275,7 +339,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
           </Link>
 
           {/* Personalizar Sitio */}
-          <Link to="/admin/cms" className={linkCls(isActive("/admin/cms"))}>
+          <Link to="/admin/cms" className={linkCls(location.pathname.startsWith("/admin/cms"))}>
             <LayoutIcon className="w-5 h-5 flex-shrink-0" />
             <Label>Personalizar Sitio</Label>
           </Link>
@@ -436,7 +500,11 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
         {/* Status footer replaced by Collapse button */}
         <div className="p-3 border-t border-white/10">
           <button
-            onClick={() => setIsSidebarOpen((v) => !v)}
+            onClick={() =>
+              esMovil
+                ? setMenuMovilAbierto(false)
+                : setSidebarEscritorioAbierto((v) => !v)
+            }
             className={`w-full flex items-center p-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all ${
               isSidebarOpen ? "gap-3" : "justify-center"
             }`}
@@ -466,24 +534,52 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* TopNavbar */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-8 flex-shrink-0 z-10 transition-colors">
-          <div>
-            <h2 className="text-lg font-bold text-[#1e3a5f] dark:text-white">
+        <header className={`h-16 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between gap-3 px-4 md:px-8 flex-shrink-0 relative ${notifAbierta ? 'z-50' : 'z-10'} transition-colors`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMenuMovilAbierto(true)}
+              aria-label="Abrir menú"
+              aria-expanded={menuMovilAbierto}
+              className="md:hidden p-2 -ml-2 rounded-lg text-[#1e3a5f] dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h2 className="text-lg font-bold text-[#1e3a5f] dark:text-white truncate">
               Panel de Administración
             </h2>
           </div>
-          <div className="flex items-center gap-6">
-            <Link
-              to="/empleado/notificaciones"
-              className="relative p-2 text-gray-400 dark:text-slate-400 hover:text-[#1e3a5f] dark:hover:text-white transition-colors"
-            >
-              <Bell className="w-6 h-6" />
-              {notifNoLeidas > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full border-2 border-white dark:border-slate-900">
-                  {notifNoLeidas > 99 ? '99+' : notifNoLeidas}
-                </span>
+          <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setNotifAbierta(v => !v)}
+                aria-label="Notificaciones"
+                aria-haspopup="dialog"
+                aria-expanded={notifAbierta}
+                className="relative p-2 text-gray-400 dark:text-slate-400 hover:text-[#1e3a5f] dark:hover:text-white transition-colors"
+              >
+                <Bell className="w-6 h-6" />
+                {notifNoLeidas > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full border-2 border-white dark:border-slate-900">
+                    {notifNoLeidas > 99 ? '99+' : notifNoLeidas}
+                  </span>
+                )}
+              </button>
+              {notifAbierta && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    aria-hidden="true"
+                    onClick={() => setNotifAbierta(false)}
+                  />
+                  <PanelNotificaciones
+                    onCerrar={() => setNotifAbierta(false)}
+                    onNoLeidasChange={setNotifNoLeidas}
+                  />
+                </>
               )}
-            </Link>
+            </div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-[#1e3a5f] dark:text-slate-200">
@@ -507,6 +603,7 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-900 p-4 md:p-6 lg:p-8 custom-scrollbar transition-colors">
+          <WhatsAppDesconectadoBanner />
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 10 }}
@@ -514,7 +611,6 @@ export default function AdminLayout({ children, user }: AdminLayoutProps) {
             transition={{ duration: 0.3 }}
             className="min-h-full flex flex-col w-full"
           >
-            <WhatsAppDesconectadoBanner />
             {children}
           </motion.div>
         </main>

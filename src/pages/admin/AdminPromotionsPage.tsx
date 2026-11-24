@@ -65,7 +65,7 @@ function OfertasTab() {
         AdminService.getProducts({ size: 500 }),
       ]);
       setOfertas(res.data);
-      setProducts((prodRes as any).items ?? (prodRes as any).data ?? []);
+      setProducts(Array.isArray(prodRes.data?.items) ? prodRes.data.items : []);
     } catch (err: any) {
       showToast(err.message || 'Error al cargar ofertas', 'error');
     } finally {

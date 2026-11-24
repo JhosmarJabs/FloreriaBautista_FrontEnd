@@ -7,6 +7,9 @@ export interface Product {
   imagenUrl: string | null;
   stock: number | null;
   esReal?: boolean;
+  /** `false` = dado de baja; el delta lo trae así para que la lista lo quite. */
+  activo?: boolean;
+  actualizadoEn?: string | null;
   permiteVentaInstantanea?: boolean;
   limiteVentaInstantanea?: number | null;
 }
@@ -112,6 +115,39 @@ export interface SiteSettings {
   longitud: number | null;
   anuncioTexto: string;
   anuncioActivo: boolean;
+  // Datos legales del negocio (páginas legales): opcionales, se capturan en «Personalizar sitio».
+  razonSocial?: string | null;
+  rfc?: string | null;
+  correoPrivacidad?: string | null;
+}
+
+// ─── Páginas legales y ayuda (CMS) ──────────────────────────────────────────
+export type SlugLegal =
+  | 'aviso-de-privacidad'
+  | 'terminos-y-condiciones'
+  | 'envios-y-entregas'
+  | 'cancelaciones-y-reembolsos'
+  | 'preguntas-frecuentes';
+
+export interface SeccionLegal {
+  titulo: string;
+  cuerpo: string;
+}
+
+/** Lo que devuelve GET /api/cms/legal (sin notas ni bandera de revisión). */
+export interface DocumentoLegal {
+  slug: SlugLegal;
+  titulo: string;
+  secciones: SeccionLegal[];
+  actualizadoEn: string;
+}
+
+/** Lo que devuelve GET /api/admin/cms/legal. */
+export interface DocumentoLegalAdmin extends DocumentoLegal {
+  notasRevision?: string | null;
+  esProvisional: boolean;
+  actualizadoPorUsuarioId?: string | null;
+  actualizadoPorNombre?: string | null;
 }
 
 export interface Promotion {
@@ -423,6 +459,9 @@ export interface InventoryItem {
   precioUnidadCompra?: number | null;
   unidadCompra?: string | null;
   vidaUtilDias?: number | null;
+  /** `false` = dado de baja; el delta lo trae así para que la lista lo quite. */
+  activo?: boolean;
+  actualizadoEn?: string | null;
 }
 
 export type MovementType = 'ENTRADA' | 'SALIDA' | 'AJUSTE';
@@ -434,8 +473,9 @@ export interface InventoryMovement {
   nombreItem: string;
   tipo: MovementType;
   cantidad: number;
-  stockAntes: number;
-  stockDespues: number;
+  // null = movimiento anterior a la bitácora con existencias (sin dato)
+  stockAntes: number | null;
+  stockDespues: number | null;
   motivo?: string | null;
   motivoCategoria: MotivoCategoria;
   /** Unidades que el sistema descontó solo, además de lo pedido, como merma estimada. */

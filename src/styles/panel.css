@@ -13,6 +13,7 @@
 @source "../components/ImageUploader.tsx";
 @source "../components/ModalAprobacionInstantanea.tsx";
 @source "../components/ModalPedidoNuevo60s.tsx";
+@source "../components/PanelNotificaciones.tsx";
 @source "../components/MovementsModal.tsx";
 @source "../components/RealtimeModals.tsx";
 @source "../components/RealtimeWrapper.tsx";

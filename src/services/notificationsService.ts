@@ -3,6 +3,17 @@ import { fetchConSesion, renovarOCerrarSesion } from './renovacionSesion';
 
 const API_BASE = '/api/notifications';
 
+/**
+ * Señal «cambiaron las notificaciones». Los layouts (globo de la campana) viven fuera del árbol
+ * de useNotifications y de RealtimeOrdersProvider, así que se avisan con un evento de window
+ * (mismo patrón que WHATSAPP_ESTADO_EVENT); cada consumidor vuelve a pedir el contador real.
+ */
+export const NOTIFICACIONES_CAMBIARON_EVENT = 'notificaciones-cambiaron';
+
+export const avisarCambioNotificaciones = (): void => {
+  window.dispatchEvent(new Event(NOTIFICACIONES_CAMBIARON_EVENT));
+};
+
 export interface NotificationDto {
   id: string;
   tipo: string;

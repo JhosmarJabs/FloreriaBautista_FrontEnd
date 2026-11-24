@@ -555,7 +555,9 @@ export default function AdminSupplyOrderDetailPage() {
                       +{m.cantidad}
                     </td>
                     <td className="py-2.5 text-right font-mono font-bold text-slate-500 dark:text-slate-400">
-                      {m.stockAntes} → {m.stockDespues}
+                      {m.stockAntes == null || m.stockDespues == null
+                        ? <span className="italic font-medium text-slate-400" title="Movimiento anterior al registro de existencias">Sin dato</span>
+                        : <>{m.stockAntes} → {m.stockDespues}</>}
                     </td>
                     <td className="py-2.5 text-slate-500 dark:text-slate-400 font-medium">{m.motivo}</td>
                     <td className="py-2.5 text-right text-slate-400 font-medium">{formatApiDate(m.fechaHora)}</td>

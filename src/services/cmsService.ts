@@ -1,9 +1,10 @@
-import { SiteSettings } from '../types';
+import { DocumentoLegal, SiteSettings } from '../types';
 import { apiCache } from './apiCache';
 
 // Hero y Footer piden la configuración en el mismo render: comparten la petición
 // en vuelo en lugar de lanzar dos /api/cms.
 let enVuelo: Promise<SiteSettings> | null = null;
+let enVueloLegal: Promise<DocumentoLegal[]> | null = null;
 
 export const CmsService = {
   getSettings: async (): Promise<SiteSettings> => {
@@ -32,5 +33,32 @@ export const CmsService = {
       }
     })();
     return enVuelo;
+  },
+
+  /** Los 5 documentos legales y de ayuda (GET /api/cms/legal), en el orden del servidor. */
+  getContenidoLegal: async (): Promise<DocumentoLegal[]> => {
+    const url = '/api/cms/legal';
+    const hit = apiCache.get(url);
+    if (hit) return (hit as { data: { documentos: DocumentoLegal[] } }).data.documentos;
+    if (enVueloLegal) return enVueloLegal;
+    enVueloLegal = (async () => {
+      const controller = new AbortController();
+      // 4 s: el service worker espera 3 s antes de servir la copia guardada.
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      try {
+        const res = await fetch(url, { signal: controller.signal, priority: 'low' } as RequestInit);
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+        const json = await res.json();
+        apiCache.set(url, json);
+        return (json.data?.documentos ?? []) as DocumentoLegal[];
+      } catch {
+        clearTimeout(timeout);
+        throw new Error('Contenido legal no disponible');
+      } finally {
+        enVueloLegal = null;
+      }
+    })();
+    return enVueloLegal;
   },
 };

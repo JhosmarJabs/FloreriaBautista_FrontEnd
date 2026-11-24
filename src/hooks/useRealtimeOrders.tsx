@@ -15,6 +15,7 @@ import {
 } from '@microsoft/signalr';
 import { useAuth } from './useAuth';
 import { VENTA_INSTANTANEA_HUB_URL } from '../services/realtime';
+import { avisarCambioNotificaciones } from '../services/notificationsService';
 
 // ── Tipos de evento ──────────────────────────────────────────
 
@@ -138,18 +139,22 @@ export function RealtimeOrdersProvider({ children }: { children: React.ReactNode
 
     connection.on('SolicitudPendiente', (data: SolicitudPendienteEvento) => {
       setSolicitudPendiente(data);
+      avisarCambioNotificaciones();
     });
 
     connection.on('SolicitudEscalada', (data: SolicitudPendienteEvento) => {
       setSolicitudPendiente(data);
+      avisarCambioNotificaciones();
     });
 
     connection.on('PedidoNuevo', (data: PedidoNuevoEvento) => {
       setPedidoNuevo(data);
+      avisarCambioNotificaciones();
     });
 
     connection.on('PedidoAnticipadoInformativo', (data: PedidoNuevoEvento) => {
       setPedidoNuevo(data);
+      avisarCambioNotificaciones();
     });
 
     // Solo llega al grupo "admin" (el backend lo emite ahí).

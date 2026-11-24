@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Search, RefreshCw, AlertTriangle, ChevronRight,
@@ -152,7 +152,11 @@ export default function AdminOrdersListPage() {
 
   const activeFilters = [estado, desde, hasta, busqueda].filter(Boolean).length;
 
-  const load = useCallback(async () => {
+  // FIX-010: solo la última consulta lanzada puede aplicar su respuesta.
+  const loadSeq = useRef(0);
+
+  const load = useCallback(async (opciones?: { forzar?: boolean }) => {
+    const mySeq = ++loadSeq.current;
     setLoading(true);
     setError(null);
     try {
@@ -163,20 +167,22 @@ export default function AdminOrdersListPage() {
         page: 1,
         size: 500,
         archivado: verArchivo,
-      });
+      }, { forzar: opciones?.forzar === true });
+      if (mySeq !== loadSeq.current) return;
       setRawOrders(res.data.items);
       setTotal(res.data.total);
       setSumaTotal(res.data.sumaTotal);
     } catch (err: any) {
+      if (mySeq !== loadSeq.current) return;
       setError(err.message || 'Error al cargar pedidos');
     } finally {
-      setLoading(false);
+      if (mySeq === loadSeq.current) setLoading(false);
     }
   }, [estado, desde, hasta, verArchivo]);
 
   useEffect(() => { load(); }, [load]);
 
-  const clearFilters = () => { setEstado(''); setDesde(''); setHasta(''); setBusqueda(''); };
+  const clearFilters = () => { setEstado(''); setDesde(''); setHasta(''); setBusqueda(''); setPage(1); };
 
   const camposBusqueda = useMemo(() => ['nombreCliente' as keyof Order, 'id' as keyof Order], []);
 
@@ -214,8 +220,8 @@ export default function AdminOrdersListPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <AnimatedButton onClick={() => { setVerSolicitudes(v => !v); if (verArchivo) setVerArchivo(false); }}
+          <div className="flex flex-wrap items-center gap-3">
+            <AnimatedButton onClick={() => { setVerSolicitudes(v => !v); if (verArchivo) { setVerArchivo(false); setPage(1); } }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all border ${
                 verSolicitudes
                   ? 'bg-amber-600 dark:bg-amber-500 text-white border-amber-600 dark:border-amber-500'
@@ -224,7 +230,7 @@ export default function AdminOrdersListPage() {
               <Zap className="w-4 h-4" />
               {verSolicitudes ? 'Ver Pedidos' : 'Solicitudes Instantaneas'}
             </AnimatedButton>
-            <AnimatedButton onClick={() => { setVerArchivo(v => !v); if (verSolicitudes) setVerSolicitudes(false); }}
+            <AnimatedButton onClick={() => { setVerArchivo(v => !v); setPage(1); if (verSolicitudes) setVerSolicitudes(false); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm transition-all border ${
                 verArchivo
                   ? 'bg-slate-800 dark:bg-slate-600 text-white border-slate-800 dark:border-slate-600'
@@ -233,7 +239,7 @@ export default function AdminOrdersListPage() {
               <Archive className="w-4 h-4" />
               {verArchivo ? 'Ver Pedidos Activos' : 'Ver Archivo'}
             </AnimatedButton>
-            <AnimatedButton onClick={load} disabled={loading}
+            <AnimatedButton onClick={() => load({ forzar: true })} disabled={loading}
               className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition-all">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
@@ -329,6 +335,13 @@ export default function AdminOrdersListPage() {
                                 {s.escaladaAEmpleadoEn ? 'Escalada' : `${minutosDesdeCreacion} min`}
                               </div>
                             )}
+                            {s.estado === 'RECHAZADA' && s.motivoRechazo && (
+                              <div
+                                title={s.motivoRechazo}
+                                className="text-[10px] text-red-600 dark:text-red-400 font-medium mt-0.5 max-w-[14rem] mx-auto break-words">
+                                {s.motivoRechazo}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                             {creada.toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -395,13 +408,13 @@ export default function AdminOrdersListPage() {
 
       {/* Tools / Filters */}
       <div className="flex flex-wrap items-center gap-3 p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm">
-        <div className="flex-1 min-w-[280px] relative">
+        <div className="flex-1 min-w-0 basis-full sm:basis-auto sm:min-w-[280px] relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input type="text" value={busqueda} onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar por cliente o número de pedido…"
             className="w-full pl-12 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all" />
         </div>
-        <select value={estado} onChange={e => setEstado(e.target.value)}
+        <select value={estado} onChange={e => { setEstado(e.target.value); setPage(1); }}
           className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black text-slate-600 dark:text-slate-300 outline-none cursor-pointer">
           <option value="">Todos los estados</option>
           {ESTADOS.filter(Boolean).map(e => (
@@ -410,9 +423,9 @@ export default function AdminOrdersListPage() {
         </select>
         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 p-1 px-3 rounded-xl border border-slate-200 dark:border-slate-700">
            <Calendar className="w-4 h-4 text-slate-400" />
-           <input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 outline-none w-28" />
+           <input type="date" value={desde} onChange={e => { setDesde(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 outline-none w-28" />
            <span className="text-slate-300">|</span>
-           <input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 outline-none w-28" />
+           <input type="date" value={hasta} onChange={e => { setHasta(e.target.value); setPage(1); }} className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 outline-none w-28" />
         </div>
 
         {activeFilters > 0 && (
@@ -495,7 +508,7 @@ export default function AdminOrdersListPage() {
           <div className="flex-1 flex flex-col items-center justify-center gap-4 py-20">
             <AlertTriangle className="w-12 h-12 text-rose-500" />
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400">{error}</p>
-            <button onClick={load} className="px-6 py-2 bg-emerald-50 text-emerald-600 font-bold rounded-xl border border-emerald-100">Cargar de nuevo</button>
+            <button onClick={() => load({ forzar: true })} className="px-6 py-2 bg-emerald-50 text-emerald-600 font-bold rounded-xl border border-emerald-100">Cargar de nuevo</button>
           </div>
         ) : orders.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-slate-300 py-20">
@@ -505,7 +518,7 @@ export default function AdminOrdersListPage() {
         ) : (
           <>
             {viewMode === 'table' ? (
-              <div className="overflow-x-auto flex-1">
+              <div className="relative overflow-x-auto flex-1">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700/50">

@@ -105,13 +105,14 @@ export default function DashboardPage() {
           setAlertsTotal(statsRes.data.criticalInventoryTotal ?? criticos.length);
           
           // Mapear ventas mensuales para la gráfica (últimos 30 días)
-          const todayStr = new Date().toLocaleDateString();
+          const todayStr = todayISO();
 
           const mappedMonthly = statsRes.data.monthlySales.map((d: any) => {
-            const date = new Date(d.fecha);
-            const isToday = date.toLocaleDateString() === todayStr;
+            // La API manda 'YYYY-MM-DD': parseApiDate la ancla a medianoche local (new Date la leería en UTC).
+            const date = parseApiDate(d.fecha);
+            const isToday = String(d.fecha).slice(0, 10) === todayStr;
             return {
-              day: isToday ? 'HOY' : String(date.getDate()),
+              day: isToday ? 'HOY' : String(date ? date.getDate() : ''),
               total: d.total,
               orders: d.pedidos
             };
@@ -445,7 +446,7 @@ export default function DashboardPage() {
                 <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Últimas transacciones procesadas</p>
               </div>
               <div className="flex p-1 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/50 rounded-xl gap-0.5">
-                {([['all','Todos'], ['pending','Pendientes'], ['en_ruta','En ruta']] as const).map(([key, label]) => (
+                {([['all','Todos'], ['pending','Pendientes'], ['en_ruta','En camino']] as const).map(([key, label]) => (
                   <button key={key} onClick={() => setOrderFilter(key)}
                     className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                       orderFilter === key ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'

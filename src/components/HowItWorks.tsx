@@ -22,7 +22,7 @@ export default function HowItWorks() {
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-brand-deep text-white rounded-full flex items-center justify-center mb-6 text-2xl font-bold">3</div>
             <h3 className="text-xl font-bold mb-3">Recibe tu entrega</h3>
-            <p className="text-gray-600">Entregamos a domicilio en Huautla y zonas cercanas con el mayor cuidado.</p>
+            <p className="text-gray-600">Entregamos a domicilio con el mayor cuidado; el costo de envío depende de tu código postal.</p>
           </div>
         </div>
       </div>

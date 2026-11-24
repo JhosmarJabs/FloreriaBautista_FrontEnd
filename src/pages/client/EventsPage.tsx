@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { Calendar, ArrowRight, Sparkles, Star, Loader2, Clock, Gift, Heart } from 'lucide-react';
 import { AdminService } from '../../services/adminService';
 import type { TemporadaProxima } from '../../types';
@@ -191,7 +192,7 @@ export default function EventsPage() {
           </>
         )}
 
-        {/* Eventos sociales (CMS estático) */}
+        {/* Eventos sociales (contenido informativo fijo) */}
         <section>
           <div className="text-center mb-12">
             <h2 className="text-3xl font-serif font-bold text-slate-900">Servicios para Eventos</h2>
@@ -218,14 +219,18 @@ export default function EventsPage() {
                     </li>
                   ))}
                 </ul>
-                <button className="w-full py-3 border-2 border-brand-deep text-brand-deep font-bold rounded-xl hover:bg-brand-deep hover:text-white transition-colors">
+                <Link
+                  to="/contacto"
+                  className="block w-full py-3 text-center border-2 border-brand-deep text-brand-deep font-bold rounded-xl hover:bg-brand-deep hover:text-white transition-colors"
+                >
                   Consultar
-                </button>
+                </Link>
               </motion.article>
             ))}
           </div>
         </section>
       </main>
+
     </div>
   );
 }

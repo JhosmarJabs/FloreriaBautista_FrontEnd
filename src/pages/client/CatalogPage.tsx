@@ -1,5 +1,5 @@
 // Catalogo
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Filter,
@@ -18,6 +18,7 @@ import {
   UploadCloud,
   DownloadCloud,
   WifiOff,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { AdminService } from "../../services/adminService";
@@ -25,6 +26,7 @@ import { obtenerInstantaneaCatalogo } from "../../services/catalogoPublico";
 import { obtenerEstado } from "../../services/estadoConexion";
 import { Product } from "../../types";
 import { useCart } from "../../hooks/useCart";
+import { useOfertasVigentes, precioEfectivo, tieneOfertaValida, porcentajeOferta } from "../../hooks/useOfertasVigentes";
 import CustomDropdown from "../../components/CustomDropdown";
 import { useToast } from "../../hooks/useToast";
 import {
@@ -35,6 +37,10 @@ import {
 import ImportModal from "../../components/ImportModal";
 import { slugify } from "../../utils/slug";
 import { useAuth } from "../../hooks/useAuth";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
+import { useBusquedaVoz } from "../../hooks/useBusquedaVoz";
+import BotonBusquedaVoz, { PanelBusquedaVoz, PistaBusquedaVoz } from "../../components/BotonBusquedaVoz";
+import { coincideBusqueda } from "../../utils/textSearch";
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -57,9 +63,18 @@ function ImagenProducto({ src, alt, className, iconClassName }: { src: string; a
 export default function CatalogPage() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { ofertasPorProducto } = useOfertasVigentes();
   const { showToast } = useToast();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { esCliente, esAdmin, esEmpleado } = useAuth();
+  // Vista de consulta: el empleado sin otros roles no tiene carrito, existencias ni ficha pública.
+  const soloConsultaEmpleado = esEmpleado && !esAdmin && !esCliente;
+  // Tarjeta: enlace a la ficha, o un div inerte para la vista de consulta.
+  const TarjetaEnlace: React.ElementType = soloConsultaEmpleado ? "div" : Link;
+  const propsTarjeta = (product: Product) =>
+    soloConsultaEmpleado
+      ? { className: "flex flex-col flex-1" }
+      : { to: `/producto/${slugify(product.nombre)}`, className: "flex flex-col flex-1" };
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -67,6 +82,12 @@ export default function CatalogPage() {
   const [sinCatalogoOffline, setSinCatalogoOffline] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
+  // Búsqueda por voz (solo vista pública): el texto dictado se usa únicamente para filtrar aquí.
+  const enLinea = useOnlineStatus();
+  const [panelVozAbierto, setPanelVozAbierto] = useState(false);
+  const cajaBusquedaRef = useRef<HTMLInputElement | null>(null);
+  const terminoPrevioRef = useRef("");
+  const tiraPaginasRef = useRef<HTMLDivElement | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [priceRange, setPriceRange] = useState(5000);
   const [selectedType, setSelectedType] = useState("Todos los tipos");
@@ -79,12 +100,17 @@ export default function CatalogPage() {
       setLoading(true);
       setSinCatalogoOffline(false);
       try {
-        // Si es admin o empleado, consume la ruta del inventario administrativo.
-        // Si es visitante web o cliente verificado, la instantánea pública (todos
+        // Admin: ruta del inventario administrativo (solo ADMIN).
+        // Empleado: su propia ruta (ADMIN/EMPLEADO), sin `busqueda` para que el
+        // filtro literal siga en cliente; 500 para no truncar (>100 activos).
+        // Visitante web o cliente verificado: la instantánea pública (todos
         // los productos, también disponible sin conexión).
-        if (esAdmin || esEmpleado) {
+        if (esAdmin) {
           const res = await AdminService.getAdminProducts({ size: 100 });
           setProducts(res.data.items);
+        } else if (esEmpleado) {
+          const res = await AdminService.getEmployeeProducts({ size: 500 });
+          setProducts(res.data.items ?? []);
         } else {
           setProducts(await obtenerInstantaneaCatalogo());
         }
@@ -102,6 +128,38 @@ export default function CatalogPage() {
     loadData();
     // Recarga si cambia el rol: la sesión se hidrata después del primer render.
   }, [esAdmin, esEmpleado, showToast]);
+
+  const voz = useBusquedaVoz({
+    // Entre las alternativas del reconocimiento, la primera que produzca resultados en el catálogo.
+    elegir: (alternativas) =>
+      alternativas.find((a) => products.some((p) => coincideBusqueda(p, a))) ?? alternativas[0],
+    alParcial: (texto) => { setSearchTerm(texto); setCurrentPage(1); },
+    alTexto: (texto) => { setSearchTerm(texto); setCurrentPage(1); },
+  });
+  const vozUi = {
+    ...voz,
+    iniciar: () => {
+      terminoPrevioRef.current = searchTerm;
+      setPanelVozAbierto(true);
+      voz.iniciar();
+    },
+  };
+  const cerrarPanelVoz = () => { voz.reiniciar(); setPanelVozAbierto(false); };
+  const escribirBusqueda = () => {
+    cerrarPanelVoz();
+    cajaBusquedaRef.current?.focus();
+  };
+  // Un error de voz deja la caja como estaba. El panel de resultado se cierra solo.
+  useEffect(() => {
+    if (["error-red", "error", "sin-voz", "denegado", "sin-microfono", "requiere-internet"].includes(voz.estado)) {
+      setSearchTerm(terminoPrevioRef.current);
+    }
+    if (voz.estado === "requiere-internet" || voz.estado === "denegado") cajaBusquedaRef.current?.focus();
+    if (voz.estado !== "ok") return;
+    const t = window.setTimeout(() => { voz.reiniciar(); setPanelVozAbierto(false); }, 3500);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voz.estado]);
 
   const handleImportConfirm = async (_data: any[], file: File) => {
     setLoading(true);
@@ -140,12 +198,14 @@ export default function CatalogPage() {
 
   const filteredProducts = useMemo(() => {
     const filtered = products.filter((product) => {
-      const matchesSearch =
-        product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.id.toLowerCase().includes(searchTerm.toLowerCase());
+      // Vista pública: búsqueda tolerante (acentos, plurales, relleno). Admin/empleado conservan su filtro.
+      const matchesSearch = esAdmin || esEmpleado
+        ? product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.id.toLowerCase().includes(searchTerm.toLowerCase())
+        : coincideBusqueda(product, searchTerm);
       const matchesCategory =
         selectedCategory === "Todos" || product.tipo === selectedCategory;
-      const matchesPrice = product.precioBase <= priceRange;
+      const matchesPrice = precioEfectivo(product, ofertasPorProducto.get(product.id)) <= priceRange;
       const matchesType =
         selectedType === "Todos los tipos" || product.tipo === selectedType;
       const matchesStock = showInStockOnly === "Todas" || (product.stock ?? 0) > 0;
@@ -159,7 +219,7 @@ export default function CatalogPage() {
       if (imgDiff !== 0) return imgDiff;
       return a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" });
     });
-  }, [products, searchTerm, selectedCategory, priceRange, selectedType, showInStockOnly]);
+  }, [products, searchTerm, selectedCategory, priceRange, selectedType, showInStockOnly, ofertasPorProducto, esAdmin, esEmpleado]);
 
   // Al cambiar de página, subir al inicio para ver los primeros productos de esa página.
   useEffect(() => {
@@ -167,6 +227,17 @@ export default function CatalogPage() {
   }, [currentPage]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
+  // Paginación pública: mantener la página activa visible dentro de la tira de números
+  // (solo se mueve el scroll horizontal de la tira; no se usa scrollIntoView para no
+  // anular el scroll al inicio de la ventana).
+  useEffect(() => {
+    const tira = tiraPaginasRef.current;
+    if (!tira) return;
+    const activo = tira.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!activo) return;
+    tira.scrollLeft = activo.offsetLeft - (tira.clientWidth - activo.offsetWidth) / 2;
+  }, [currentPage, totalPages]);
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
@@ -183,7 +254,7 @@ export default function CatalogPage() {
 
   const handleAddToCart = (product: Product) => {
     if (esCliente) {
-      addToCart(product);
+      addToCart({ ...product, price: precioEfectivo(product, ofertasPorProducto.get(product.id)) });
       showToast(`¡${product.nombre} añadido al carrito!`, "success");
     } else {
       setIsLoginModalOpen(true);
@@ -447,7 +518,7 @@ export default function CatalogPage() {
 
   // Customer View
   return (
-    <main className="w-full px-6 sm:px-8 lg:px-12 xl:px-16 py-12 pt-32 min-h-screen font-sans overflow-hidden">
+    <main className={`w-full ${esEmpleado ? "px-2" : "px-6"} sm:px-8 lg:px-12 xl:px-16 py-12 pt-32 min-h-screen font-sans overflow-hidden`}>
       <FadeIn className="mb-12">
         <div className="relative w-full bg-gradient-to-br from-[#1A3B5B] via-[#2A527A] to-[#1A3B5B] rounded-[3rem] p-[30px] mb-4 overflow-hidden shadow-2xl shadow-blue-900/20">
           {/* Background Decorations */}
@@ -470,13 +541,29 @@ export default function CatalogPage() {
               <div className="relative w-full md:w-96 group">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-slate-400 group-focus-within:text-[#FBBF24] transition-colors z-10" />
                 <input
+                  ref={cajaBusquedaRef}
                   type="text"
                   placeholder="Buscar tu arreglo ideal..."
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                  className="w-full pl-14 pr-6 py-4 bg-white border-0 rounded-full text-base font-medium text-[#1A3B5B] focus:ring-4 focus:ring-[#FBBF24]/30 focus:outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+                  className={`w-full text-ellipsis placeholder:text-ellipsis pl-14 ${voz.soportada && !esEmpleado ? "pr-16" : "pr-6"} py-4 bg-white border-0 rounded-full text-base font-medium text-[#1A3B5B] focus:ring-4 focus:ring-[#FBBF24]/30 focus:outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.12)]`}
                 />
+                {!esEmpleado && <BotonBusquedaVoz voz={vozUi} />}
               </div>
+              {!esEmpleado && (
+                <div className="w-full md:w-96 -mt-3">
+                  <PanelBusquedaVoz
+                    voz={vozUi}
+                    abierto={panelVozAbierto}
+                    online={enLinea}
+                    textoBusqueda={searchTerm}
+                    totalResultados={filteredProducts.length}
+                    onCerrar={cerrarPanelVoz}
+                    onEscribir={escribirBusqueda}
+                  />
+                  <PistaBusquedaVoz voz={vozUi} panelAbierto={panelVozAbierto} online={enLinea} />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -510,19 +597,42 @@ export default function CatalogPage() {
                 onChange={(val) => { setPriceRange(Number(val)); setCurrentPage(1); }}
               />
             </div>
-            <div className="w-full sm:w-56">
-              <CustomDropdown
-                options={[
-                  { label: "Disponibilidad: Todas", value: "Todas" },
-                  { label: "Solo en stock", value: "En stock" }
-                ]}
-                value={showInStockOnly}
-                onChange={(val) => { setShowInStockOnly(val); setCurrentPage(1); }}
-              />
-            </div>
+            {!soloConsultaEmpleado && (
+              <div className="w-full sm:w-56">
+                <CustomDropdown
+                  options={[
+                    { label: "Disponibilidad: Todas", value: "Todas" },
+                    { label: "Solo en stock", value: "En stock" }
+                  ]}
+                  value={showInStockOnly}
+                  onChange={(val) => { setShowInStockOnly(val); setCurrentPage(1); }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </FadeIn>
+
+      {searchTerm.trim() && (
+        <div className="max-w-7xl mx-auto mb-5 flex flex-wrap items-center justify-between gap-2.5" aria-label="Búsqueda vigente">
+          <h2 className="text-lg font-extrabold text-[#1A3B5B] min-w-0 break-words">
+            {filteredProducts.length > 0
+              ? `${filteredProducts.length} resultado${filteredProducts.length === 1 ? "" : "s"} para «${searchTerm.trim()}»`
+              : `Sin resultados para «${searchTerm.trim()}»`}
+          </h2>
+          <span className="inline-flex items-center gap-1.5 min-h-11 max-w-full pl-3.5 pr-2 rounded-full bg-[#e2f0fd] border border-blue-200 text-[#1A3B5B] font-extrabold text-sm">
+            <span className="truncate">Búsqueda: {searchTerm.trim()}</span>
+            <button
+              type="button"
+              onClick={() => { setSearchTerm(""); setCurrentPage(1); }}
+              aria-label="Quitar la búsqueda"
+              className="w-8 h-8 shrink-0 rounded-full bg-white grid place-items-center"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </span>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-6 gap-y-8">
         <AnimatePresence mode="popLayout">
@@ -538,7 +648,7 @@ export default function CatalogPage() {
                 whileHover={{ y: -4 }}
                 className="group bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl hover:border-slate-300 transition-shadow duration-300 flex flex-col relative"
               >
-                <Link to={`/producto/${slugify(product.nombre)}`} className="flex flex-col flex-1">
+                <TarjetaEnlace {...propsTarjeta(product)}>
                   <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100">
                     {product.imagenUrl ? (
                       <ImagenProducto
@@ -569,19 +679,40 @@ export default function CatalogPage() {
                       {product.nombre}
                     </h3>
                   </div>
-                </Link>
+                </TarjetaEnlace>
 
                 <div className="px-4 pb-4 pt-2 flex items-center justify-between gap-2">
-                  <span className="text-xl font-black text-[#1A3B5B]">
-                    ${product.precioBase.toLocaleString()}
-                  </span>
-                  <AnimatedButton
-                    className="w-10 h-10 shrink-0 rounded-full bg-[#FF7F7D] hover:bg-[#1A3B5B] text-white flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300"
-                    onClick={() => handleAddToCart(product)}
-                    aria-label={`Agregar ${product.nombre} al carrito`}
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                  </AnimatedButton>
+                  {(() => {
+                    const oferta = ofertasPorProducto.get(product.id);
+                    return tieneOfertaValida(product, oferta) ? (
+                      <div className="flex flex-col min-w-0">
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xl font-black text-brand-coral">
+                            ${oferta.precioOferta.toLocaleString()}
+                          </span>
+                          <span className="text-[10px] font-black bg-brand-coral text-white rounded-full px-1.5 py-0.5">
+                            -{porcentajeOferta(product, oferta)}%
+                          </span>
+                        </span>
+                        <span className="text-xs font-bold line-through text-slate-400">
+                          ${product.precioBase.toLocaleString()}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xl font-black text-[#1A3B5B]">
+                        ${product.precioBase.toLocaleString()}
+                      </span>
+                    );
+                  })()}
+                  {!soloConsultaEmpleado && (
+                    <AnimatedButton
+                      className="w-10 h-10 shrink-0 rounded-full bg-[#FF7F7D] hover:bg-[#1A3B5B] text-white flex items-center justify-center shadow-md hover:shadow-lg hover:scale-110 transition-all duration-300"
+                      onClick={() => handleAddToCart(product)}
+                      aria-label={`Agregar ${product.nombre} al carrito`}
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                    </AnimatedButton>
+                  )}
                 </div>
               </motion.div>
             ))
@@ -615,6 +746,15 @@ export default function CatalogPage() {
                 <p className="text-slate-500 font-medium mb-10">
                   Ajusta los filtros o intenta con una búsqueda diferente.
                 </p>
+                {searchTerm.trim() && (
+                  <button
+                    onClick={() => { setSearchTerm(""); setCurrentPage(1); }}
+                    className="mb-4 px-10 py-4 bg-[#1A3B5B] text-white font-black rounded-2xl shadow-xl shadow-blue-900/20 hover:bg-[#FF7F7D] transition-colors text-sm"
+                  >
+                    Quitar búsqueda y ver todo
+                  </button>
+                )}
+                <br />
                 <button
                   onClick={() => { setSearchTerm(""); setSelectedCategory("Todos"); setPriceRange(5000); setSelectedType("Todos los tipos"); }}
                   className="px-10 py-4 bg-[#1A3B5B] text-white font-black rounded-2xl shadow-xl shadow-blue-900/20 hover:bg-[#FF7F7D] transition-colors uppercase text-sm tracking-widest"
@@ -629,15 +769,16 @@ export default function CatalogPage() {
 
       {totalPages > 1 && (
         <FadeIn className="mt-20 flex justify-center">
-          <nav className="flex items-center gap-3 bg-white p-2 rounded-3xl shadow-xl border border-slate-100">
+          <nav className="flex items-center gap-2 sm:gap-3 max-w-full min-w-0 bg-white p-2 rounded-3xl shadow-xl border border-slate-100">
             <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}
-              className="p-3 text-slate-400 hover:text-[#1A3B5B] hover:bg-slate-50 rounded-2xl transition-all disabled:opacity-30">
-              <ChevronLeft className="w-6 h-6" />
+              className="shrink-0 p-2 sm:p-3 text-slate-400 hover:text-[#1A3B5B] hover:bg-slate-50 rounded-2xl transition-all disabled:opacity-30">
+              <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <div className="flex gap-1">
+            <div ref={tiraPaginasRef} className="flex gap-1 min-w-0 overflow-x-auto overscroll-x-contain">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <button key={page} onClick={() => setCurrentPage(page)}
-                  className={`w-12 h-12 rounded-2xl font-black text-sm transition-all ${
+                  aria-current={currentPage === page ? "page" : undefined}
+                  className={`shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-2xl font-black text-sm transition-all ${
                     currentPage === page ? "bg-[#1A3B5B] text-white shadow-xl shadow-blue-900/20" : "text-slate-500 hover:bg-slate-50"
                   }`}>
                   {page}
@@ -645,8 +786,8 @@ export default function CatalogPage() {
               ))}
             </div>
             <button onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}
-              className="p-3 text-slate-400 hover:text-[#1A3B5B] hover:bg-slate-50 rounded-2xl transition-all disabled:opacity-30">
-              <ChevronRight className="w-6 h-6" />
+              className="shrink-0 p-2 sm:p-3 text-slate-400 hover:text-[#1A3B5B] hover:bg-slate-50 rounded-2xl transition-all disabled:opacity-30">
+              <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </nav>
         </FadeIn>

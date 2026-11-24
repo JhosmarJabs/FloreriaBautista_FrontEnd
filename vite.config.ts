@@ -36,8 +36,9 @@ const cssNoBloqueante = (): Plugin => ({
  *
  * Matriz de caché (detalle en documentacion/01-planificacion/pwa-cache-catalogo-offline.md §8.1):
  *   Al abrir la app (precache)   shell, portada y sus secciones, Quiénes somos, Contacto,
- *                                el CÓDIGO del Catálogo, /img/landing y /img/nosotros.
- *   Al abrir la app (datos)      /api/cms y la instantánea /api/products?size=1000
+ *                                Aviso de privacidad, Términos, Envíos, Cancelaciones, Preguntas
+ *                                frecuentes y 404, el CÓDIGO del Catálogo, /img/landing y /img/nosotros.
+ *   Al abrir la app (datos)      /api/cms, /api/cms/legal y la instantánea /api/products?size=1000
  *                                (services/calentamientoOffline.ts). Nunca imágenes de productos.
  *   Solo al visitarlas           ficha de producto, ofertas, eventos, testimonios, inicio del
  *                                cliente, carrito, mis pedidos, login/registro, checkout... (runtime).
@@ -56,6 +57,12 @@ const PAGINAS_ESTATICAS = [
   'src/pages/client/AboutPage.tsx',
   'src/pages/client/ContactPage.tsx',
   'src/pages/client/CatalogPage.tsx',
+  // Ir a la sucursal: recorrido por GPS sin Internet (la red de calles va en includeAssets). Regla D8.
+  'src/pages/client/ComoLlegarPage.tsx',
+  // Páginas legales, Preguntas frecuentes y 404 (sus dependencias entran por imports)
+  'src/pages/client/PaginaLegalPage.tsx',
+  'src/pages/client/PreguntasFrecuentesPage.tsx',
+  'src/pages/client/NotFoundPage.tsx',
   // Piezas de la app pública que esas páginas necesitan (un cliente con sesión las ve sin red)
   'src/components/PwaCliente.tsx',
   'src/components/AvisoConexion.tsx',
@@ -122,7 +129,7 @@ export default defineConfig(({ mode }) => {
         // inyecta registerSW.js y no bloquea el renderizado.
         injectRegister: false,
         // Imágenes de las páginas estáticas (portada y Quiénes somos): precache, ver PAGINAS_ESTATICAS.
-        includeAssets: ['favicon-64.png', 'Logo-sm.webp', 'apple-touch-icon.png', 'img/landing/*.webp', 'img/nosotros/*.webp'],
+        includeAssets: ['favicon-64.png', 'Logo-sm.webp', 'apple-touch-icon.png', 'img/landing/*.webp', 'img/nosotros/*.webp', 'mapa-sucursal/*.json'],
         manifest: {
           id: '/',
           name: 'Florería Bautista',
@@ -247,7 +254,7 @@ export default defineConfig(({ mode }) => {
               urlPattern: ({ url, request, sameOrigin }) =>
                 sameOrigin &&
                 !request.headers.has('authorization') &&
-                (/^\/api\/(cms|offers|discounts|catalogos\/temporadas-proximas)$/i.test(url.pathname) ||
+                (/^\/api\/(cms|cms\/legal|offers|discounts|catalogos\/temporadas-proximas)$/i.test(url.pathname) ||
                   (/^\/api\/products$/i.test(url.pathname) &&
                     !url.searchParams.has('catalogo') &&
                     !url.searchParams.has('categoria') &&
@@ -337,6 +344,20 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: {
         usePolling: true,
+        // El sondeo por defecto (100 ms) sobre /app incluía las carpetas de build y de análisis
+        // (~1.600 archivos): con la VM de Docker cargada, el hilo de Vite se saturaba y el proxy
+        // /api tardaba de 10 a 300 s. Solo se vigila el código fuente y con un intervalo mayor.
+        interval: 1000,
+        binaryInterval: 3000,
+        ignored: [
+          '**/dist/**',
+          '**/dist-*/**',
+          '**/graphify-out/**',
+          '**/documentacion/**',
+          '**/coverage/**',
+          '**/test-results/**',
+          '**/playwright-report/**',
+        ],
       },
       proxy: {
         '/api': {

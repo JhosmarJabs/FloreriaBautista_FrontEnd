@@ -39,6 +39,8 @@ import {
   QuickSaleTemplate,
   SaveQuickSaleTemplateBody,
   SiteSettings,
+  DocumentoLegalAdmin,
+  SeccionLegal,
   InventoryKpis,
   ProductKpis,
   SeasonalCatalogKpis,
@@ -231,6 +233,10 @@ const errorMessage = async (res: Response, fallback: string): Promise<string> =>
   }
   return `${fallback} (error ${res.status})`;
 };
+
+const errorConEstado = async (res: Response, fallback: string): Promise<Error> =>
+  // El hook de datos distingue un 400 (marca `desde` inválida) de un fallo de red o 5xx.
+  Object.assign(new Error(await errorMessage(res, fallback)), { status: res.status });
 
 async function cachedGet<T>(url: string, errorMsg: string): Promise<T> {
   const hit = apiCache.get(url);
@@ -456,7 +462,7 @@ export const AdminService = {
 
   getInventoryDelta: async (desde: string): Promise<{ items: InventoryItem[]; sincronizadoEn: string }> => {
     const res = await fetchConSesion(`${API_BASE}/inventory/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar inventario'));
+    if (!res.ok) throw await errorConEstado(res, 'Error al sincronizar inventario');
     const json = await res.json();
     return json.data;
   },
@@ -675,7 +681,7 @@ export const AdminService = {
 
   getProductsDelta: async (desde: string): Promise<{ items: Product[]; sincronizadoEn: string }> => {
     const res = await fetchConSesion(`${API_BASE}/products/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar productos'));
+    if (!res.ok) throw await errorConEstado(res, 'Error al sincronizar productos');
     const json = await res.json();
     return json.data;
   },
@@ -928,7 +934,7 @@ export const AdminService = {
     page?: number;
     size?: number;
     archivado?: boolean;
-  } = {}): Promise<ApiResponse<Order>> => {
+  } = {}, opciones: { forzar?: boolean } = {}): Promise<ApiResponse<Order>> => {
     const query = new URLSearchParams();
     if (params.estado !== undefined) query.set('estado', params.estado);
     if (params.desde !== undefined) query.set('desde', params.desde);
@@ -937,12 +943,15 @@ export const AdminService = {
     if (params.size !== undefined) query.set('size', String(params.size));
     if (params.archivado !== undefined) query.set('archivado', String(params.archivado));
     const qs = query.toString();
-    return cachedGet(`${API_BASE}/orders${qs ? `?${qs}` : ''}`, 'Error al obtener órdenes');
+    const url = `${API_BASE}/orders${qs ? `?${qs}` : ''}`;
+    // FIX-011: «Actualizar» debe ir al servidor; solo se descarta la copia de esta URL.
+    if (opciones.forzar) apiCache.invalidate(url);
+    return cachedGet(url, 'Error al obtener órdenes');
   },
 
   getOrdersDelta: async (desde: string): Promise<{ items: Order[]; sincronizadoEn: string }> => {
     const res = await fetchConSesion(`${API_BASE}/orders/delta?desde=${encodeURIComponent(desde)}`, { headers: await authHeaders() });
-    if (!res.ok) throw new Error(await errorMessage(res, 'Error al sincronizar pedidos'));
+    if (!res.ok) throw await errorConEstado(res, 'Error al sincronizar pedidos');
     const json = await res.json();
     return json.data;
   },
@@ -982,11 +991,17 @@ export const AdminService = {
 
   // Registrar un pago (anticipo o liquidación) sobre un pedido ya existente
   registerOrderPayment: async (orderId: string, body: { monto: number; metodo: string }): Promise<SingleResponse<OrderDetail>> => {
-    const res = await fetchConSesion(`/api/orders/${orderId}/payments`, {
-      method: 'POST',
-      headers: await authHeaders(),
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetchConSesion(`/api/orders/${orderId}/payments`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify(body),
+      });
+    } finally {
+      // Éxito o error, la siguiente lectura de pedidos (lista y detalle) debe ir al servidor, no a apiCache.
+      apiCache.invalidate(`${API_BASE}/orders`);
+    }
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },
@@ -994,11 +1009,17 @@ export const AdminService = {
   // Cancelar exige motivoCancelacion: el backend responde 400 sin él.
   updateAdminOrderStatus: async (orderId: string, nuevoEstado: string, motivoCancelacion?: string): Promise<SingleResponse<OrderDetail>> => {
     // Nota: este endpoint vive en /api/orders (OrdersController), no en /api/admin/orders
-    const res = await fetchConSesion(`/api/orders/${orderId}`, {
-      method: 'POST',
-      headers: await authHeaders(),
-      body: JSON.stringify(motivoCancelacion ? { nuevoEstado, motivoCancelacion } : { nuevoEstado }),
-    });
+    let res: Response;
+    try {
+      res = await fetchConSesion(`/api/orders/${orderId}`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify(motivoCancelacion ? { nuevoEstado, motivoCancelacion } : { nuevoEstado }),
+      });
+    } finally {
+      // Éxito o error, la siguiente lectura de pedidos (lista y detalle) debe ir al servidor, no a apiCache.
+      apiCache.invalidate(`${API_BASE}/orders`);
+    }
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },
@@ -1330,6 +1351,19 @@ export const AdminService = {
     });
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
+  },
+
+  // Páginas legales y ayuda. apiCache.invalidate('/cms') también limpia '/api/cms/legal'
+  // (público) y '/api/admin/cms/legal' porque la clave contiene '/cms'.
+  getContenidoLegal: async (): Promise<SingleResponse<DocumentoLegalAdmin[]>> => {
+    return cachedGet(`${API_BASE}/cms/legal`, 'Error al obtener las páginas legales');
+  },
+
+  updateContenidoLegal: async (
+    slug: string,
+    body: { titulo: string; secciones: SeccionLegal[]; notasRevision: string | null; esProvisional: boolean },
+  ): Promise<SingleResponse<DocumentoLegalAdmin>> => {
+    return mutate('PUT', `${API_BASE}/cms/legal/${encodeURIComponent(slug)}`, body, '/cms/legal', 'No se pudo guardar la página');
   },
 
   // ─── Catálogos globales ────────────────────────────────────────

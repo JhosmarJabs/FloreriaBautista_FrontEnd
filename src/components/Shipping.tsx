@@ -1,5 +1,17 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
+import { TARIFAS_ENVIO } from '../utils/envio';
+
+const precio = (n: number) => (n === 0 ? 'Gratis' : `$${n} MXN`);
+
+// Las tarifas salen de utils/envio.ts: si cambian allá, esta sección no queda desactualizada.
+const ZONAS = [
+  { zona: 'San Felipe Orizatlán', costo: TARIFAS_ENVIO.local },
+  { zona: 'Resto de Hidalgo', costo: TARIFAS_ENVIO.estatal },
+  { zona: 'Estados colindantes', costo: TARIFAS_ENVIO.vecino },
+  { zona: 'Resto del país', costo: TARIFAS_ENVIO.nacional },
+];
 
 export default function Shipping() {
   return (
@@ -13,18 +25,21 @@ export default function Shipping() {
             <h2 className="text-3xl font-bold">Envíos a Domicilio</h2>
           </div>
           <p className="text-lg text-gray-700 mb-8">
-            Entregamos frescura y amor en todo <strong>Huitzitzilingo</strong> y <strong>San Felipe Orizatlán, Hidalgo</strong>. Servicio puntual y cuidadoso para que tus flores lleguen perfectas.
+            Llevamos tus flores a domicilio con servicio puntual y cuidadoso. El costo depende del código postal de entrega.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-brand-light p-4 rounded-custom border border-brand-accent">
-              <h3 className="font-bold text-brand-deep text-base">Huitzitzilingo (Centro y Barrios)</h3>
-              <p className="text-sm">Envío gratis en pedidos mayores a $500</p>
-            </div>
-            <div className="bg-brand-light p-4 rounded-custom border border-brand-accent">
-              <h3 className="font-bold text-brand-deep text-base">San Felipe Orizatlán</h3>
-              <p className="text-sm">Tarifa fija de $50 MXN</p>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {ZONAS.map((z) => (
+              <div key={z.zona} className="bg-brand-light p-4 rounded-custom border border-brand-accent">
+                <h3 className="font-bold text-brand-deep text-base">{z.zona}</h3>
+                <p className="text-sm">{precio(z.costo)}</p>
+              </div>
+            ))}
           </div>
+          <p className="mt-8">
+            <Link to="/envios-y-entregas" className="text-brand-deep font-semibold hover:underline">
+              Consulta la política de envíos
+            </Link>
+          </p>
         </div>
       </div>
     </section>

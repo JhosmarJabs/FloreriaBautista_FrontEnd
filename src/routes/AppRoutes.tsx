@@ -1,8 +1,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { ROL, rutaInicialPorRol } from '../utils/auth';
-import { useAuth } from '../hooks/useAuth';
+import { ROL } from '../utils/auth';
 import CargaRuta from '../components/CargaRuta';
 // La landing va en el bundle inicial: con lazy, el primer render de React cambiaba
 // el hero del esqueleto HTML por la pantalla de carga y el LCP esperaba al chunk.
@@ -20,6 +19,10 @@ const AboutPage = React.lazy(() => import('../pages/client/AboutPage'));
 const ProductPage = React.lazy(() => import('../pages/client/ProductPage'));
 const TestimonialsPage = React.lazy(() => import('../pages/client/TestimonialsPage'));
 const ContactPage = React.lazy(() => import('../pages/client/ContactPage'));
+const ComoLlegarPage = React.lazy(() => import('../pages/client/ComoLlegarPage'));
+const PaginaLegalPage = React.lazy(() => import('../pages/client/PaginaLegalPage'));
+const PreguntasFrecuentesPage = React.lazy(() => import('../pages/client/PreguntasFrecuentesPage'));
+const NotFoundPage = React.lazy(() => import('../pages/client/NotFoundPage'));
 const CustomerOrdersPage = React.lazy(() => import('../pages/client/CustomerOrdersPage'));
 const SettingsPage = React.lazy(() => import('../pages/client/SettingsPage'));
 const CartPage = React.lazy(() => import('../pages/client/CartPage'));
@@ -58,11 +61,13 @@ const AdminProductDetailPage = React.lazy(() => import('../pages/admin/AdminProd
 const AdminProductsListPage = React.lazy(() => import('../pages/admin/AdminProductsListPage'));
 const AdminRecipeManagementPage = React.lazy(() => import('../pages/admin/AdminRecipeManagementPage'));
 const AdminCmsPage = React.lazy(() => import('../pages/admin/AdminCmsPage'));
+const AdminContenidoLegalPage = React.lazy(() => import('../pages/admin/AdminContenidoLegalPage'));
 const AdminOrdersListPage = React.lazy(() => import('../pages/admin/AdminOrdersListPage'));
 const AdminOrderDetailPage = React.lazy(() => import('../pages/admin/AdminOrderDetailPage'));
 const AdminSeasonalCatalogsPage = React.lazy(() => import('../pages/admin/AdminSeasonalCatalogsPage'));
 const AdminNewCatalogPage = React.lazy(() => import('../pages/admin/AdminNewCatalogPage'));
 const AdminPromotionsPage = React.lazy(() => import('../pages/admin/AdminPromotionsPage'));
+const AdminEventRequestsPage = React.lazy(() => import('../pages/admin/AdminEventRequestsPage'));
 const AdminNewPromotionPage = React.lazy(() => import('../pages/admin/AdminNewPromotionPage'));
 const AdminProductAnalysisPage = React.lazy(() => import('../pages/admin/AdminProductAnalysisPage'));
 const AdminSupplyAnalysisPage = React.lazy(() => import('../pages/admin/AdminSupplyAnalysisPage'));
@@ -89,7 +94,7 @@ const EmployeeNotificationsPage = React.lazy(() => import('../pages/employee/Emp
 const LazyFallback = <CargaRuta />;
 
 const CssTransition = ({ children }: { children: React.ReactNode }) => (
-  <div className="motion-safe:animate-[pageEnter_0.3s_ease-out_both]">{children}</div>
+  <div className="motion-safe:animate-[pageEnter_0.3s_ease-out_backwards]">{children}</div>
 );
 
 // Este Suspense (que PageTransition necesita por ser lazy) es el más cercano a la
@@ -126,7 +131,9 @@ function AdminRoutes() {
         <Route path="promociones" element={<Suspense fallback={LazyFallback}><P><AdminPromotionsPage /></P></Suspense>} />
         <Route path="promociones/nuevo" element={<Suspense fallback={LazyFallback}><P><AdminNewPromotionPage /></P></Suspense>} />
         <Route path="promociones/editar/:id" element={<Suspense fallback={LazyFallback}><P><AdminNewPromotionPage /></P></Suspense>} />
+        <Route path="eventos" element={<Suspense fallback={LazyFallback}><P><AdminEventRequestsPage /></P></Suspense>} />
         <Route path="cms" element={<Suspense fallback={LazyFallback}><P><AdminCmsPage /></P></Suspense>} />
+        <Route path="cms/legal" element={<Suspense fallback={LazyFallback}><P><AdminContenidoLegalPage /></P></Suspense>} />
         <Route path="pedidos" element={<Suspense fallback={LazyFallback}><P><AdminOrdersListPage /></P></Suspense>} />
         <Route path="pedidos/:id" element={<Suspense fallback={LazyFallback}><P><AdminOrderDetailPage /></P></Suspense>} />
         <Route path="inventario" element={<Suspense fallback={LazyFallback}><P><AdminInventoryPage /></P></Suspense>} />
@@ -178,12 +185,6 @@ function EmployeeRoutes() {
   );
 }
 
-function RedirigirAInicio() {
-  const { roles, cargando } = useAuth();
-  if (cargando) return null;
-  return <Navigate to={rutaInicialPorRol(roles)} replace />;
-}
-
 export default function AnimatedRoutes() {
   return (
     <Routes>
@@ -195,8 +196,16 @@ export default function AnimatedRoutes() {
       <Route path="/testimonios" element={<Suspense fallback={LazyFallback}><CssTransition><TestimonialsPage /></CssTransition></Suspense>} />
       <Route path="/nosotros" element={<Suspense fallback={LazyFallback}><CssTransition><AboutPage /></CssTransition></Suspense>} />
       <Route path="/contacto" element={<Suspense fallback={LazyFallback}><CssTransition><ContactPage /></CssTransition></Suspense>} />
+      <Route path="/como-llegar" element={<Suspense fallback={LazyFallback}><CssTransition><ComoLlegarPage /></CssTransition></Suspense>} />
       <Route path="/ofertas" element={<Suspense fallback={LazyFallback}><CssTransition><OffersPage /></CssTransition></Suspense>} />
       <Route path="/eventos" element={<Suspense fallback={LazyFallback}><CssTransition><EventsPage /></CssTransition></Suspense>} />
+
+      {/* ── Páginas legales y de ayuda (contenido editable desde el CMS) ── */}
+      <Route path="/aviso-de-privacidad" element={<Suspense fallback={LazyFallback}><CssTransition><PaginaLegalPage slug="aviso-de-privacidad" /></CssTransition></Suspense>} />
+      <Route path="/terminos-y-condiciones" element={<Suspense fallback={LazyFallback}><CssTransition><PaginaLegalPage slug="terminos-y-condiciones" /></CssTransition></Suspense>} />
+      <Route path="/envios-y-entregas" element={<Suspense fallback={LazyFallback}><CssTransition><PaginaLegalPage slug="envios-y-entregas" /></CssTransition></Suspense>} />
+      <Route path="/cancelaciones-y-reembolsos" element={<Suspense fallback={LazyFallback}><CssTransition><PaginaLegalPage slug="cancelaciones-y-reembolsos" /></CssTransition></Suspense>} />
+      <Route path="/preguntas-frecuentes" element={<Suspense fallback={LazyFallback}><CssTransition><PreguntasFrecuentesPage /></CssTransition></Suspense>} />
 
       {/* ── Auth ── */}
       <Route path="/login" element={<Suspense fallback={LazyFallback}><CssTransition><LoginPage /></CssTransition></Suspense>} />
@@ -237,7 +246,7 @@ export default function AnimatedRoutes() {
       <Route path="/checkout/pendiente" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><PaymentPendingPage /></CssTransition></Suspense></ProtectedRoute>} />
       <Route path="/esperando-aprobacion" element={<ProtectedRoute roles={[ROL.CLIENTE]}><Suspense fallback={LazyFallback}><CssTransition><EsperandoAprobacionPage /></CssTransition></Suspense></ProtectedRoute>} />
 
-      <Route path="*" element={<RedirigirAInicio />} />
+      <Route path="*" element={<Suspense fallback={LazyFallback}><CssTransition><NotFoundPage /></CssTransition></Suspense>} />
     </Routes>
   );
 }

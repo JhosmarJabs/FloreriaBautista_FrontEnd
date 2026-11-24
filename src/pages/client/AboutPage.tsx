@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Clock, Heart, MapPin, Phone, Leaf, Award, Wrench } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, Heart, MapPin, Navigation, Phone, Leaf, Award, Wrench } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CmsService } from '../../services/cmsService';
 import { SiteSettings } from '../../types';
 import { groupHorarios } from '../../utils/horarios';
+import { coordenadasValidas } from '../../utils/geo';
 
 export default function AboutPage() {
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -14,6 +15,8 @@ export default function AboutPage() {
   }, []);
 
   const horariosAgrupados = groupHorarios(settings?.horarios ?? []);
+  // «Ir a la sucursal» solo aparece si el CMS trae coordenadas válidas (no pide la ubicación del cliente).
+  const hayUbicacionSucursal = coordenadasValidas(settings?.latitud, settings?.longitud) !== null;
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -275,6 +278,23 @@ export default function AboutPage() {
                 <p className="text-slate-500">{settings?.telefono || '+52 (555) 123-4567'}</p>
               </div>
             </div>
+            {hayUbicacionSucursal && (
+              <div className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1.5 items-start rounded-2xl bg-brand-accent border-l-[6px] border-[#D4AF37] p-4">
+                <div className="row-span-2 w-12 h-12 rounded-[14px] bg-brand-deep text-[#D4AF37] grid place-items-center">
+                  <Navigation className="w-6 h-6" aria-hidden="true" />
+                </div>
+                <h3 className="text-[19px] font-extrabold text-brand-deep leading-tight">¿Vienes a visitarnos?</h3>
+                <p className="text-[14.5px] leading-snug text-slate-700">
+                  Te llevamos por las calles hasta la puerta con tu GPS, también sin Internet.
+                </p>
+                <Link
+                  to="/como-llegar?iniciar=1"
+                  className="col-span-2 mt-2.5 min-h-[48px] inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-deep px-4 font-extrabold text-white hover:bg-brand-deep/90 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+                >
+                  <Navigation className="w-5 h-5" aria-hidden="true" /> Ir a la sucursal
+                </Link>
+              </div>
+            )}
           </div>
         </div>
         <div className="bg-brand-deep rounded-3xl p-10 flex flex-col justify-center items-center text-center space-y-6 text-white shadow-2xl relative overflow-hidden">

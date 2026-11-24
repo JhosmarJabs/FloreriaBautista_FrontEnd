@@ -183,11 +183,11 @@ export default function OrdersPage() {
 
       {/* Filters */}
       <div className="bg-white/80 dark:bg-slate-800/40 backdrop-blur-md p-4 rounded-[2rem] border border-slate-100 dark:border-white/5 shadow-sm flex flex-col lg:flex-row gap-4 transition-colors">
-        <div className="flex gap-3">
-          <div className="relative">
+        <div className="flex gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Filter className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
             <select
-              className="pl-12 pr-12 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f] text-[11px] font-black uppercase tracking-[0.2em] text-[#1e3a5f] dark:text-slate-300 appearance-none cursor-pointer min-w-[200px] transition-colors shadow-inner"
+              className="pl-12 pr-12 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl focus:ring-2 focus:ring-[#1e3a5f] text-[11px] font-black uppercase tracking-[0.2em] text-[#1e3a5f] dark:text-slate-300 appearance-none cursor-pointer w-full sm:w-auto sm:min-w-[200px] transition-colors shadow-inner"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -215,13 +215,13 @@ export default function OrdersPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ delay: idx * 0.03 }}
-                className="bg-white/95 dark:bg-slate-800/40 backdrop-blur-xl rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-2xl hover:border-blue-500/20 transition-all group flex flex-col overflow-hidden relative"
+                className="min-w-0 bg-white/95 dark:bg-slate-800/40 backdrop-blur-xl rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-2xl hover:border-blue-500/20 transition-all group flex flex-col overflow-hidden relative"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-1000" />
 
                 {/* Card Header */}
-                <div className="p-4 border-b border-slate-50 dark:border-white/5 flex items-center justify-between bg-slate-50/30 dark:bg-slate-900/20">
-                  <div className="flex items-center gap-3">
+                <div className="p-4 border-b border-slate-50 dark:border-white/5 flex flex-wrap items-center justify-between gap-2 bg-slate-50/30 dark:bg-slate-900/20">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-9 h-9 rounded-xl bg-[#1e3a5f] dark:bg-blue-600 flex items-center justify-center text-white font-serif font-bold text-base shadow-lg shadow-blue-900/20">
                       {(order.nombreCliente || 'C').slice(0, 1).toUpperCase()}
                     </div>
@@ -238,8 +238,8 @@ export default function OrdersPage() {
 
                 {/* Card Body */}
                 <div className="p-4 flex-1 space-y-4 relative z-10">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-bold text-[#1e3a5f] dark:text-white group-hover:text-blue-600 transition-colors leading-tight">
                         {order.nombreCliente || 'Cliente sin nombre'}
                       </h3>
@@ -254,7 +254,7 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] pt-2 font-black uppercase tracking-[0.2em]">
+                  <div className="flex flex-wrap items-center justify-between text-[11px] pt-2 font-black uppercase tracking-[0.2em]">
                     <div className="flex items-center gap-2 text-slate-400 border-r border-slate-100 dark:border-white/5 pr-4">
                       <Clock className="w-4 h-4 text-[#eab308]" />
                       <span>ENTREGA: <span className="text-[#1e3a5f] dark:text-white">{parseApiDate(order.fechaEntrega)?.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span></span>
