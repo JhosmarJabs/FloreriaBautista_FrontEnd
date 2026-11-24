@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   NotificationsService,
   NotificationDto,
+  avisarCambioNotificaciones,
 } from '../services/notificationsService';
 import { useAuth } from './useAuth';
 
@@ -73,12 +74,14 @@ export function useNotifications(size = 20): UseNotificationsReturn {
       prev.map(n => n.id === id ? { ...n, leida: true, leidaEn: new Date().toISOString() } : n)
     );
     setNoLeidas(prev => Math.max(0, prev - 1));
+    avisarCambioNotificaciones();
   }, []);
 
   const marcarTodasLeidas = useCallback(async () => {
     await NotificationsService.marcarTodasLeidas();
     setNotificaciones(prev => prev.map(n => ({ ...n, leida: true, leidaEn: new Date().toISOString() })));
     setNoLeidas(0);
+    avisarCambioNotificaciones();
   }, []);
 
   const eliminar = useCallback(async (id: string) => {
@@ -86,6 +89,7 @@ export function useNotifications(size = 20): UseNotificationsReturn {
     await NotificationsService.eliminar(id);
     setNotificaciones(prev => prev.filter(n => n.id !== id));
     if (notif && !notif.leida) setNoLeidas(prev => Math.max(0, prev - 1));
+    avisarCambioNotificaciones();
   }, [notificaciones]);
 
   const incrementarNoLeidas = useCallback(() => {

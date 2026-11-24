@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { MapPin, Phone, Mail, Send, MessageSquare, Navigation, Loader2, ExternalLink } from 'lucide-react';
+import { MapPin, Phone, Mail, Send, MessageSquare, Navigation, Loader2, ExternalLink, ArrowRight } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { CmsService } from '../../services/cmsService';
 import { AdminService } from '../../services/adminService';
@@ -8,7 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { SiteSettings } from '../../types';
 import { groupHorarios } from '../../utils/horarios';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
-import { Coordenadas, distanciaKm, formatearDistancia, urlMapaInsertado, urlRutaMaps } from '../../utils/geo';
+import { Coordenadas, coordenadasValidas, distanciaKm, formatearDistancia, urlMapaInsertado, urlRutaMaps } from '../../utils/geo';
 
 /** Resultado de pedir la ubicación al pulsar "Cómo llegar". */
 type EstadoGeo =
@@ -205,6 +206,14 @@ export default function ContactPage() {
                       )}
                       {geo.tipo === 'timeout' ? 'Reintentar' : 'Cómo llegar'}
                     </button>
+                  )}
+                  {coordenadasValidas(settings?.latitud, settings?.longitud) && (
+                    <Link
+                      to="/como-llegar?iniciar=1"
+                      className="mt-2 ml-1 inline-flex min-h-[44px] items-center gap-1 px-1 text-sm font-extrabold text-brand-deep underline decoration-[#D4AF37] decoration-[3px] underline-offset-[5px]"
+                    >
+                      Ir a la sucursal paso a paso <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    </Link>
                   )}
 
                   {geo.tipo !== 'inactivo' && geo.tipo !== 'cargando' && (

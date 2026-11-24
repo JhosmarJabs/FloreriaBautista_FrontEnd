@@ -19,6 +19,7 @@ const AboutPage = React.lazy(() => import('../pages/client/AboutPage'));
 const ProductPage = React.lazy(() => import('../pages/client/ProductPage'));
 const TestimonialsPage = React.lazy(() => import('../pages/client/TestimonialsPage'));
 const ContactPage = React.lazy(() => import('../pages/client/ContactPage'));
+const ComoLlegarPage = React.lazy(() => import('../pages/client/ComoLlegarPage'));
 const PaginaLegalPage = React.lazy(() => import('../pages/client/PaginaLegalPage'));
 const PreguntasFrecuentesPage = React.lazy(() => import('../pages/client/PreguntasFrecuentesPage'));
 const NotFoundPage = React.lazy(() => import('../pages/client/NotFoundPage'));
@@ -93,7 +94,7 @@ const EmployeeNotificationsPage = React.lazy(() => import('../pages/employee/Emp
 const LazyFallback = <CargaRuta />;
 
 const CssTransition = ({ children }: { children: React.ReactNode }) => (
-  <div className="motion-safe:animate-[pageEnter_0.3s_ease-out_both]">{children}</div>
+  <div className="motion-safe:animate-[pageEnter_0.3s_ease-out_backwards]">{children}</div>
 );
 
 // Este Suspense (que PageTransition necesita por ser lazy) es el más cercano a la
@@ -195,6 +196,7 @@ export default function AnimatedRoutes() {
       <Route path="/testimonios" element={<Suspense fallback={LazyFallback}><CssTransition><TestimonialsPage /></CssTransition></Suspense>} />
       <Route path="/nosotros" element={<Suspense fallback={LazyFallback}><CssTransition><AboutPage /></CssTransition></Suspense>} />
       <Route path="/contacto" element={<Suspense fallback={LazyFallback}><CssTransition><ContactPage /></CssTransition></Suspense>} />
+      <Route path="/como-llegar" element={<Suspense fallback={LazyFallback}><CssTransition><ComoLlegarPage /></CssTransition></Suspense>} />
       <Route path="/ofertas" element={<Suspense fallback={LazyFallback}><CssTransition><OffersPage /></CssTransition></Suspense>} />
       <Route path="/eventos" element={<Suspense fallback={LazyFallback}><CssTransition><EventsPage /></CssTransition></Suspense>} />
 

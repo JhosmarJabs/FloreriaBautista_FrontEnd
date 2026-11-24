@@ -50,3 +50,35 @@ export function urlMapaInsertado(destino: Coordenadas | null, direccion?: string
       : null;
   return q ? `https://maps.google.com/maps?q=${q}&z=16&output=embed` : null;
 }
+
+/**
+ * Coordenadas utilizables o `null`: falta alguna, no es número finito o está fuera de rango.
+ * Toda la funcionalidad de recorrido obtiene la sucursal por aquí (inválidas = inexistentes).
+ */
+export function coordenadasValidas(
+  latitud: number | null | undefined,
+  longitud: number | null | undefined,
+): Coordenadas | null {
+  if (typeof latitud !== 'number' || typeof longitud !== 'number') return null;
+  if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) return null;
+  if (Math.abs(latitud) > 90 || Math.abs(longitud) > 180) return null;
+  return { latitud, longitud };
+}
+
+/** Rumbo inicial (0-360, 0 = norte) para ir de `desde` a `hacia`. */
+export function rumboGrados(desde: Coordenadas, hacia: Coordenadas): number {
+  const f1 = aRadianes(desde.latitud);
+  const f2 = aRadianes(hacia.latitud);
+  const dl = aRadianes(hacia.longitud - desde.longitud);
+  const y = Math.sin(dl) * Math.cos(f2);
+  const x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+const SECTORES = ['norte', 'noreste', 'este', 'sureste', 'sur', 'suroeste', 'oeste', 'noroeste'];
+
+/** «norte», «noreste», «este»... (8 sectores). */
+export function rumboCardinal(grados: number): string {
+  const g = ((grados % 360) + 360) % 360;
+  return SECTORES[Math.round(g / 45) % 8];
+}

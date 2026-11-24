@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import {
   ROL,
   Rol,
   UsuarioSesion,
+  idDesdeJwt,
   isJwtExpired,
   limpiarSesion,
   normalizarUsuario,
@@ -55,13 +57,20 @@ interface EstadoSesion {
 
 const SIN_SESION: EstadoSesion = { usuario: null, token: null };
 
+/** Identidad de la cuenta de una sesión: `sub` del JWT, o el id guardado. */
+function identidadDe(s: EstadoSesion): string | null {
+  if (!s.token) return null;
+  return idDesdeJwt(s.token) ?? s.usuario?.id ?? null;
+}
+
 /**
  * Reconstruye la sesión a partir de lo guardado en el navegador.
  *
  * Descarta la sesión si no hay token o si venció, y reconstruye el usuario desde
  * el JWT cuando lo guardado quedó incompleto o no concuerda con el token.
  */
-function hidratarSesion(): EstadoSesion {
+function hidratarSesion(opciones: { reescribir?: boolean } = {}): EstadoSesion {
+  const { reescribir = true } = opciones;
   let token: string | null = null;
   let crudo: string | null = null;
 
@@ -100,6 +109,14 @@ function hidratarSesion(): EstadoSesion {
     guardado = null;
   }
 
+  // Si el objeto guardado es de otra cuenta que el token (otra pestaña a medio
+  // escribir), manda el JWT: se descarta lo guardado y se reconstruye de él.
+  const idJwt = esJwt ? idDesdeJwt(token) : null;
+  const idGuardado = guardado?.id ?? guardado?.userId ?? null;
+  if (idJwt && idGuardado && String(idGuardado) !== String(idJwt)) {
+    guardado = null;
+  }
+
   const usuario = normalizarUsuario(guardado ?? {}, esJwt ? token : null);
 
   if (usuario.roles.length === 0) {
@@ -109,11 +126,14 @@ function hidratarSesion(): EstadoSesion {
     return SIN_SESION;
   }
 
-  // Reescribe lo guardado si estaba incompleto o desalineado con el token.
-  try {
-    localStorage.setItem('usuario', JSON.stringify(usuario));
-  } catch {
-    /* noop */
+  // Reescribe lo guardado si estaba incompleto o desalineado con el token. Desde
+  // el oyente `storage` solo se lee: dos pestañas no deben pisarse el `usuario`.
+  if (reescribir) {
+    try {
+      localStorage.setItem('usuario', JSON.stringify(usuario));
+    } catch {
+      /* noop */
+    }
   }
 
   return { usuario, token };
@@ -124,12 +144,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sesion, setSesion] = useState<EstadoSesion>(() => hidratarSesion());
   const [cargando] = useState(false);
 
-  // Mantiene sincronizadas las pestañas abiertas: cerrar sesión en una debe
-  // cerrarla en las demás.
+  // Identidad de la sesión vigente de esta pestaña (también la mueven login y
+  // logout propios, porque cambian `sesion`).
+  const identidadRef = useRef<string | null>(identidadDe(sesion));
+  useEffect(() => {
+    identidadRef.current = identidadDe(sesion);
+  }, [sesion]);
+
+  // Mantiene sincronizadas las pestañas abiertas (REV-001). Tres casos:
+  //  - misma identidad (p. ej. renovación del token): solo se actualiza la sesión;
+  //  - X -> nadie o nadie -> Y: se vacía `apiCache` y se actualiza la sesión;
+  //  - X -> Y directo: se vacía `apiCache` y se recarga, para reiniciar también
+  //    pantallas montadas, campana, modales en vivo y formularios de X.
+  // No se llama a `limpiarSesion()`/`DatasetStore.borrarTodo()` si hay sesión
+  // nueva: borrarían copias de localStorage que la otra pestaña acaba de escribir.
   useEffect(() => {
     const alCambiarAlmacen = (e: StorageEvent) => {
       if (e.key && !['accessToken', 'usuario', 'user'].includes(e.key)) return;
-      setSesion(hidratarSesion());
+      const nueva = hidratarSesion({ reescribir: false });
+      const antes = identidadRef.current;
+      const despues = identidadDe(nueva);
+      if (despues !== antes) {
+        apiCache.clear();
+        if (antes && despues) {
+          window.location.reload();
+          return;
+        }
+      }
+      setSesion(nueva);
     };
     window.addEventListener('storage', alCambiarAlmacen);
     return () => window.removeEventListener('storage', alCambiarAlmacen);

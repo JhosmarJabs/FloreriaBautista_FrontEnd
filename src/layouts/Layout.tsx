@@ -96,11 +96,11 @@ export default function Layout() {
     // Dos niveles: el exterior cubre la barra del cliente (otro chunk diferido); el
     // interior, solo el contenido, conserva encabezado y pie si una página no carga sin red.
     <RutaErrorBoundary resetKey={location.pathname}>
-    <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden min-h-screen flex flex-col">
+    <div className="bg-brand-light font-sans text-brand-deep overflow-x-hidden supports-[overflow:clip]:overflow-x-clip min-h-screen flex flex-col">
       {!hideNavAndFooter && (esCliente ? <Suspense fallback={null}><NavbarCliente /></Suspense> : <Navigation />)}
       {/* min-h-screen: mientras la ruta lazy carga, el footer no debe quedar en
           pantalla, o salta hacia abajo al llegar el contenido (CLS). */}
-      <div className="flex-grow min-h-screen">
+      <div className="flex-grow min-h-screen pt-[var(--aviso-conexion-h,0px)]">
         <RutaErrorBoundary resetKey={location.pathname}>
           <AnimatedRoutes />
         </RutaErrorBoundary>

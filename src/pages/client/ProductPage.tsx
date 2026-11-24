@@ -490,28 +490,26 @@ export default function ProductPage() {
                   )}
                 </div>
 
-                <div className="p-8 flex flex-col flex-1">
+                <div className="p-8 lg:p-6 xl:p-8 flex flex-col flex-1">
                   <span className="text-[10px] font-black text-brand-coral uppercase tracking-widest mb-1 block truncate">
                     {p.tipo}
                   </span>
-                  <div className="flex justify-between items-start gap-3 mb-4">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="break-words text-xl font-bold text-slate-900 dark:text-white group-hover:text-brand-coral transition-colors duration-300">
-                        {p.nombre}
-                      </h3>
-                    </div>
-                    <div className="shrink-0 whitespace-nowrap text-xl font-black text-slate-900 dark:text-white">
+                  <div className="mb-4">
+                    <h3 className="break-words text-xl lg:text-lg xl:text-xl font-bold text-slate-900 dark:text-white group-hover:text-brand-coral transition-colors duration-300">
+                      {p.nombre}
+                    </h3>
+                    <div className="mt-2 text-xl font-black text-slate-900 dark:text-white">
                       {tieneOfertaValida(p, ofertasPorProducto.get(p.id)) ? (
-                        <span className="flex flex-col items-end leading-tight">
-                          <span className="text-brand-coral">${ofertasPorProducto.get(p.id)!.precioOferta}</span>
-                          <span className="text-xs font-bold line-through text-slate-400">${p.precioBase}</span>
+                        <span className="flex items-baseline gap-2 flex-wrap leading-tight">
+                          <span className="whitespace-nowrap text-brand-coral">${ofertasPorProducto.get(p.id)!.precioOferta}</span>
+                          <span className="whitespace-nowrap text-xs font-bold line-through text-slate-400">${p.precioBase}</span>
                         </span>
                       ) : (
-                        <>${p.precioBase}</>
+                        <span className="whitespace-nowrap">${p.precioBase}</span>
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="mt-auto space-y-3">
                     <Link to={`/producto/${slugify(p.nombre)}`} className="block">
                       <AnimatedButton className="w-full py-3.5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl font-bold text-sm">

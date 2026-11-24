@@ -19,7 +19,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../hooks/useAuth';
 import { usePantallaChica } from '../hooks/usePantallaChica';
-import { NotificationsService } from '../services/notificationsService';
+import { NotificationsService, NOTIFICACIONES_CAMBIARON_EVENT } from '../services/notificationsService';
 import { useOfflineSync } from '../hooks/useOfflineSync';
 import { useEstadoConexion } from '../hooks/useEstadoConexion';
 import '../styles/panel.css';
@@ -63,6 +63,21 @@ export default function EmployeeLayout({ children, user }: EmployeeLayoutProps) 
       .catch(() => {});
     return () => { cancelled = true; };
   }, [location.pathname]);
+
+  // Cambios en vivo o acciones del usuario: se vuelve a pedir el contador real al servidor.
+  useEffect(() => {
+    let cancelled = false;
+    const refrescar = () => {
+      NotificationsService.contarNoLeidas()
+        .then(c => { if (!cancelled) setNotifNoLeidas(c); })
+        .catch(() => {});
+    };
+    window.addEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(NOTIFICACIONES_CAMBIARON_EVENT, refrescar);
+    };
+  }, []);
 
   const { logout: handleLogout, esAdmin } = useAuth();
 

@@ -66,7 +66,7 @@ export default function Navigation() {
       {/* Mobile Menu Panel */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-sm">
-          <div className="container mx-auto px-4 py-4 flex flex-col gap-4 font-semibold text-sm uppercase tracking-wide">
+          <div className="container mx-auto px-4 pb-4 pt-[calc(1rem+var(--aviso-conexion-h,0px))] flex flex-col gap-4 font-semibold text-sm uppercase tracking-wide">
             <Link className="nav-link" to="/" onClick={() => setMobileMenuOpen(false)}>Inicio</Link>
             {isAuthenticated && (
               <Link className="nav-link" to={rutaInicialPorRol(roles)} onClick={() => setMobileMenuOpen(false)}>Panel</Link>

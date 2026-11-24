@@ -991,11 +991,17 @@ export const AdminService = {
 
   // Registrar un pago (anticipo o liquidación) sobre un pedido ya existente
   registerOrderPayment: async (orderId: string, body: { monto: number; metodo: string }): Promise<SingleResponse<OrderDetail>> => {
-    const res = await fetchConSesion(`/api/orders/${orderId}/payments`, {
-      method: 'POST',
-      headers: await authHeaders(),
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetchConSesion(`/api/orders/${orderId}/payments`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify(body),
+      });
+    } finally {
+      // Éxito o error, la siguiente lectura de pedidos (lista y detalle) debe ir al servidor, no a apiCache.
+      apiCache.invalidate(`${API_BASE}/orders`);
+    }
     if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`);
     return res.json();
   },

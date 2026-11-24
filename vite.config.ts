@@ -57,6 +57,8 @@ const PAGINAS_ESTATICAS = [
   'src/pages/client/AboutPage.tsx',
   'src/pages/client/ContactPage.tsx',
   'src/pages/client/CatalogPage.tsx',
+  // Ir a la sucursal: recorrido por GPS sin Internet (la red de calles va en includeAssets). Regla D8.
+  'src/pages/client/ComoLlegarPage.tsx',
   // Páginas legales, Preguntas frecuentes y 404 (sus dependencias entran por imports)
   'src/pages/client/PaginaLegalPage.tsx',
   'src/pages/client/PreguntasFrecuentesPage.tsx',
@@ -127,7 +129,7 @@ export default defineConfig(({ mode }) => {
         // inyecta registerSW.js y no bloquea el renderizado.
         injectRegister: false,
         // Imágenes de las páginas estáticas (portada y Quiénes somos): precache, ver PAGINAS_ESTATICAS.
-        includeAssets: ['favicon-64.png', 'Logo-sm.webp', 'apple-touch-icon.png', 'img/landing/*.webp', 'img/nosotros/*.webp'],
+        includeAssets: ['favicon-64.png', 'Logo-sm.webp', 'apple-touch-icon.png', 'img/landing/*.webp', 'img/nosotros/*.webp', 'mapa-sucursal/*.json'],
         manifest: {
           id: '/',
           name: 'Florería Bautista',
@@ -342,6 +344,20 @@ export default defineConfig(({ mode }) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: {
         usePolling: true,
+        // El sondeo por defecto (100 ms) sobre /app incluía las carpetas de build y de análisis
+        // (~1.600 archivos): con la VM de Docker cargada, el hilo de Vite se saturaba y el proxy
+        // /api tardaba de 10 a 300 s. Solo se vigila el código fuente y con un intervalo mayor.
+        interval: 1000,
+        binaryInterval: 3000,
+        ignored: [
+          '**/dist/**',
+          '**/dist-*/**',
+          '**/graphify-out/**',
+          '**/documentacion/**',
+          '**/coverage/**',
+          '**/test-results/**',
+          '**/playwright-report/**',
+        ],
       },
       proxy: {
         '/api': {
