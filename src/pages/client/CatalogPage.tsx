@@ -615,7 +615,7 @@ export default function CatalogPage() {
 
       {searchTerm.trim() && (
         <div className="max-w-7xl mx-auto mb-5 flex flex-wrap items-center justify-between gap-2.5" aria-label="Búsqueda vigente">
-          <h2 className="text-lg font-extrabold text-[#1A3B5B] min-w-0 break-words">
+          <h2 className={`text-lg font-extrabold text-[#1A3B5B] ${esEmpleado ? "dark:text-slate-100" : ""} min-w-0 break-words`}>
             {filteredProducts.length > 0
               ? `${filteredProducts.length} resultado${filteredProducts.length === 1 ? "" : "s"} para «${searchTerm.trim()}»`
               : `Sin resultados para «${searchTerm.trim()}»`}
